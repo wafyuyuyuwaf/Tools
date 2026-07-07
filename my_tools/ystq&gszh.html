@@ -15,129 +15,131 @@
             height: 100vh;
         }
 
-        /* ===== 全局布局 ===== */
+        /* ===== 整体布局：上下结构 ===== */
         .app-layout {
             display: flex;
+            flex-direction: column;
             height: 100vh;
             width: 100%;
             max-width: 100vw;
             background: #f8faff;
         }
 
-        /* ===== 左侧边栏 (桌面) ===== */
-        .sidebar {
-            width: 80px;
-            background: #ffffff;
-            border-right: 1px solid #e6ebf3;
+        /* ===== 顶部工具栏 ===== */
+        .top-toolbar {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            padding: 12px 0 16px;
+            gap: 4px;
+            padding: 6px 12px;
+            background: #ffffff;
+            border-bottom: 1px solid #eef2f8;
             flex-shrink: 0;
+            min-height: 56px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
             z-index: 30;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.02);
-            overflow-y: auto;
         }
-        .sidebar .logo {
-            font-size: 28px;
-            margin-bottom: 16px;
-            padding: 8px 0;
+        .top-toolbar::-webkit-scrollbar { display: none; }
+
+        .top-toolbar .logo {
+            font-size: 22px;
+            margin-right: 8px;
+            flex-shrink: 0;
             cursor: default;
             user-select: none;
         }
+
         .tools-nav {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 4px;
-            width: 100%;
+            gap: 2px;
             flex: 1;
+            min-width: 0;
         }
+
         .tool-btn {
             background: transparent;
             border: none;
-            border-radius: 12px;
-            padding: 10px 0;
-            width: 64px;
+            border-radius: 8px;
+            padding: 6px 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
-            font-size: 11px;
+            gap: 1px;
+            font-size: 10px;
             color: #6a7b8e;
             cursor: pointer;
             transition: background 0.15s, color 0.15s, transform 0.1s;
             -webkit-tap-highlight-color: transparent;
             font-family: inherit;
             touch-action: manipulation;
-            position: relative;
+            flex-shrink: 0;
+            min-width: 44px;
         }
-        .tool-btn .icon { font-size: 24px; line-height: 1.2; }
-        .tool-btn .label { font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+        .tool-btn .icon { font-size: 20px; line-height: 1.2; }
+        .tool-btn .label { font-size: 9px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
         .tool-btn:active { transform: scale(0.92); }
-        .tool-btn.active { background: #eaf1fe; color: #1f2a3a; font-weight: 600; }
+        .tool-btn.active {
+            background: #eaf1fe;
+            color: #1f2a3a;
+            font-weight: 600;
+        }
         .tool-btn.active .label { color: #1f2a3a; }
-        .tool-btn.active::before {
+        .tool-btn.active::after {
             content: '';
             position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 20px;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 3px;
             background: #2c3e5a;
-            border-radius: 0 4px 4px 0;
+            border-radius: 4px 4px 0 0;
         }
+        .tool-btn { position: relative; }
 
-        /* ===== 主内容区 ===== */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background: #f8faff;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* ===== 顶部标题栏 ===== */
-        .main-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background: #ffffff;
-            border-bottom: 1px solid #eef2f8;
-            flex-shrink: 0;
-            min-height: 56px;
-            gap: 12px;
-        }
-        .main-header h1 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1f2a3a;
-            white-space: nowrap;
-        }
+        /* ===== 右侧颜色信息 ===== */
         .header-color-info {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex-shrink: 0;
+            margin-left: 8px;
         }
         .header-color-info .color-swatch {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
             border: 1px solid #dee5ef;
             flex-shrink: 0;
             background: #a0aab8;
         }
         .header-color-info .color-hex {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
             color: #1a2330;
             font-family: "SF Mono", "Menlo", monospace;
-            min-width: 50px;
+            min-width: 40px;
+        }
+
+        /* ===== 标题栏（简化版） ===== */
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 16px 4px 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #eef2f8;
+            flex-shrink: 0;
+            min-height: 36px;
+        }
+        .main-header h1 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2a3a;
         }
 
         /* ===== 画布区域 ===== */
@@ -145,7 +147,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 12px 16px 8px 16px;
+            padding: 8px 12px 4px 12px;
             min-height: 0;
             background: #f8faff;
         }
@@ -156,7 +158,7 @@
             overflow: hidden;
             touch-action: none;
             flex: 1;
-            min-height: 200px;
+            min-height: 160px;
             border: 1px solid #e6ebf3;
             aspect-ratio: 700 / 480;
             max-height: 100%;
@@ -208,85 +210,85 @@
         .zoom-indicator.show { opacity: 1; }
 
         .hint-msg {
-            margin: 6px 4px 0 4px;
+            margin: 4px 4px 0 4px;
             font-size: 12px;
             color: #7a8aa0;
             user-select: none;
             flex-shrink: 0;
-            min-height: 22px;
+            min-height: 20px;
         }
 
         /* ===== 工具面板 (下方) ===== */
         .tool-panel {
             background: #ffffff;
             border-top: 1px solid #eef2f8;
-            padding: 12px 16px 16px 16px;
+            padding: 10px 14px 14px 14px;
             flex-shrink: 0;
-            max-height: 50vh;
+            max-height: 46vh;
             overflow-y: auto;
-            transition: max-height 0.25s ease;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.02);
         }
         .panel-content { display: none; animation: fadeUp 0.2s ease; }
         .panel-content.active { display: block; }
-        @keyframes fadeUp { 0% { opacity:0; transform:translateY(8px); } 100% { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp { 0% { opacity:0; transform:translateY(6px); } 100% { opacity:1; transform:translateY(0); } }
 
         /* ===== 工具面板内部样式 ===== */
-        .adv-group { margin-bottom: 14px; }
+        .adv-group { margin-bottom: 12px; }
         .adv-group:last-child { margin-bottom: 0; }
-        .adv-group-title { font-size: 13px; font-weight: 600; color: #2c3e5a; margin-bottom: 6px; letter-spacing: 0.3px; }
-        .adv-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
-        .adv-row label { font-size: 12px; color: #4a5a72; min-width: 32px; }
-        .adv-row input[type="number"] { width: 60px; padding: 4px 6px; border: 1px solid #d0d7e2; border-radius: 6px; font-size: 12px; background: #fff; font-family: inherit; }
+        .adv-group-title { font-size: 13px; font-weight: 600; color: #2c3e5a; margin-bottom: 4px; letter-spacing: 0.2px; }
+        .adv-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+        .adv-row label { font-size: 12px; color: #4a5a72; min-width: 28px; }
+        .adv-row input[type="number"] { width: 54px; padding: 3px 5px; border: 1px solid #d0d7e2; border-radius: 6px; font-size: 12px; background: #fff; font-family: inherit; }
         .adv-row input[type="number"]:focus { outline: none; border-color: #7a8ba3; }
-        .adv-row input[type="range"] { flex: 1; min-width: 80px; accent-color: #3d6b9b; }
+        .adv-row input[type="range"] { flex: 1; min-width: 70px; accent-color: #3d6b9b; }
         .adv-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background: #2c3e5a;
             cursor: pointer;
         }
-        .adv-row .value-label { min-width: 36px; font-size: 12px; color: #3d4a5c; font-weight: 500; }
-        .adv-btn { padding: 5px 14px; border: none; border-radius: 30px; background: #e6ecf5; font-size: 12px; font-weight: 500; color: #1f2a3a; cursor: pointer; transition: background 0.15s; font-family: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .adv-row .value-label { min-width: 28px; font-size: 12px; color: #3d4a5c; font-weight: 500; }
+        .adv-btn { padding: 4px 12px; border: none; border-radius: 30px; background: #e6ecf5; font-size: 12px; font-weight: 500; color: #1f2a3a; cursor: pointer; transition: background 0.15s; font-family: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .adv-btn:active { background: #cdd6e3; }
         .adv-btn.primary { background: #2c3e5a; color: #fff; }
         .adv-btn.primary:active { background: #1a2a3f; }
         .adv-btn.danger { background: #e8d5d5; color: #7a3a3a; }
         .adv-btn.danger:active { background: #dbbdbd; }
+        .adv-btn.small { font-size: 11px; padding: 2px 10px; }
 
         /* 图层列表 */
-        .layer-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; max-height: 140px; overflow-y: auto; border: 1px solid #e2e6ee; border-radius: 10px; padding: 4px 6px; background: #fff; }
-        .layer-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; background: #fafcff; border: 1px solid #eef2f8; transition: background 0.15s, border-color 0.15s; user-select: none; min-height: 34px; }
+        .layer-list { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; max-height: 130px; overflow-y: auto; border: 1px solid #e2e6ee; border-radius: 10px; padding: 4px 6px; background: #fff; }
+        .layer-item { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 6px; background: #fafcff; border: 1px solid #eef2f8; transition: background 0.15s, border-color 0.15s; user-select: none; min-height: 32px; }
         .layer-item.selected { border-color: #2c3e5a; background: #eaf1fe; }
-        .layer-item .thumb { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; background: #eef0f4; border: 1px solid #d0d7e2; flex-shrink: 0; }
+        .layer-item .thumb { width: 24px; height: 24px; border-radius: 4px; object-fit: cover; background: #eef0f4; border: 1px solid #d0d7e2; flex-shrink: 0; }
         .layer-item .layer-name { flex: 1; font-size: 12px; font-weight: 500; color: #1f2a3a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .layer-item .layer-actions { display: flex; gap: 0px; align-items: center; flex-shrink: 0; }
-        .layer-item .layer-actions button { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.1s; line-height: 1; color: #2c3e5a; touch-action: manipulation; -webkit-tap-highlight-color: transparent; min-width: 24px; min-height: 24px; display: flex; align-items: center; justify-content: center; }
+        .layer-item .layer-actions button { background: none; border: none; font-size: 13px; cursor: pointer; padding: 2px 3px; border-radius: 4px; transition: background 0.1s; line-height: 1; color: #2c3e5a; touch-action: manipulation; -webkit-tap-highlight-color: transparent; min-width: 22px; min-height: 22px; display: flex; align-items: center; justify-content: center; }
         .layer-item .layer-actions button:active { background: #d0d7e2; }
-        .layer-item .layer-actions .vis-toggle { font-size: 14px; }
-        .layer-item .layer-actions .del-btn { color: #b33; font-size: 14px; }
-        .layer-item .layer-actions .move-btn { font-size: 12px; color: #4a5a72; padding: 2px 3px; }
+        .layer-item .layer-actions .vis-toggle { font-size: 13px; }
+        .layer-item .layer-actions .del-btn { color: #b33; font-size: 13px; }
+        .layer-item .layer-actions .move-btn { font-size: 11px; color: #4a5a72; padding: 2px 2px; }
         .layer-item .layer-actions .move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-        .layer-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-items: center; }
+        .layer-controls { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
         .layer-controls .adv-row { margin-bottom: 0; }
 
-        /* 裁剪复选框 */
-        .crop-checkboxes { display: flex; flex-wrap: wrap; gap: 4px 10px; flex: 1; }
+        /* 裁剪 */
+        .crop-checkboxes { display: flex; flex-wrap: wrap; gap: 3px 8px; flex: 1; }
         .crop-checkboxes label { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #2c3e5a; cursor: pointer; }
 
-        /* 擦除工具 */
-        .erase-tool { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        /* 擦除 */
+        .erase-tool { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .erase-tool label { font-size: 12px; color: #4a5a72; }
-        .erase-tool input[type="range"] { width: 100px; accent-color: #3d6b9b; }
+        .erase-tool input[type="range"] { width: 80px; accent-color: #3d6b9b; }
         .erase-tool .size-val { min-width: 24px; font-size: 12px; font-weight: 500; }
 
         /* 导出 */
-        .export-grid { display: flex; gap: 8px; flex-wrap: wrap; }
-        .export-grid .adv-btn { flex: 1; min-width: 56px; text-align: center; padding: 8px 0; font-size: 13px; }
+        .export-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+        .export-grid .adv-btn { flex: 1; min-width: 48px; text-align: center; padding: 6px 0; font-size: 12px; }
         .export-grid .adv-btn[data-format="png"] { background: #e3eaf7; color: #1c3b6b; }
         .export-grid .adv-btn[data-format="jpg"] { background: #f7ede6; color: #6b3d1c; }
         .export-grid .adv-btn[data-format="webp"] { background: #e6f7ed; color: #1c6b3d; }
@@ -310,116 +312,72 @@
             border-radius: 16px;
             cursor: pointer;
             transition: opacity 0.3s ease;
-            gap: 8px;
-            padding: 20px;
+            gap: 6px;
+            padding: 16px;
             text-align: center;
             color: #3d4a5c;
             border: 2px dashed #d0d7e2;
         }
         .upload-overlay.hidden { opacity: 0; pointer-events: none; }
-        .upload-overlay .upload-icon { font-size: 48px; }
-        .upload-overlay .upload-title { font-size: 16px; font-weight: 500; color: #1f2a3a; }
-        .upload-overlay .upload-sub { font-size: 13px; color: #6a7b8e; }
+        .upload-overlay .upload-icon { font-size: 40px; }
+        .upload-overlay .upload-title { font-size: 15px; font-weight: 500; color: #1f2a3a; }
+        .upload-overlay .upload-sub { font-size: 12px; color: #6a7b8e; }
         #fileInput { display: none; }
 
         /* ===== 移动端适配 ===== */
         @media (max-width: 768px) {
-            .app-layout { flex-direction: column-reverse; height: 100vh; }
-
-            /* 侧边栏 → 底部工具栏 */
-            .sidebar {
-                width: 100%;
-                flex-direction: row;
-                height: 68px; /* 增加高度 */
-                min-height: 68px;
-                border-right: none;
-                border-top: 1px solid #e6ebf3;
-                padding: 4px 6px 6px 6px;
-                box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
-                overflow-x: auto;
-                overflow-y: hidden;
-                flex-shrink: 0;
-                background: #ffffff;
-                z-index: 30;
-                /* 让横向滚动更顺滑 */
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-            }
-            .sidebar::-webkit-scrollbar { display: none; }
-
-            .sidebar .logo { display: none; }
-
-            .tools-nav {
-                flex-direction: row;
-                justify-content: flex-start;
+            .top-toolbar {
+                padding: 4px 8px;
+                min-height: 48px;
                 gap: 2px;
-                flex: 0 0 auto;
-                min-width: 100%;
-                width: auto;
-                padding: 0 2px;
             }
-
-            /* 每个工具按钮 → 横向排列，固定宽度 */
+            .top-toolbar .logo {
+                font-size: 18px;
+                margin-right: 4px;
+            }
             .tool-btn {
-                flex: 0 0 56px;
-                width: 56px;
-                min-width: 48px;
-                flex-direction: column;
-                padding: 4px 0 2px 0;
-                gap: 0px;
-                border-radius: 8px;
-                background: transparent;
+                padding: 4px 6px;
+                min-width: 36px;
             }
-            .tool-btn .icon {
-                font-size: 20px;
-                line-height: 1.3;
-            }
-            .tool-btn .label {
-                font-size: 9px;
-                margin-top: 1px;
-                white-space: nowrap;
-            }
-            .tool-btn.active::before {
-                top: auto;
-                bottom: 0;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 20px;
-                height: 3px;
-                border-radius: 4px 4px 0 0;
-            }
+            .tool-btn .icon { font-size: 17px; }
+            .tool-btn .label { font-size: 8px; }
+            .tool-btn.active::after { width: 12px; height: 2px; }
 
-            .main-content { height: calc(100vh - 68px); }
-            .main-header h1 { font-size: 15px; }
-            .main-header { padding: 6px 12px; min-height: 44px; }
-            .header-color-info .color-swatch { width: 22px; height: 22px; }
-            .header-color-info .color-hex { font-size: 12px; min-width: 40px; }
-            .canvas-section { padding: 6px 8px 4px 8px; }
-            .canvas-wrapper { border-radius: 12px; min-height: 120px; }
-            .tool-panel { padding: 8px 10px 12px 10px; max-height: 45vh; }
-            .adv-row { gap: 6px; }
-            .adv-row input[type="number"] { width: 50px; padding: 3px 4px; font-size: 11px; }
-            .adv-row input[type="range"] { min-width: 60px; }
-            .adv-btn { font-size: 11px; padding: 4px 10px; }
-            .layer-item { min-height: 30px; padding: 2px 4px; }
-            .layer-item .thumb { width: 22px; height: 22px; }
-            .layer-item .layer-actions button { font-size: 12px; min-width: 20px; min-height: 20px; }
-            .export-grid .adv-btn { font-size: 12px; padding: 6px 0; min-width: 48px; }
-            .upload-overlay .upload-icon { font-size: 32px; }
-            .upload-overlay .upload-title { font-size: 14px; }
-            .upload-overlay .upload-sub { font-size: 12px; }
-            .hint-msg { font-size: 11px; min-height: 18px; margin: 4px 2px 0 2px; }
-            .zoom-indicator { font-size: 11px; padding: 2px 10px; bottom: 8px; left: 10px; }
+            .header-color-info .color-swatch { width: 20px; height: 20px; }
+            .header-color-info .color-hex { font-size: 10px; min-width: 34px; }
+
+            .main-header h1 { font-size: 12px; }
+            .main-header { padding: 2px 10px; min-height: 28px; }
+
+            .canvas-section { padding: 4px 6px 2px 6px; }
+            .canvas-wrapper { border-radius: 10px; min-height: 100px; }
+
+            .tool-panel { padding: 6px 8px 10px 8px; max-height: 42vh; }
+            .adv-row { gap: 4px; }
+            .adv-row input[type="number"] { width: 46px; padding: 2px 4px; font-size: 11px; }
+            .adv-row input[type="range"] { min-width: 50px; }
+            .adv-btn { font-size: 11px; padding: 3px 8px; }
+            .layer-item { min-height: 28px; padding: 2px 4px; }
+            .layer-item .thumb { width: 20px; height: 20px; }
+            .layer-item .layer-actions button { font-size: 11px; min-width: 18px; min-height: 18px; }
+            .export-grid .adv-btn { font-size: 11px; padding: 4px 0; min-width: 40px; }
+            .upload-overlay .upload-icon { font-size: 28px; }
+            .upload-overlay .upload-title { font-size: 13px; }
+            .upload-overlay .upload-sub { font-size: 11px; }
+            .hint-msg { font-size: 11px; min-height: 16px; margin: 2px 2px 0 2px; }
+            .zoom-indicator { font-size: 10px; padding: 2px 8px; bottom: 6px; left: 8px; }
         }
 
         @media (max-width: 400px) {
-            .tool-btn { flex: 0 0 44px; min-width: 40px; }
-            .tool-btn .icon { font-size: 17px; }
-            .tool-btn .label { font-size: 8px; }
-            .main-header h1 { font-size: 13px; }
-            .header-color-info .color-hex { font-size: 10px; min-width: 30px; }
-            .adv-row label { font-size: 11px; min-width: 24px; }
-            .adv-row input[type="number"] { width: 44px; }
+            .top-toolbar { padding: 2px 4px; min-height: 40px; }
+            .tool-btn { padding: 2px 4px; min-width: 30px; }
+            .tool-btn .icon { font-size: 14px; }
+            .tool-btn .label { font-size: 7px; }
+            .header-color-info .color-hex { font-size: 9px; min-width: 28px; }
+            .header-color-info .color-swatch { width: 16px; height: 16px; }
+            .main-header h1 { font-size: 11px; }
+            .adv-row label { font-size: 10px; min-width: 20px; }
+            .adv-row input[type="number"] { width: 38px; }
         }
     </style>
 </head>
@@ -427,30 +385,31 @@
 
 <div class="app-layout">
 
-    <!-- ===== 侧边栏 ===== -->
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">🎨</div>
+    <!-- ===== 顶部工具栏 ===== -->
+    <div class="top-toolbar">
+        <span class="logo">🎨</span>
         <nav class="tools-nav">
-            <button class="tool-btn active" data-tool="upload" title="上传图片"><span class="icon">📁</span><span class="label">上传</span></button>
-            <button class="tool-btn" data-tool="layers" title="图层管理"><span class="icon">📚</span><span class="label">图层</span></button>
-            <button class="tool-btn" data-tool="filters" title="滤镜调整"><span class="icon">🎨</span><span class="label">滤镜</span></button>
+            <button class="tool-btn active" data-tool="upload" title="上传"><span class="icon">📁</span><span class="label">上传</span></button>
+            <button class="tool-btn" data-tool="layers" title="图层"><span class="icon">📚</span><span class="label">图层</span></button>
+            <button class="tool-btn" data-tool="filters" title="滤镜"><span class="icon">🎨</span><span class="label">滤镜</span></button>
             <button class="tool-btn" data-tool="crop" title="裁剪"><span class="icon">✂️</span><span class="label">裁剪</span></button>
-            <button class="tool-btn" data-tool="colorpicker" title="取色器"><span class="icon">💉</span><span class="label">取色</span></button>
+            <button class="tool-btn" data-tool="colorpicker" title="取色"><span class="icon">💉</span><span class="label">取色</span></button>
             <button class="tool-btn" data-tool="erase" title="擦除"><span class="icon">🧹</span><span class="label">擦除</span></button>
             <button class="tool-btn" data-tool="export" title="导出"><span class="icon">💾</span><span class="label">导出</span></button>
         </nav>
-    </aside>
+        <div class="header-color-info">
+            <div class="color-swatch" id="colorSwatch" style="background:#a0aab8;"></div>
+            <span class="color-hex" id="hexDisplay">—</span>
+        </div>
+    </div>
 
     <!-- ===== 主内容 ===== -->
     <div class="main-content">
 
-        <!-- 顶部标题栏 -->
+        <!-- 标题栏 -->
         <header class="main-header">
             <h1>🖼️ 多图层编辑器</h1>
-            <div class="header-color-info">
-                <div class="color-swatch" id="colorSwatch" style="background:#a0aab8;"></div>
-                <span class="color-hex" id="hexDisplay">—</span>
-            </div>
+            <div style="font-size:12px;color:#8a9ab0;" id="layerCount">0 个图层</div>
         </header>
 
         <!-- 画布区域 -->
@@ -465,7 +424,7 @@
                 <canvas id="overlayCanvas"></canvas>
                 <div class="zoom-indicator" id="zoomIndicator">100%</div>
             </div>
-            <div class="hint-msg" id="hintMsg">💡 点击左侧工具开始编辑</div>
+            <div class="hint-msg" id="hintMsg">💡 点击顶部工具开始编辑</div>
         </section>
 
         <!-- 工具面板 -->
@@ -475,10 +434,10 @@
                 <div class="adv-group">
                     <div class="adv-group-title">📁 上传图片</div>
                     <div class="adv-row" style="gap:12px;">
-                        <button class="adv-btn primary" id="uploadBtn" style="padding:8px 24px;">选择图片</button>
+                        <button class="adv-btn primary" id="uploadBtn" style="padding:6px 20px;">选择图片</button>
                         <span style="font-size:12px; color:#7a8aa0;">支持多选</span>
                     </div>
-                    <div style="font-size:12px; color:#8a9ab0; margin-top:4px;">点击侧边栏「上传」或点击画布也可上传</div>
+                    <div style="font-size:12px; color:#8a9ab0; margin-top:2px;">点击画布也可上传</div>
                 </div>
             </div>
 
@@ -490,24 +449,23 @@
                     <div class="layer-controls">
                         <div class="adv-row">
                             <label>X</label>
-                            <input type="number" id="layerX" value="0" step="1" style="width:60px;" />
+                            <input type="number" id="layerX" value="0" step="1" style="width:50px;" />
                             <label>Y</label>
-                            <input type="number" id="layerY" value="0" step="1" style="width:60px;" />
+                            <input type="number" id="layerY" value="0" step="1" style="width:50px;" />
                             <label>旋转</label>
-                            <input type="number" id="layerRotation" value="0" step="1" min="0" max="360" style="width:50px;" />
+                            <input type="number" id="layerRotation" value="0" step="1" min="0" max="360" style="width:44px;" />
                             <label>°</label>
                             <button class="adv-btn" id="applyLayerPos">应用</button>
                             <button class="adv-btn danger" id="deleteSelectedLayer">删除</button>
                         </div>
                         <div class="adv-row">
                             <label>大小</label>
-                            <input type="range" id="layerScaleSlider" min="10" max="200" value="100" step="1" style="flex:1; min-width:70px;" />
+                            <input type="range" id="layerScaleSlider" min="10" max="200" value="100" step="1" style="flex:1; min-width:60px;" />
                             <span class="value-label" id="layerScaleVal">100%</span>
                         </div>
-                        <!-- ===== 不透明度滑块 ===== -->
                         <div class="adv-row">
                             <label>不透明度</label>
-                            <input type="range" id="layerOpacitySlider" min="0" max="100" value="100" step="1" style="flex:1; min-width:70px;" />
+                            <input type="range" id="layerOpacitySlider" min="0" max="100" value="100" step="1" style="flex:1; min-width:60px;" />
                             <span class="value-label" id="layerOpacityVal">100%</span>
                         </div>
                     </div>
@@ -517,30 +475,12 @@
             <!-- 滤镜 -->
             <div class="panel-content" id="panel-filters">
                 <div class="adv-group">
-                    <div class="adv-group-title">🎨 图层滤镜</div>
-                    <div class="adv-row">
-                        <label>亮度</label>
-                        <input type="range" id="brightnessSlider" min="0" max="200" value="100" />
-                        <span class="value-label" id="brightnessVal">100%</span>
-                    </div>
-                    <div class="adv-row">
-                        <label>对比度</label>
-                        <input type="range" id="contrastSlider" min="0" max="200" value="100" />
-                        <span class="value-label" id="contrastVal">100%</span>
-                    </div>
-                    <div class="adv-row">
-                        <label>饱和度</label>
-                        <input type="range" id="saturationSlider" min="0" max="200" value="100" />
-                        <span class="value-label" id="saturationVal">100%</span>
-                    </div>
-                    <div class="adv-row">
-                        <label>色相</label>
-                        <input type="range" id="hueSlider" min="0" max="360" value="0" />
-                        <span class="value-label" id="hueVal">0°</span>
-                    </div>
-                    <div class="adv-row">
-                        <button class="adv-btn danger" id="resetLayerFilters">重置滤镜</button>
-                    </div>
+                    <div class="adv-group-title">🎨 滤镜</div>
+                    <div class="adv-row"><label>亮度</label><input type="range" id="brightnessSlider" min="0" max="200" value="100" /><span class="value-label" id="brightnessVal">100%</span></div>
+                    <div class="adv-row"><label>对比度</label><input type="range" id="contrastSlider" min="0" max="200" value="100" /><span class="value-label" id="contrastVal">100%</span></div>
+                    <div class="adv-row"><label>饱和度</label><input type="range" id="saturationSlider" min="0" max="200" value="100" /><span class="value-label" id="saturationVal">100%</span></div>
+                    <div class="adv-row"><label>色相</label><input type="range" id="hueSlider" min="0" max="360" value="0" /><span class="value-label" id="hueVal">0°</span></div>
+                    <div class="adv-row"><button class="adv-btn danger" id="resetLayerFilters">重置滤镜</button></div>
                 </div>
             </div>
 
@@ -550,13 +490,13 @@
                     <div class="adv-group-title">✂️ 裁剪</div>
                     <div class="adv-row">
                         <label>比例</label>
-                        <input type="number" id="cropRatioW" value="16" style="width:50px;" min="1" step="1" />
+                        <input type="number" id="cropRatioW" value="16" style="width:44px;" min="1" step="1" />
                         <span style="color:#4a5a72;">:</span>
-                        <input type="number" id="cropRatioH" value="9" style="width:50px;" min="1" step="1" />
-                        <button class="adv-btn primary" id="cropApplyBtn" style="padding:4px 16px;">裁剪</button>
+                        <input type="number" id="cropRatioH" value="9" style="width:44px;" min="1" step="1" />
+                        <button class="adv-btn primary" id="cropApplyBtn" style="padding:4px 14px;">裁剪</button>
                     </div>
                     <div class="adv-row" style="gap:4px; flex-wrap:wrap;">
-                        <label style="min-width:32px;">预设</label>
+                        <label style="min-width:28px;">预设</label>
                         <button class="adv-btn crop-preset" data-w="1" data-h="1">1:1</button>
                         <button class="adv-btn crop-preset" data-w="4" data-h="3">4:3</button>
                         <button class="adv-btn crop-preset" data-w="16" data-h="9">16:9</button>
@@ -564,10 +504,10 @@
                         <button class="adv-btn crop-preset" data-w="21" data-h="9">21:9</button>
                     </div>
                     <div class="adv-row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">
-                        <label style="min-width:32px;">图层</label>
+                        <label style="min-width:28px;">图层</label>
                         <div class="crop-checkboxes" id="cropLayerCheckboxes"></div>
-                        <button class="adv-btn" id="cropSelectAll" style="font-size:11px; padding:2px 10px;">全选</button>
-                        <button class="adv-btn" id="cropSelectNone" style="font-size:11px; padding:2px 10px;">取消</button>
+                        <button class="adv-btn small" id="cropSelectAll">全选</button>
+                        <button class="adv-btn small" id="cropSelectNone">取消</button>
                     </div>
                     <div style="font-size:11px; color:#8a9ab0; margin-top:2px;">⚠️ 裁剪后不可恢复</div>
                 </div>
@@ -577,33 +517,13 @@
             <div class="panel-content" id="panel-colorpicker">
                 <div class="adv-group">
                     <div class="adv-group-title">💉 取色器</div>
-                    <div class="adv-row">
-                        <button class="adv-btn" id="colorPickToggle" style="min-width:100px;">🎨 取色模式</button>
-                        <span style="font-size:12px; color:#7a8aa0;">点击画布取色</span>
-                    </div>
-                    <div class="adv-row" style="margin-top:6px; gap:16px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:12px; color:#4a5a72;">HEX</span>
-                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHex">—</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:12px; color:#4a5a72;">RGB</span>
-                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vRgb">—</span>
-                        </div>
-                    </div>
-                    <div class="adv-row" style="gap:16px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:12px; color:#4a5a72;">HSL</span>
-                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsl">—</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:12px; color:#4a5a72;">HSV</span>
-                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsv">—</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-size:12px; color:#4a5a72;">CMYK</span>
-                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vCmyk">—</span>
-                        </div>
+                    <div class="adv-row"><button class="adv-btn" id="colorPickToggle" style="min-width:80px;">🎨 取色模式</button><span style="font-size:12px; color:#7a8aa0;">点击画布取色</span></div>
+                    <div class="adv-row" style="gap:10px; margin-top:4px; flex-wrap:wrap;">
+                        <div><span style="font-size:12px; color:#4a5a72;">HEX</span> <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHex">—</span></div>
+                        <div><span style="font-size:12px; color:#4a5a72;">RGB</span> <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vRgb">—</span></div>
+                        <div><span style="font-size:12px; color:#4a5a72;">HSL</span> <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsl">—</span></div>
+                        <div><span style="font-size:12px; color:#4a5a72;">HSV</span> <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsv">—</span></div>
+                        <div><span style="font-size:12px; color:#4a5a72;">CMYK</span> <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vCmyk">—</span></div>
                     </div>
                 </div>
             </div>
@@ -612,15 +532,11 @@
             <div class="panel-content" id="panel-erase">
                 <div class="adv-group">
                     <div class="adv-group-title">🧹 擦除</div>
-                    <div class="adv-row">
-                        <button class="adv-btn" id="eraseModeToggle" style="min-width:100px;">🖍️ 擦除模式</button>
-                        <span style="font-size:12px; color:#7a8aa0;">在画布上拖动擦除</span>
-                    </div>
+                    <div class="adv-row"><button class="adv-btn" id="eraseModeToggle" style="min-width:80px;">🖍️ 擦除模式</button><span style="font-size:12px; color:#7a8aa0;">在画布上拖动擦除</span></div>
                     <div class="adv-row erase-tool">
-                        <label>画笔大小</label>
+                        <label>画笔</label>
                         <input type="range" id="brushSizeSlider" min="1" max="1000" value="20" />
-                        <span class="size-val" id="brushSizeVal">20</span>
-                        <label>px</label>
+                        <span class="size-val" id="brushSizeVal">20</span><label>px</label>
                         <button class="adv-btn danger" id="clearErasure">清除擦除</button>
                     </div>
                 </div>
@@ -630,9 +546,7 @@
             <div class="panel-content" id="panel-export">
                 <div class="adv-group">
                     <div class="adv-group-title">💾 导出</div>
-                    <div class="adv-row">
-                        <span style="font-size:12px; color:#4a5a72;">选择格式导出合成图像</span>
-                    </div>
+                    <div class="adv-row"><span style="font-size:12px; color:#4a5a72;">选择格式导出合成图像</span></div>
                     <div class="export-grid">
                         <button class="adv-btn" data-format="png">PNG</button>
                         <button class="adv-btn" data-format="jpg">JPG</button>
@@ -662,6 +576,7 @@
         const overlayCtx = overlayCanvas.getContext('2d');
         const zoomIndicator = document.getElementById('zoomIndicator');
         const hintMsg = document.getElementById('hintMsg');
+        const layerCountEl = document.getElementById('layerCount');
 
         const colorSwatch = document.getElementById('colorSwatch');
         const hexDisplay = document.getElementById('hexDisplay');
@@ -842,6 +757,7 @@
             selectLayer(id);
             renderAll();
             updateLayerList();
+            updateLayerCount();
             uploadOverlay.classList.add('hidden');
             return id;
         }
@@ -856,6 +772,7 @@
             renderAll();
             updateLayerList();
             updateControls();
+            updateLayerCount();
             if (layers.length === 0) uploadOverlay.classList.remove('hidden');
         }
 
@@ -993,6 +910,10 @@
                 layerOpacitySlider.value = Math.round((sel.opacity || 1) * 100);
                 layerOpacityVal.textContent = Math.round((sel.opacity || 1) * 100) + '%';
             }
+        }
+
+        function updateLayerCount() {
+            layerCountEl.textContent = layers.length + ' 个图层';
         }
 
         function updateControls() {
@@ -1660,7 +1581,7 @@
         });
 
         // =============================================
-        //  画布事件
+        //  画布事件 (鼠标)
         // =============================================
 
         canvas.addEventListener('wheel', function(e) {
@@ -1725,6 +1646,7 @@
                 return;
             }
 
+            // 点击选中图层
             const coord = getCanvasCoords(e.clientX, e.clientY);
             const worldX = (coord.x - viewTransform.offsetX) / viewTransform.scale;
             const worldY = (coord.y - viewTransform.offsetY) / viewTransform.scale;
@@ -1874,6 +1796,7 @@
                     return;
                 }
 
+                // 点击选中图层
                 const coord = getCanvasCoords(clientX, clientY);
                 const worldX = (coord.x - viewTransform.offsetX) / viewTransform.scale;
                 const worldY = (coord.y - viewTransform.offsetY) / viewTransform.scale;
@@ -2054,8 +1977,9 @@
 
         setMode('select');
         switchTool('upload');
+        updateLayerCount();
 
-        console.log('🖼️ 多图层编辑器 (修复椭圆 + 不透明度 + 手机侧边栏修复)');
+        console.log('🖼️ 多图层编辑器 (顶部工具栏)');
     })();
 </script>
 
