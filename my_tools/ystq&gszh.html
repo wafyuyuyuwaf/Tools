@@ -5,529 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>多图层编辑器</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #f0f2f6;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            padding: 16px;
-            touch-action: manipulation;
-        }
-        .container {
-            max-width: 860px;
-            width: 100%;
-            background: #ffffff;
-            padding: 20px 18px 28px;
-        }
-        .upload-area {
-            border: 2px dashed #d0d7e2;
-            border-radius: 12px;
-            padding: 12px 14px;
-            text-align: center;
-            cursor: pointer;
-            background: #fafcff;
-            margin-bottom: 14px;
-            transition: background 0.2s, border-color 0.2s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .upload-area:active {
-            background: #eaf1fe;
-            border-color: #7a8ba3;
-        }
-        .upload-area label {
-            display: block;
-            font-size: 15px;
-            color: #3d4a5c;
-            font-weight: 450;
-            cursor: pointer;
-        }
-        .upload-area label span {
-            display: inline-block;
-            background: #e6ecf5;
-            padding: 5px 16px;
-            border-radius: 40px;
-            font-weight: 500;
-            color: #1f2a3a;
-            margin-top: 4px;
-        }
-        #fileInput {
-            display: none;
-        }
-        .canvas-wrapper {
-            position: relative;
-            background: #eef0f4;
-            border-radius: 12px;
-            overflow: hidden;
-            touch-action: none;
-            min-height: 220px;
-        }
-        #imageCanvas {
-            display: block;
-            max-width: 100%;
-            max-height: 520px;
-            cursor: default;
-            background: #eef0f4;
-            width: auto;
-            height: auto;
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-        }
-        #overlayCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: none;
-        }
-        .zoom-indicator {
-            position: absolute;
-            top: 12px;
-            left: 14px;
-            background: rgba(20, 28, 40, 0.7);
-            backdrop-filter: blur(4px);
-            color: #f0f4fc;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: 500;
-            font-family: "SF Mono", "Menlo", monospace;
-            pointer-events: none;
-            user-select: none;
-            opacity: 0;
-            transition: opacity 0.25s ease;
-            z-index: 2;
-        }
-        .zoom-indicator.show {
-            opacity: 1;
-        }
-        .hint-msg {
-            margin: 8px 0 0 4px;
-            font-size: 13px;
-            color: #7a8aa0;
-            user-select: none;
-        }
-        .info-section {
-            margin: 14px 0 18px;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px 24px;
-            background: #f8faff;
-            border-radius: 12px;
-            padding: 10px 14px;
-        }
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 0;
-            border-bottom: 1px solid #eef2f8;
-            font-size: 14px;
-        }
-        .info-item .label {
-            color: #7c8aa0;
-            font-weight: 450;
-        }
-        .info-item .value {
-            color: #1a2330;
-            font-weight: 500;
-            font-family: "SF Mono", "Menlo", monospace;
-            font-size: 13px;
-            text-align: right;
-        }
-        .color-preview {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 6px;
-            padding: 0 14px;
-        }
-        .color-swatch {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            border: 1px solid #dee5ef;
-            flex-shrink: 0;
-            background: #888;
-        }
-        .color-hex-large {
-            font-size: 18px;
-            font-weight: 500;
-            color: #1a2330;
-            letter-spacing: 0.5px;
-            word-break: break-all;
-        }
-        .export-section {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-        .export-btn {
-            flex: 1;
-            min-width: 68px;
-            padding: 12px 0;
-            border: none;
-            border-radius: 14px;
-            background: #edf0f6;
-            color: #1f2a3a;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.18s, transform 0.1s;
-            font-family: inherit;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-        .export-btn:active {
-            transform: scale(0.94);
-            background: #d5dce6;
-        }
-        .export-btn[data-format="png"] {
-            background: #e3eaf7;
-            color: #1c3b6b;
-        }
-        .export-btn[data-format="jpg"] {
-            background: #f7ede6;
-            color: #6b3d1c;
-        }
-        .export-btn[data-format="webp"] {
-            background: #e6f7ed;
-            color: #1c6b3d;
-        }
-        .export-btn[data-format="bmp"] {
-            background: #efe6f7;
-            color: #4a1c6b;
-        }
-        .export-btn:active[data-format="png"] {
-            background: #c8d6ed;
-        }
-        .export-btn:active[data-format="jpg"] {
-            background: #edd5c4;
-        }
-        .export-btn:active[data-format="webp"] {
-            background: #c4edcf;
-        }
-        .export-btn:active[data-format="bmp"] {
-            background: #d9c4ed;
-        }
-        .advanced-panel {
-            margin-top: 14px;
-            padding: 16px 14px 18px;
-            background: #f8faff;
-            border-radius: 16px;
-            border: 1px solid #e6ebf3;
-            max-height: 650px;
-            overflow-y: auto;
-        }
-        .adv-group {
-            margin-bottom: 16px;
-        }
-        .adv-group-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2c3e5a;
-            margin-bottom: 8px;
-            letter-spacing: 0.3px;
-        }
-        .adv-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 6px;
-        }
-        .adv-row label {
-            font-size: 13px;
-            color: #4a5a72;
-            min-width: 40px;
-        }
-        .adv-row input[type="number"] {
-            width: 70px;
-            padding: 5px 8px;
-            border: 1px solid #d0d7e2;
-            border-radius: 8px;
-            font-size: 13px;
-            background: #fff;
-            font-family: inherit;
-        }
-        .adv-row input[type="number"]:focus {
-            outline: none;
-            border-color: #7a8ba3;
-        }
-        .adv-row input[type="range"] {
-            flex: 1;
-            min-width: 100px;
-            accent-color: #3d6b9b;
-        }
-        .adv-row .value-label {
-            min-width: 36px;
-            font-size: 13px;
-            color: #3d4a5c;
-            font-weight: 500;
-        }
-        .adv-btn {
-            padding: 6px 18px;
-            border: none;
-            border-radius: 30px;
-            background: #e6ecf5;
-            font-size: 13px;
-            font-weight: 500;
-            color: #1f2a3a;
-            cursor: pointer;
-            transition: background 0.15s;
-            font-family: inherit;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .adv-btn:active {
-            background: #cdd6e3;
-        }
-        .adv-btn.primary {
-            background: #2c3e5a;
-            color: #fff;
-        }
-        .adv-btn.primary:active {
-            background: #1a2a3f;
-        }
-        .adv-btn.danger {
-            background: #e8d5d5;
-            color: #7a3a3a;
-        }
-        .adv-btn.danger:active {
-            background: #dbbdbd;
-        }
-        .adv-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            color: #4a5a72;
-        }
-        .adv-checkbox input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #2c3e5a;
-        }
-        .layer-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-top: 4px;
-            max-height: 180px;
-            overflow-y: auto;
-            border: 1px solid #e2e6ee;
-            border-radius: 12px;
-            padding: 6px 8px;
-            background: #fff;
-        }
-        .layer-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 6px;
-            border-radius: 10px;
-            background: #fafcff;
-            border: 1px solid #eef2f8;
-            transition: background 0.15s, border-color 0.15s;
-            user-select: none;
-            min-height: 40px;
-        }
-        .layer-item.selected {
-            border-color: #2c3e5a;
-            background: #eaf1fe;
-        }
-        .layer-item .thumb {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            object-fit: cover;
-            background: #eef0f4;
-            border: 1px solid #d0d7e2;
-            flex-shrink: 0;
-        }
-        .layer-item .layer-name {
-            flex: 1;
-            font-size: 13px;
-            font-weight: 500;
-            color: #1f2a3a;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .layer-item .layer-actions {
-            display: flex;
-            gap: 0px;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        .layer-item .layer-actions button {
-            background: none;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 2px 4px;
-            border-radius: 6px;
-            transition: background 0.1s;
-            line-height: 1;
-            color: #2c3e5a;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-            min-width: 28px;
-            min-height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .layer-item .layer-actions button:active {
-            background: #d0d7e2;
-        }
-        .layer-item .layer-actions .vis-toggle {
-            font-size: 16px;
-        }
-        .layer-item .layer-actions .del-btn {
-            color: #b33;
-            font-size: 16px;
-        }
-        .layer-item .layer-actions .move-btn {
-            font-size: 14px;
-            color: #4a5a72;
-            padding: 2px 3px;
-        }
-        .layer-item .layer-actions .move-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .layer-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 6px;
-            align-items: center;
-        }
-        .layer-controls .adv-row {
-            margin-bottom: 0;
-        }
-        .tool-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: center;
-            margin-top: 4px;
-        }
-        .tool-group .adv-btn {
-            min-width: 80px;
-        }
-        .tool-group .adv-btn.active {
-            background: #2c3e5a;
-            color: #fff;
-        }
-        .erase-tool {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .erase-tool label {
-            font-size: 13px;
-            color: #4a5a72;
-        }
-        .erase-tool input[type="range"] {
-            width: 120px;
-            accent-color: #3d6b9b;
-        }
-        .erase-tool .size-val {
-            min-width: 30px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-        @media (max-width: 500px) {
-            .container {
-                padding: 12px 10px 16px;
-            }
-            .info-grid {
-                grid-template-columns: 1fr;
-                gap: 0;
-                padding: 6px 12px;
-            }
-            .info-item {
-                font-size: 13px;
-                padding: 4px 0;
-            }
-            .export-btn {
-                font-size: 14px;
-                padding: 11px 0;
-                min-width: 58px;
-            }
-            .color-hex-large {
-                font-size: 16px;
-            }
-            .adv-row input[type="number"] {
-                width: 60px;
-            }
-            .adv-row {
-                gap: 6px;
-            }
-            .layer-item {
-                padding: 3px 4px;
-                min-height: 36px;
-                gap: 6px;
-            }
-            .layer-item .thumb {
-                width: 28px;
-                height: 28px;
-            }
-            .layer-item .layer-actions button {
-                font-size: 14px;
-                padding: 2px 3px;
-                min-width: 24px;
-                min-height: 24px;
-            }
-            .layer-item .layer-actions .move-btn {
-                font-size: 12px;
-            }
-            .layer-item .layer-actions .vis-toggle {
-                font-size: 14px;
-            }
-            .layer-item .layer-actions .del-btn {
-                font-size: 14px;
-            }
-            .erase-tool input[type="range"] {
-                width: 80px;
-            }
-        }
-        @media (hover: none) {
-            .export-btn:hover {
-                background: inherit;
-            }
-            .export-btn:hover[data-format="png"] {
-                background: #e3eaf7;
-            }
-            .export-btn:hover[data-format="jpg"] {
-                background: #f7ede6;
-            }
-            .export-btn:hover[data-format="webp"] {
-                background: #e6f7ed;
-            }
-            .export-btn:hover[data-format="bmp"] {
-                background: #efe6f7;
-            }
-            .upload-area:hover {
-                background: #fafcff;
-                border-color: #d0d7e2;
-            }
-        }
+        /* --- 样式保持不变，略 --- */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { min-height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f2f6; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding:16px; touch-action:manipulation; }
+        .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
+        .upload-area { border:2px dashed #d0d7e2; border-radius:12px; padding:12px 14px; text-align:center; cursor:pointer; background:#fafcff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s; -webkit-tap-highlight-color:transparent; }
+        .upload-area:active { background:#eaf1fe; border-color:#7a8ba3; }
+        .upload-area label { display:block; font-size:15px; color:#3d4a5c; font-weight:450; cursor:pointer; }
+        .upload-area label span { display:inline-block; background:#e6ecf5; padding:5px 16px; border-radius:40px; font-weight:500; color:#1f2a3a; margin-top:4px; }
+        #fileInput { display:none; }
+        .canvas-wrapper { position:relative; background:#eef0f4; border-radius:12px; overflow:hidden; touch-action:none; min-height:220px; }
+        #imageCanvas { display:block; max-width:100%; max-height:520px; cursor:default; background:#eef0f4; width:auto; height:auto; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; }
+        #overlayCanvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
+        .zoom-indicator { position:absolute; top:12px; left:14px; background:rgba(20,28,40,0.7); backdrop-filter:blur(4px); color:#f0f4fc; padding:4px 12px; border-radius:30px; font-size:13px; font-weight:500; font-family:"SF Mono","Menlo",monospace; pointer-events:none; user-select:none; opacity:0; transition:opacity 0.25s ease; z-index:2; }
+        .zoom-indicator.show { opacity:1; }
+        .hint-msg { margin:8px 0 0 4px; font-size:13px; color:#7a8aa0; user-select:none; }
+        .info-section { margin:14px 0 18px; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; background:#f8faff; border-radius:12px; padding:10px 14px; }
+        .info-item { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #eef2f8; font-size:14px; }
+        .info-item .label { color:#7c8aa0; font-weight:450; }
+        .info-item .value { color:#1a2330; font-weight:500; font-family:"SF Mono","Menlo",monospace; font-size:13px; text-align:right; }
+        .color-preview { display:flex; align-items:center; gap:14px; margin-bottom:6px; padding:0 14px; }
+        .color-swatch { width:38px; height:38px; border-radius:12px; border:1px solid #dee5ef; flex-shrink:0; background:#888; }
+        .color-hex-large { font-size:18px; font-weight:500; color:#1a2330; letter-spacing:0.5px; word-break:break-all; }
+        .export-section { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
+        .export-btn { flex:1; min-width:68px; padding:12px 0; border:none; border-radius:14px; background:#edf0f6; color:#1f2a3a; font-size:15px; font-weight:500; cursor:pointer; transition:background 0.18s, transform 0.1s; font-family:inherit; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+        .export-btn:active { transform:scale(0.94); background:#d5dce6; }
+        .export-btn[data-format="png"] { background:#e3eaf7; color:#1c3b6b; }
+        .export-btn[data-format="jpg"] { background:#f7ede6; color:#6b3d1c; }
+        .export-btn[data-format="webp"] { background:#e6f7ed; color:#1c6b3d; }
+        .export-btn[data-format="bmp"] { background:#efe6f7; color:#4a1c6b; }
+        .export-btn:active[data-format="png"] { background:#c8d6ed; }
+        .export-btn:active[data-format="jpg"] { background:#edd5c4; }
+        .export-btn:active[data-format="webp"] { background:#c4edcf; }
+        .export-btn:active[data-format="bmp"] { background:#d9c4ed; }
+        .advanced-panel { margin-top:14px; padding:16px 14px 18px; background:#f8faff; border-radius:16px; border:1px solid #e6ebf3; max-height:650px; overflow-y:auto; }
+        .adv-group { margin-bottom:16px; }
+        .adv-group-title { font-size:14px; font-weight:600; color:#2c3e5a; margin-bottom:8px; letter-spacing:0.3px; }
+        .adv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+        .adv-row label { font-size:13px; color:#4a5a72; min-width:40px; }
+        .adv-row input[type="number"] { width:70px; padding:5px 8px; border:1px solid #d0d7e2; border-radius:8px; font-size:13px; background:#fff; font-family:inherit; }
+        .adv-row input[type="number"]:focus { outline:none; border-color:#7a8ba3; }
+        .adv-row input[type="range"] { flex:1; min-width:100px; accent-color:#3d6b9b; }
+        .adv-row .value-label { min-width:36px; font-size:13px; color:#3d4a5c; font-weight:500; }
+        .adv-btn { padding:6px 18px; border:none; border-radius:30px; background:#e6ecf5; font-size:13px; font-weight:500; color:#1f2a3a; cursor:pointer; transition:background 0.15s; font-family:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+        .adv-btn:active { background:#cdd6e3; }
+        .adv-btn.primary { background:#2c3e5a; color:#fff; }
+        .adv-btn.primary:active { background:#1a2a3f; }
+        .adv-btn.danger { background:#e8d5d5; color:#7a3a3a; }
+        .adv-btn.danger:active { background:#dbbdbd; }
+        .layer-list { display:flex; flex-direction:column; gap:6px; margin-top:4px; max-height:180px; overflow-y:auto; border:1px solid #e2e6ee; border-radius:12px; padding:6px 8px; background:#fff; }
+        .layer-item { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:10px; background:#fafcff; border:1px solid #eef2f8; transition:background 0.15s, border-color 0.15s; user-select:none; min-height:40px; }
+        .layer-item.selected { border-color:#2c3e5a; background:#eaf1fe; }
+        .layer-item .thumb { width:32px; height:32px; border-radius:6px; object-fit:cover; background:#eef0f4; border:1px solid #d0d7e2; flex-shrink:0; }
+        .layer-item .layer-name { flex:1; font-size:13px; font-weight:500; color:#1f2a3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .layer-item .layer-actions { display:flex; gap:0px; align-items:center; flex-shrink:0; }
+        .layer-item .layer-actions button { background:none; border:none; font-size:16px; cursor:pointer; padding:2px 4px; border-radius:6px; transition:background 0.1s; line-height:1; color:#2c3e5a; touch-action:manipulation; -webkit-tap-highlight-color:transparent; min-width:28px; min-height:28px; display:flex; align-items:center; justify-content:center; }
+        .layer-item .layer-actions button:active { background:#d0d7e2; }
+        .layer-item .layer-actions .vis-toggle { font-size:16px; }
+        .layer-item .layer-actions .del-btn { color:#b33; font-size:16px; }
+        .layer-item .layer-actions .move-btn { font-size:14px; color:#4a5a72; padding:2px 3px; }
+        .layer-item .layer-actions .move-btn:disabled { opacity:0.3; cursor:not-allowed; }
+        .layer-controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; align-items:center; }
+        .layer-controls .adv-row { margin-bottom:0; }
+        .tool-group { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:4px; }
+        .tool-group .adv-btn { min-width:80px; }
+        .tool-group .adv-btn.active { background:#2c3e5a; color:#fff; }
+        .erase-tool { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .erase-tool label { font-size:13px; color:#4a5a72; }
+        .erase-tool input[type="range"] { width:120px; accent-color:#3d6b9b; }
+        .erase-tool .size-val { min-width:30px; font-size:13px; font-weight:500; }
+        @media (max-width:500px) { .container { padding:12px 10px 16px; } .info-grid { grid-template-columns:1fr; gap:0; padding:6px 12px; } .info-item { font-size:13px; padding:4px 0; } .export-btn { font-size:14px; padding:11px 0; min-width:58px; } .color-hex-large { font-size:16px; } .adv-row input[type="number"] { width:60px; } .adv-row { gap:6px; } .layer-item { padding:3px 4px; min-height:36px; gap:6px; } .layer-item .thumb { width:28px; height:28px; } .layer-item .layer-actions button { font-size:14px; padding:2px 3px; min-width:24px; min-height:24px; } .layer-item .layer-actions .move-btn { font-size:12px; } .layer-item .layer-actions .vis-toggle { font-size:14px; } .layer-item .layer-actions .del-btn { font-size:14px; } .erase-tool input[type="range"] { width:80px; } }
+        @media (hover:none) { .export-btn:hover { background:inherit; } .export-btn:hover[data-format="png"] { background:#e3eaf7; } .export-btn:hover[data-format="jpg"] { background:#f7ede6; } .export-btn:hover[data-format="webp"] { background:#e6f7ed; } .export-btn:hover[data-format="bmp"] { background:#efe6f7; } .upload-area:hover { background:#fafcff; border-color:#d0d7e2; } }
     </style>
 </head>
 <body>
@@ -644,7 +193,7 @@
         (function() {
             'use strict';
 
-            // ========== DOM ==========
+            // ========== DOM 引用 ==========
             const fileInput = document.getElementById('fileInput');
             const uploadArea = document.getElementById('uploadArea');
             const canvas = document.getElementById('imageCanvas');
@@ -694,6 +243,7 @@
             let selectedLayerId = null;
             let nextId = 1;
 
+            // 视图变换 (缩放和平移)
             let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
 
             let colorPickMode = false;
@@ -701,13 +251,14 @@
             let brushSize = 20;
             let isErasing = false;
 
-            // 拖拽状态
+            // 拖拽状态 (视图平移)
             let isDraggingView = false;
             let dragStartX = 0,
                 dragStartY = 0;
             let dragStartOffsetX = 0,
                 dragStartOffsetY = 0;
 
+            // 拖拽图层
             let isDraggingLayer = false;
             let dragLayerStartX = 0,
                 dragLayerStartY = 0;
@@ -715,12 +266,14 @@
                 dragLayerOrigY = 0;
             let draggedLayerId = null;
 
-            // 缩放状态 (双指)
-            let lastTouchDist = 0;
+            // 双指缩放状态 (重写)
             let isPinching = false;
-            let touchStartScale = 1;
-            let touchStartOffsetX = 0,
-                touchStartOffsetY = 0;
+            let pinchStartDist = 0;
+            let pinchStartScale = 1;
+            let pinchStartOffsetX = 0,
+                pinchStartOffsetY = 0;
+            let pinchCenterX = 0,
+                pinchCenterY = 0;
 
             // 擦除连续画线
             let lastErasePoint = null;
@@ -869,13 +422,15 @@
                 return layers.find(l => l.id === selectedLayerId) || null;
             }
 
+            // ===== 图层排序（重写）=====
             function moveLayerUp(id) {
                 const idx = layers.findIndex(l => l.id === id);
                 if (idx <= 0) return;
+                // 交换元素
                 [layers[idx], layers[idx - 1]] = [layers[idx - 1], layers[idx]];
                 renderAll();
                 updateLayerList();
-                selectLayer(id);
+                selectLayer(id); // 保持选中
             }
 
             function moveLayerDown(id) {
@@ -887,9 +442,10 @@
                 selectLayer(id);
             }
 
-            // 图层面板从上到下 = 从顶层到底层 (反向显示)
+            // 图层面板渲染（反向显示，顶层在上）
             function updateLayerList() {
                 layerList.innerHTML = '';
+                // 从后往前遍历（顶层在数组末尾）
                 for (let i = layers.length - 1; i >= 0; i--) {
                     const layer = layers[i];
                     const index = i;
@@ -913,39 +469,29 @@
                     const actions = document.createElement('div');
                     actions.className = 'layer-actions';
 
-                    // 上移按钮
+                    // 上移按钮 (将图层向上移动，即索引减小)
                     const upBtn = document.createElement('button');
                     upBtn.className = 'move-btn';
                     upBtn.textContent = '▲';
                     upBtn.title = '上移图层';
-                    upBtn.disabled = (index === layers.length - 1);
+                    upBtn.disabled = (index === 0); // 最底层（索引0）不能上移
+                    // 使用 click 事件，无需 touchstart（手机也支持 click）
                     upBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         if (!this.disabled) moveLayerUp(layer.id);
                     });
-                    // 同时绑定 touchstart 防止延迟
-                    upBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!this.disabled) moveLayerUp(layer.id);
-                    }, { passive: false });
                     actions.appendChild(upBtn);
 
-                    // 下移按钮
+                    // 下移按钮 (将图层向下移动，即索引增大)
                     const downBtn = document.createElement('button');
                     downBtn.className = 'move-btn';
                     downBtn.textContent = '▼';
                     downBtn.title = '下移图层';
-                    downBtn.disabled = (index === 0);
+                    downBtn.disabled = (index === layers.length - 1); // 最顶层不能下移
                     downBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         if (!this.disabled) moveLayerDown(layer.id);
                     });
-                    downBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!this.disabled) moveLayerDown(layer.id);
-                    }, { passive: false });
                     actions.appendChild(downBtn);
 
                     // 可见性
@@ -959,9 +505,6 @@
                         renderAll();
                         updateLayerList();
                     });
-                    visBtn.addEventListener('touchstart', function(e) {
-                        e.stopPropagation();
-                    }, { passive: true });
                     actions.appendChild(visBtn);
 
                     // 删除
@@ -973,19 +516,18 @@
                         e.stopPropagation();
                         deleteLayer(layer.id);
                     });
-                    delBtn.addEventListener('touchstart', function(e) {
-                        e.stopPropagation();
-                    }, { passive: true });
                     actions.appendChild(delBtn);
 
                     div.appendChild(actions);
 
+                    // 点击选中图层
                     div.addEventListener('click', function() {
                         selectLayer(layer.id);
                     });
 
                     layerList.appendChild(div);
                 }
+                // 更新位置等输入框
                 const sel = getSelectedLayer();
                 if (sel) {
                     layerX.value = sel.x;
@@ -1046,6 +588,7 @@
                 ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
                 ctx.scale(viewTransform.scale, viewTransform.scale);
 
+                // 按数组顺序绘制（索引小的在底层，大的在顶层）
                 layers.forEach(layer => {
                     if (!layer.visible) return;
                     const lw = layer.canvas.width * layer.scale;
@@ -1075,7 +618,7 @@
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             }
 
-            // ========== 擦除 (支持连续画线) ==========
+            // ========== 擦除功能 (保持不变) ==========
 
             function applyEraserAt(layer, x, y, size) {
                 const lctx = layer.canvas.getContext('2d');
@@ -1163,7 +706,7 @@
                 } catch (_) {}
             }
 
-            // ========== 导出 ==========
+            // ========== 导出 (简化，保留原有逻辑) ==========
 
             function exportImage(format) {
                 if (layers.length === 0) {
@@ -1343,26 +886,29 @@
 
             // ========== 事件绑定 ==========
 
-            // --- 鼠标事件 ---
-
+            // --- 鼠标滚轮缩放 (稳定) ---
             canvas.addEventListener('wheel', function(e) {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -1 : 1;
                 const factor = 1 + delta * 0.1;
                 const newScale = Math.min(Math.max(viewTransform.scale * factor, 0.1), 10);
+                // 以鼠标位置为缩放中心
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
                 const mx = (e.clientX - rect.left) * scaleX;
                 const my = (e.clientY - rect.top) * scaleY;
+                // 计算鼠标在世界坐标的位置
                 const wx = (mx - viewTransform.offsetX) / viewTransform.scale;
                 const wy = (my - viewTransform.offsetY) / viewTransform.scale;
+                // 更新缩放和偏移，使得鼠标位置不变
                 viewTransform.scale = newScale;
                 viewTransform.offsetX = mx - wx * newScale;
                 viewTransform.offsetY = my - wy * newScale;
                 renderAll();
             }, { passive: false });
 
+            // --- 鼠标移动 (擦除光标) ---
             canvas.addEventListener('mousemove', function(e) {
                 if (eraseMode) {
                     updateEraseCursor(e.clientX, e.clientY);
@@ -1391,6 +937,7 @@
                 lastErasePoint = null;
             });
 
+            // --- 鼠标按下 (区分模式) ---
             canvas.addEventListener('mousedown', function(e) {
                 if (colorPickMode) {
                     getColorFromCanvas(e.clientX, e.clientY);
@@ -1410,8 +957,10 @@
                     return;
                 }
 
+                // 选择/移动模式
                 const layer = getSelectedLayer();
                 if (!layer) {
+                    // 视图平移
                     isDraggingView = true;
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
@@ -1422,6 +971,7 @@
                 }
                 const coord = getLayerCoord(layer, e.clientX, e.clientY);
                 if (coord) {
+                    // 图层拖拽
                     isDraggingLayer = true;
                     draggedLayerId = layer.id;
                     dragLayerStartX = e.clientX;
@@ -1430,6 +980,7 @@
                     dragLayerOrigY = layer.y;
                     canvas.style.cursor = 'move';
                 } else {
+                    // 点击空白处，视图平移
                     isDraggingView = true;
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
@@ -1439,6 +990,7 @@
                 }
             });
 
+            // --- 全局鼠标移动 (拖拽) ---
             window.addEventListener('mousemove', function(e) {
                 if (isDraggingView) {
                     const dx = e.clientX - dragStartX;
@@ -1482,9 +1034,9 @@
                 }
             });
 
-            // --- 触摸事件 (手机适配) ---
+            // --- 触摸事件 (手机) 重写 ---
 
-            let touchIdentifier = null;
+            let touchId = null;
 
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
@@ -1502,10 +1054,14 @@
                         t2 = touches[1];
                     const dx = t1.clientX - t2.clientX;
                     const dy = t1.clientY - t2.clientY;
-                    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
-                    touchStartScale = viewTransform.scale;
-                    touchStartOffsetX = viewTransform.offsetX;
-                    touchStartOffsetY = viewTransform.offsetY;
+                    pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+                    // 记录当前缩放状态
+                    pinchStartScale = viewTransform.scale;
+                    pinchStartOffsetX = viewTransform.offsetX;
+                    pinchStartOffsetY = viewTransform.offsetY;
+                    // 记录双指中心
+                    pinchCenterX = (t1.clientX + t2.clientX) / 2;
+                    pinchCenterY = (t1.clientY + t2.clientY) / 2;
                     isPinching = true;
                     return;
                 }
@@ -1532,7 +1088,7 @@
                             renderAll();
                             updateLayerList();
                             isErasing = true;
-                            touchIdentifier = touch.identifier;
+                            touchId = touch.identifier;
                         }
                         return;
                     }
@@ -1576,30 +1132,33 @@
                     const dx = t1.clientX - t2.clientX;
                     const dy = t1.clientY - t2.clientY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
-                    const scaleFactor = dist / lastTouchDist;
-                    const newScale = Math.min(Math.max(touchStartScale * scaleFactor, 0.1), 10);
-                    // 以双指中心为缩放中心
-                    const centerX = (t1.clientX + t2.clientX) / 2;
-                    const centerY = (t1.clientY + t2.clientY) / 2;
+                    const scaleFactor = dist / pinchStartDist;
+                    let newScale = Math.min(Math.max(pinchStartScale * scaleFactor, 0.1), 10);
+                    // 以双指中心为缩放中心，计算新的偏移量
+                    // 使用最初的 pinchCenterX, pinchCenterY 作为固定参考点
+                    // 但在缩放过程中，中心点会变化，为了平滑，我们使用当前中心点与初始中心的偏移
+                    // 更稳定的做法：以初始中心为基准，计算缩放前后该点的世界坐标不变
                     const rect = canvas.getBoundingClientRect();
                     const scaleX = canvas.width / rect.width;
                     const scaleY = canvas.height / rect.height;
-                    const mx = (centerX - rect.left) * scaleX;
-                    const my = (centerY - rect.top) * scaleY;
-                    const wx = (mx - touchStartOffsetX) / touchStartScale;
-                    const wy = (my - touchStartOffsetY) / touchStartScale;
+                    // 获取初始中心在画布坐标
+                    const mx = (pinchCenterX - rect.left) * scaleX;
+                    const my = (pinchCenterY - rect.top) * scaleY;
+                    // 计算该点在缩放前的世界坐标
+                    const wx = (mx - pinchStartOffsetX) / pinchStartScale;
+                    const wy = (my - pinchStartOffsetY) / pinchStartScale;
+                    // 应用新缩放
                     viewTransform.scale = newScale;
                     viewTransform.offsetX = mx - wx * newScale;
                     viewTransform.offsetY = my - wy * newScale;
                     renderAll();
-                    lastTouchDist = dist;
                     return;
                 }
 
                 // 擦除连续画线
                 if (eraseMode && isErasing && touches.length === 1) {
                     const touch = touches[0];
-                    if (touch.identifier === touchIdentifier) {
+                    if (touch.identifier === touchId) {
                         const layer = getSelectedLayer();
                         if (!layer) return;
                         const coord = getLayerCoord(layer, touch.clientX, touch.clientY);
@@ -1617,7 +1176,7 @@
                     return;
                 }
 
-                // 单指拖拽 (视图或图层)
+                // 单指拖拽
                 if (touches.length === 1) {
                     const touch = touches[0];
                     const clientX = touch.clientX,
@@ -1657,7 +1216,7 @@
                 if (isErasing) {
                     isErasing = false;
                     lastErasePoint = null;
-                    touchIdentifier = null;
+                    touchId = null;
                 }
                 if (isDraggingView || isDraggingLayer) {
                     isDraggingView = false;
@@ -1671,7 +1230,7 @@
                     isDraggingView = false;
                     isDraggingLayer = false;
                     isErasing = false;
-                    touchIdentifier = null;
+                    touchId = null;
                     lastErasePoint = null;
                 }
             }, { passive: false });
@@ -1681,12 +1240,12 @@
                 isDraggingView = false;
                 isDraggingLayer = false;
                 isErasing = false;
-                touchIdentifier = null;
+                touchId = null;
                 lastErasePoint = null;
                 isPinching = false;
             }, { passive: false });
 
-            // ========== 其他事件 ==========
+            // ========== 其他事件绑定 ==========
 
             fileInput.addEventListener('change', function(e) {
                 const files = this.files;
@@ -1728,7 +1287,6 @@
                 updateLayerList();
             });
 
-            // 实时旋转
             layerRotation.addEventListener('input', function() {
                 const layer = getSelectedLayer();
                 if (!layer) return;
@@ -1738,7 +1296,6 @@
                 updateLayerList();
             });
 
-            // 大小滑块
             layerScaleSlider.addEventListener('input', function() {
                 const layer = getSelectedLayer();
                 if (!layer) return;
@@ -1855,7 +1412,7 @@
             updateLayerList();
             updateControls();
 
-            console.log('🖼️ 多图层编辑器 (按钮触控区域优化)');
+            console.log('🖼️ 多图层编辑器 (排序和缩放完全重写)');
         })();
     </script>
 
