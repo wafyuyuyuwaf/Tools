@@ -7,7 +7,21 @@
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { min-height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f2f6; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding:16px; touch-action:manipulation; }
-        .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
+               /* ===== 新增：让顶部画布区域滚动时粘在顶部 ===== */
+        .sticky-section {
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            z-index: 20;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eef2f8;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        }
+        /* 确保画布容器内部的相对定位不受干扰 */
+        .canvas-wrapper {
+            position: relative;
+        }
+	   .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
         .upload-area { border:2px dashed #d0d7e2; border-radius:12px; padding:12px 14px; text-align:center; cursor:pointer; background:#fafcff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s; -webkit-tap-highlight-color:transparent; }
         .upload-area:active { background:#eaf1fe; border-color:#7a8ba3; }
         .upload-area label { display:block; font-size:15px; color:#3d4a5c; font-weight:450; cursor:pointer; }
@@ -81,6 +95,7 @@
 <body>
 
     <div class="container">
+	<div class="sticky-section">
         <div class="upload-area" id="uploadArea">
             <label for="fileInput">
                 <span>📁 点击上传图片 (添加为图层)</span><br />
@@ -171,6 +186,33 @@
 
             <div class="adv-group">
                 <div class="adv-group-title">取色与擦除</div>
+				            <!-- ========== 新增：裁剪功能 ========== -->
+            <div class="adv-group">
+                <div class="adv-group-title">✂️ 裁剪</div>
+                <div class="adv-row">
+                    <label>比例</label>
+                    <input type="number" id="cropRatioW" value="16" style="width:60px;" min="1" step="1" />
+                    <span style="color:#4a5a72;">:</span>
+                    <input type="number" id="cropRatioH" value="9" style="width:60px;" min="1" step="1" />
+                    <button class="adv-btn primary" id="cropApplyBtn" style="padding:6px 20px;">裁剪</button>
+                </div>
+                <div class="adv-row" style="gap:6px; flex-wrap:wrap;">
+                    <label style="min-width:40px;">预设</label>
+                    <button class="adv-btn crop-preset" data-w="1" data-h="1">1:1</button>
+                    <button class="adv-btn crop-preset" data-w="4" data-h="3">4:3</button>
+                    <button class="adv-btn crop-preset" data-w="16" data-h="9">16:9</button>
+                    <button class="adv-btn crop-preset" data-w="3" data-h="2">3:2</button>
+                    <button class="adv-btn crop-preset" data-w="21" data-h="9">21:9</button>
+                </div>
+                <div class="adv-row" style="flex-wrap:wrap; gap:6px; margin-top:4px;">
+                    <label style="min-width:40px;">图层</label>
+                    <div id="cropLayerCheckboxes" style="display:flex; flex-wrap:wrap; gap:4px 10px; flex:1;"></div>
+                    <button class="adv-btn" id="cropSelectAll" style="font-size:12px; padding:4px 12px;">全选</button>
+                    <button class="adv-btn" id="cropSelectNone" style="font-size:12px; padding:4px 12px;">取消</button>
+                </div>
+                <div style="font-size:12px; color:#8a9ab0; margin-top:2px;">⚠️ 裁剪后不可恢复，请谨慎操作</div>
+            </div>
+            <!-- ========== 新增结束 ========== -->
                 <div class="tool-group">
                     <button class="adv-btn" id="colorPickToggle">🎨 取色模式</button>
                     <button class="adv-btn" id="eraseModeToggle">🖍️ 擦除模式</button>
@@ -1356,6 +1398,256 @@
                 });
             });
 
+			            // ========== 新增：裁剪功能 ==========
+
+            // DOM 引用
+            const cropRatioW = document.getElementById('cropRatioW');
+            const cropRatioH = document.getElementById('cropRatioH');
+            const cropApplyBtn = document.getElementById('cropApplyBtn');
+            const cropLayerCheckboxes = document.getElementById('cropLayerCheckboxes');
+            const cropSelectAll = document.getElementById('cropSelectAll');
+            const cropSelectNone = document.getElementById('cropSelectNone');
+            const cropPresetBtns = document.querySelectorAll('.crop-preset');
+
+            // 更新裁剪面板的图层复选框列表
+            function updateCropLayerCheckboxes() {
+                cropLayerCheckboxes.innerHTML = '';
+                // 从后往前显示（顶层在上）
+                for (let i = layers.length - 1; i >= 0; i--) {
+                    const layer = layers[i];
+                    const label = document.createElement('label');
+                    label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:13px; color:#2c3e5a; cursor:pointer;';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = layer.id;
+                    cb.dataset.layerId = layer.id;
+                    // 默认勾选当前选中的图层（如果有）
+                    if (layer.id === selectedLayerId) {
+                        cb.checked = true;
+                    }
+                    const span = document.createElement('span');
+                    span.textContent = layer.name;
+                    label.appendChild(cb);
+                    label.appendChild(span);
+                    cropLayerCheckboxes.appendChild(label);
+                }
+            }
+
+            // 获取所有被选中的图层ID
+            function getCheckedLayerIds() {
+                const ids = [];
+                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
+                cbs.forEach(cb => {
+                    ids.push(parseInt(cb.dataset.layerId));
+                });
+                return ids;
+            }
+
+            // 获取所有被选中的图层对象
+            function getCheckedLayers() {
+                const ids = getCheckedLayerIds();
+                return layers.filter(l => ids.includes(l.id));
+            }
+
+            // 核心裁剪函数
+            function cropLayers(ratioW, ratioH) {
+                if (ratioW <= 0 || ratioH <= 0) {
+                    alert('请输入有效的宽高比（大于0）');
+                    return false;
+                }
+                const targetRatio = ratioW / ratioH;
+                const selectedLayers = getCheckedLayers();
+                if (selectedLayers.length === 0) {
+                    alert('请至少勾选一个要裁剪的图层');
+                    return false;
+                }
+
+                let croppedCount = 0;
+                selectedLayers.forEach(layer => {
+                    const w = layer.canvas.width;
+                    const h = layer.canvas.height;
+                    const currentRatio = w / h;
+
+                    // 如果比例已经相同，跳过
+                    if (Math.abs(currentRatio - targetRatio) < 0.0001) {
+                        return;
+                    }
+
+                    let newW, newH, sx, sy;
+                    if (targetRatio > currentRatio) {
+                        // 目标更宽 → 裁剪宽度（左右裁）
+                        newH = h;
+                        newW = h * targetRatio;
+                        if (newW > w) {
+                            // 如果计算出的宽度超过原宽度，则反过来裁剪高度
+                            newW = w;
+                            newH = w / targetRatio;
+                            sx = 0;
+                            sy = (h - newH) / 2;
+                        } else {
+                            sx = (w - newW) / 2;
+                            sy = 0;
+                        }
+                    } else {
+                        // 目标更高 → 裁剪高度（上下裁）
+                        newW = w;
+                        newH = w / targetRatio;
+                        if (newH > h) {
+                            // 如果计算出的高度超过原高度，则反过来裁剪宽度
+                            newH = h;
+                            newW = h * targetRatio;
+                            sx = (w - newW) / 2;
+                            sy = 0;
+                        } else {
+                            sx = 0;
+                            sy = (h - newH) / 2;
+                        }
+                    }
+
+                    // 四舍五入确保整数像素
+                    newW = Math.round(newW);
+                    newH = Math.round(newH);
+                    sx = Math.round(sx);
+                    sy = Math.round(sy);
+
+                    if (newW < 1 || newH < 1) {
+                        return;
+                    }
+
+                    // 创建新的 canvas
+                    const newCanvas = document.createElement('canvas');
+                    newCanvas.width = newW;
+                    newCanvas.height = newH;
+                    const newCtx = newCanvas.getContext('2d');
+                    newCtx.imageSmoothingEnabled = true;
+                    newCtx.imageSmoothingQuality = 'high';
+                    newCtx.drawImage(layer.canvas, sx, sy, newW, newH, 0, 0, newW, newH);
+
+                    // 更新图层：替换 canvas
+                    layer.canvas = newCanvas;
+
+                    // 更新 image（用于擦除恢复），复制裁剪后的内容
+                    const imgCanvas = document.createElement('canvas');
+                    imgCanvas.width = newW;
+                    imgCanvas.height = newH;
+                    const imgCtx = imgCanvas.getContext('2d');
+                    imgCtx.imageSmoothingEnabled = true;
+                    imgCtx.drawImage(newCanvas, 0, 0);
+                    const imgObj = new Image();
+                    imgObj.src = imgCanvas.toDataURL('image/png');
+                    imgObj.onload = function() {
+                        layer.image = imgObj;
+                    };
+                    // 同步更新 image（立即生效，但可能还未加载完成）
+                    // 这里使用 toDataURL 创建 Image 对象，需要异步处理
+                    // 为了立即生效，直接使用 imgCanvas 作为 image 的替代
+                    // 但由于 image 需要是 Image 对象，我们创建一个新的 Image
+                    const tempImg = new Image();
+                    tempImg.onload = function() {
+                        layer.image = tempImg;
+                        renderAll();
+                        updateLayerList();
+                        updateCropLayerCheckboxes();
+                    };
+                    tempImg.src = imgCanvas.toDataURL('image/png');
+
+                    // 调整位置，保持中心点不变
+                    const oldW = w;
+                    const oldH = h;
+                    layer.x += (oldW - newW) / 2;
+                    layer.y += (oldH - newH) / 2;
+
+                    croppedCount++;
+                });
+
+                // 重新渲染
+                renderAll();
+                updateLayerList();
+                updateCropLayerCheckboxes();
+
+                if (croppedCount > 0) {
+                    hintMsg.textContent = '✅ 已裁剪 ' + croppedCount + ' 个图层';
+                } else {
+                    hintMsg.textContent = 'ℹ️ 没有图层被裁剪（比例可能已匹配）';
+                }
+                return true;
+            }
+
+            // 预设比例按钮点击
+            cropPresetBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const w = parseInt(this.dataset.w);
+                    const h = parseInt(this.dataset.h);
+                    cropRatioW.value = w;
+                    cropRatioH.value = h;
+                    // 刷新复选框列表
+                    updateCropLayerCheckboxes();
+                });
+            });
+
+            // 裁剪按钮点击
+            cropApplyBtn.addEventListener('click', function() {
+                const w = parseFloat(cropRatioW.value);
+                const h = parseFloat(cropRatioH.value);
+                // 先刷新复选框列表
+                updateCropLayerCheckboxes();
+                cropLayers(w, h);
+            });
+
+            // 全选
+            cropSelectAll.addEventListener('click', function() {
+                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
+                cbs.forEach(cb => cb.checked = true);
+            });
+
+            // 取消全选
+            cropSelectNone.addEventListener('click', function() {
+                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
+                cbs.forEach(cb => cb.checked = false);
+            });
+
+            // 在图层发生变化时，同步更新裁剪面板的复选框
+            // 通过 Monkey Patch 方式，在现有函数执行后自动更新
+            // 但不修改原有函数，而是利用 MutationObserver 或定时器
+            // 最简单：每次渲染后更新，但为了性能，只在需要时更新
+
+            // 在 createLayer 和 deleteLayer 之后，原本会调用 updateLayerList 和 renderAll
+            // 我们在这里添加一个钩子：在每次图层列表更新后，同步更新裁剪复选框
+            // 由于不能修改现有代码，我们使用一个定时器来检测图层变化
+            // 但更好的方式：在 updateLayerList 被调用后触发更新
+
+            // 保存原始的 updateLayerList 引用
+            const origUpdateLayerList = updateLayerList;
+            // 重写 updateLayerList，在原有逻辑后追加更新裁剪复选框
+            updateLayerList = function() {
+                origUpdateLayerList();
+                // 更新裁剪面板的复选框
+                updateCropLayerCheckboxes();
+            };
+
+            // 同样，在 selectLayer 后也更新裁剪复选框（保持高亮同步）
+            const origSelectLayer = selectLayer;
+            selectLayer = function(id) {
+                origSelectLayer(id);
+                updateCropLayerCheckboxes();
+            };
+
+            // 初始化裁剪复选框
+            updateCropLayerCheckboxes();
+
+            // 支持回车键快速裁剪
+            cropRatioW.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    cropApplyBtn.click();
+                }
+            });
+            cropRatioH.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    cropApplyBtn.click();
+                }
+            });
+
+            // ========== 新增结束 ==========
             // ========== 初始化 ==========
             canvas.width = 700;
             canvas.height = 480;
