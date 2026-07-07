@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>多图层编辑器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f2f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 16px;
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 860px;
+            width: 100%;
+            background: #ffffff;
+            padding: 20px 18px 28px;
+        }
+        .upload-area {
+            border: 2px dashed #d0d7e2;
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+            cursor: pointer;
+            background: #fafcff;
+            margin-bottom: 14px;
+            transition: background 0.2s, border-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .upload-area:active {
+            background: #eaf1fe;
+            border-color: #7a8ba3;
+        }
+        .upload-area label {
+            display: block;
+            font-size: 15px;
+            color: #3d4a5c;
+            font-weight: 450;
+            cursor: pointer;
+        }
+        .upload-area label span {
+            display: inline-block;
+            background: #e6ecf5;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #1f2a3a;
+            margin-top: 4px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .canvas-wrapper {
+            position: relative;
+            background: #eef0f4;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: none;
+            min-height: 220px;
+        }
+        #imageCanvas {
+            display: block;
+            max-width: 100%;
+            max-height: 520px;
+            cursor: default;
+            background: #eef0f4;
+            width: auto;
+            height: auto;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+        .zoom-indicator {
+            position: absolute;
+            top: 12px;
+            left: 14px;
+            background: rgba(20, 28, 40, 0.7);
+            backdrop-filter: blur(4px);
+            color: #f0f4fc;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: "SF Mono", "Menlo", monospace;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            z-index: 2;
+        }
+        .zoom-indicator.show {
+            opacity: 1;
+        }
+        .hint-msg {
+            margin: 8px 0 0 4px;
+            font-size: 13px;
+            color: #7a8aa0;
+            user-select: none;
+        }
+        .info-section {
+            margin: 14px 0 18px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 24px;
+            background: #f8faff;
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eef2f8;
+            font-size: 14px;
+        }
+        .info-item .label {
+            color: #7c8aa0;
+            font-weight: 450;
+        }
+        .info-item .value {
+            color: #1a2330;
+            font-weight: 500;
+            font-family: "SF Mono", "Menlo", monospace;
+            font-size: 13px;
+            text-align: right;
+        }
+        .color-preview {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+            padding: 0 14px;
+        }
+        .color-swatch {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            border: 1px solid #dee5ef;
+            flex-shrink: 0;
+            background: #888;
+        }
+        .color-hex-large {
+            font-size: 18px;
+            font-weight: 500;
+            color: #1a2330;
+            letter-spacing: 0.5px;
+            word-break: break-all;
+        }
+        .export-section {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .export-btn {
+            flex: 1;
+            min-width: 68px;
+            padding: 12px 0;
+            border: none;
+            border-radius: 14px;
+            background: #edf0f6;
+            color: #1f2a3a;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.18s, transform 0.1s;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .export-btn:active {
+            transform: scale(0.94);
+            background: #d5dce6;
+        }
+        .export-btn[data-format="png"] {
+            background: #e3eaf7;
+            color: #1c3b6b;
+        }
+        .export-btn[data-format="jpg"] {
+            background: #f7ede6;
+            color: #6b3d1c;
+        }
+        .export-btn[data-format="webp"] {
+            background: #e6f7ed;
+            color: #1c6b3d;
+        }
+        .export-btn[data-format="bmp"] {
+            background: #efe6f7;
+            color: #4a1c6b;
+        }
+        .export-btn:active[data-format="png"] {
+            background: #c8d6ed;
+        }
+        .export-btn:active[data-format="jpg"] {
+            background: #edd5c4;
+        }
+        .export-btn:active[data-format="webp"] {
+            background: #c4edcf;
+        }
+        .export-btn:active[data-format="bmp"] {
+            background: #d9c4ed;
+        }
+        .advanced-panel {
+            margin-top: 14px;
+            padding: 16px 14px 18px;
+            background: #f8faff;
+            border-radius: 16px;
+            border: 1px solid #e6ebf3;
+            max-height: 650px;
+            overflow-y: auto;
+        }
+        .adv-group {
+            margin-bottom: 16px;
+        }
+        .adv-group-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e5a;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        .adv-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .adv-row label {
+            font-size: 13px;
+            color: #4a5a72;
+            min-width: 40px;
+        }
+        .adv-row input[type="number"] {
+            width: 70px;
+            padding: 5px 8px;
+            border: 1px solid #d0d7e2;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fff;
+            font-family: inherit;
+        }
+        .adv-row input[type="number"]:focus {
+            outline: none;
+            border-color: #7a8ba3;
+        }
+        .adv-row input[type="range"] {
+            flex: 1;
+            min-width: 100px;
+            accent-color: #3d6b9b;
+        }
+        .adv-row .value-label {
+            min-width: 36px;
+            font-size: 13px;
+            color: #3d4a5c;
+            font-weight: 500;
+        }
+        .adv-btn {
+            padding: 6px 18px;
+            border: none;
+            border-radius: 30px;
+            background: #e6ecf5;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1f2a3a;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: inherit;
+        }
+        .adv-btn:active {
+            background: #cdd6e3;
+        }
+        .adv-btn.primary {
+            background: #2c3e5a;
+            color: #fff;
+        }
+        .adv-btn.primary:active {
+            background: #1a2a3f;
+        }
+        .adv-btn.danger {
+            background: #e8d5d5;
+            color: #7a3a3a;
+        }
+        .adv-btn.danger:active {
+            background: #dbbdbd;
+        }
+        .adv-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #4a5a72;
+        }
+        .adv-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #2c3e5a;
+        }
+        .layer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #e2e6ee;
+            border-radius: 12px;
+            padding: 6px 8px;
+            background: #fff;
+        }
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            background: #fafcff;
+            border: 1px solid #eef2f8;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+        }
+        .layer-item.selected {
+            border-color: #2c3e5a;
+            background: #eaf1fe;
+        }
+        .layer-item .thumb {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #eef0f4;
+            border: 1px solid #d0d7e2;
+            flex-shrink: 0;
+        }
+        .layer-item .layer-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1f2a3a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .layer-item .layer-actions {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+        .layer-item .layer-actions button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 6px;
+            transition: background 0.1s;
+            line-height: 1;
+            color: #2c3e5a;
+        }
+        .layer-item .layer-actions button:active {
+            background: #d0d7e2;
+        }
+        .layer-item .layer-actions .vis-toggle {
+            font-size: 18px;
+        }
+        .layer-item .layer-actions .del-btn {
+            color: #b33;
+        }
+        .layer-item .layer-actions .move-btn {
+            font-size: 14px;
+            color: #4a5a72;
+            padding: 0 2px;
+        }
+        .layer-item .layer-actions .move-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .layer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+            align-items: center;
+        }
+        .layer-controls .adv-row {
+            margin-bottom: 0;
+        }
+        .tool-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 4px;
+        }
+        .tool-group .adv-btn {
+            min-width: 80px;
+        }
+        .tool-group .adv-btn.active {
+            background: #2c3e5a;
+            color: #fff;
+        }
+        .erase-tool {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .erase-tool label {
+            font-size: 13px;
+            color: #4a5a72;
+        }
+        .erase-tool input[type="range"] {
+            width: 120px;
+            accent-color: #3d6b9b;
+        }
+        .erase-tool .size-val {
+            min-width: 30px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        @media (max-width: 500px) {
+            .container {
+                padding: 12px 10px 16px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+                padding: 6px 12px;
+            }
+            .info-item {
+                font-size: 13px;
+                padding: 4px 0;
+            }
+            .export-btn {
+                font-size: 14px;
+                padding: 11px 0;
+                min-width: 58px;
+            }
+            .color-hex-large {
+                font-size: 16px;
+            }
+            .adv-row input[type="number"] {
+                width: 60px;
+            }
+            .adv-row {
+                gap: 6px;
+            }
+            .layer-item {
+                padding: 4px 6px;
+            }
+            .layer-item .thumb {
+                width: 28px;
+                height: 28px;
+            }
+            .erase-tool input[type="range"] {
+                width: 80px;
+            }
+        }
+        @media (hover: none) {
+            .export-btn:hover {
+                background: inherit;
+            }
+            .export-btn:hover[data-format="png"] {
+                background: #e3eaf7;
+            }
+            .export-btn:hover[data-format="jpg"] {
+                background: #f7ede6;
+            }
+            .export-btn:hover[data-format="webp"] {
+                background: #e6f7ed;
+            }
+            .export-btn:hover[data-format="bmp"] {
+                background: #efe6f7;
+            }
+            .upload-area:hover {
+                background: #fafcff;
+                border-color: #d0d7e2;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 上传 -->
+        <div class="upload-area" id="uploadArea">
+            <label for="fileInput">
+                <span>📁 点击上传图片 (添加为图层)</span><br />
+                <span style="font-weight:400; color:#6a7b8e; font-size:14px; display:inline-block; margin-top:4px;">JPG / PNG / WebP / BMP</span>
+            </label>
+            <input type="file" id="fileInput" accept="image/*" multiple />
+        </div>
+
+        <!-- 画布 -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="imageCanvas"></canvas>
+            <canvas id="overlayCanvas"></canvas>
+            <div class="zoom-indicator" id="zoomIndicator">100%</div>
+        </div>
+
+        <!-- 提示 -->
+        <div class="hint-msg" id="hintMsg">💡 选中图层才可对图层进行操作</div>
+
+        <!-- 颜色信息 -->
+        <div class="info-section">
+            <div class="color-preview">
+                <div class="color-swatch" id="colorSwatch" style="background:#a0aab8;"></div>
+                <span class="color-hex-large" id="hexDisplay">—</span>
+            </div>
+            <div class="info-grid">
+                <div class="info-item"><span class="label">HEX</span><span class="value" id="vHex">—</span></div>
+                <div class="info-item"><span class="label">RGB</span><span class="value" id="vRgb">—</span></div>
+                <div class="info-item"><span class="label">HSL</span><span class="value" id="vHsl">—</span></div>
+                <div class="info-item"><span class="label">HSV</span><span class="value" id="vHsv">—</span></div>
+                <div class="info-item"><span class="label">CMYK</span><span class="value" id="vCmyk">—</span></div>
+            </div>
+        </div>
+
+        <!-- 导出 -->
+        <div class="export-section">
+            <button class="export-btn" data-format="png">PNG</button>
+            <button class="export-btn" data-format="jpg">JPG</button>
+            <button class="export-btn" data-format="webp">WEBP</button>
+            <button class="export-btn" data-format="bmp">BMP</button>
+        </div>
+
+        <!-- 高级面板 -->
+        <div class="advanced-panel" id="advancedPanel">
+            <!-- 图层管理 -->
+            <div class="adv-group">
+                <div class="adv-group-title">图层管理</div>
+                <div class="layer-list" id="layerList"></div>
+                <div class="layer-controls">
+                    <div class="adv-row">
+                        <label>X</label>
+                        <input type="number" id="layerX" value="0" step="1" style="width:70px;" />
+                        <label>Y</label>
+                        <input type="number" id="layerY" value="0" step="1" style="width:70px;" />
+                        <label>旋转</label>
+                        <input type="number" id="layerRotation" value="0" step="1" min="0" max="360" style="width:60px;" />
+                        <label>°</label>
+                        <button class="adv-btn" id="applyLayerPos">应用</button>
+                        <button class="adv-btn danger" id="deleteSelectedLayer">删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图层滤镜 -->
+            <div class="adv-group">
+                <div class="adv-group-title">图层滤镜</div>
+                <div class="adv-row">
+                    <label>亮度</label>
+                    <input type="range" id="brightnessSlider" min="0" max="200" value="100" />
+                    <span class="value-label" id="brightnessVal">100%</span>
+                </div>
+                <div class="adv-row">
+                    <label>对比度</label>
+                    <input type="range" id="contrastSlider" min="0" max="200" value="100" />
+                    <span class="value-label" id="contrastVal">100%</span>
+                </div>
+                <div class="adv-row">
+                    <label>饱和度</label>
+                    <input type="range" id="saturationSlider" min="0" max="200" value="100" />
+                    <span class="value-label" id="saturationVal">100%</span>
+                </div>
+                <div class="adv-row">
+                    <label>色相</label>
+                    <input type="range" id="hueSlider" min="0" max="360" value="0" />
+                    <span class="value-label" id="hueVal">0°</span>
+                </div>
+                <div class="adv-row">
+                    <button class="adv-btn danger" id="resetLayerFilters">重置滤镜</button>
+                </div>
+            </div>
+
+            <!-- 取色 & 擦除 -->
+            <div class="adv-group">
+                <div class="adv-group-title">取色与擦除</div>
+                <div class="tool-group">
+                    <button class="adv-btn" id="colorPickToggle">🎨 取色模式</button>
+                    <button class="adv-btn" id="eraseModeToggle">🖍️ 擦除模式</button>
+                    <div class="erase-tool">
+                        <label>画笔大小</label>
+                        <input type="range" id="brushSizeSlider" min="1" max="1000" value="20" />
+                        <span class="size-val" id="brushSizeVal">20</span>
+                        <label>px</label>
+                        <button class="adv-btn danger" id="clearErasure">清除擦除</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:10px; font-size:12px; color:#aab4c6; text-align:center;">滚轮缩放 · 拖拽平移 · 点击选中图层</div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ========== DOM ==========
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            const canvas = document.getElementById('imageCanvas');
+            const ctx = canvas.getContext('2d');
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            const overlayCtx = overlayCanvas.getContext('2d');
+            const zoomIndicator = document.getElementById('zoomIndicator');
+            const hintMsg = document.getElementById('hintMsg');
+
+            const colorSwatch = document.getElementById('colorSwatch');
+            const hexDisplay = document.getElementById('hexDisplay');
+            const vHex = document.getElementById('vHex');
+            const vRgb = document.getElementById('vRgb');
+            const vHsl = document.getElementById('vHsl');
+            const vHsv = document.getElementById('vHsv');
+            const vCmyk = document.getElementById('vCmyk');
+
+            const exportBtns = document.querySelectorAll('.export-btn');
+
+            const layerList = document.getElementById('layerList');
+            const layerX = document.getElementById('layerX');
+            const layerY = document.getElementById('layerY');
+            const layerRotation = document.getElementById('layerRotation');
+            const applyLayerPos = document.getElementById('applyLayerPos');
+            const deleteSelectedBtn = document.getElementById('deleteSelectedLayer');
+
+            const brightnessSlider = document.getElementById('brightnessSlider');
+            const contrastSlider = document.getElementById('contrastSlider');
+            const saturationSlider = document.getElementById('saturationSlider');
+            const hueSlider = document.getElementById('hueSlider');
+            const brightnessVal = document.getElementById('brightnessVal');
+            const contrastVal = document.getElementById('contrastVal');
+            const saturationVal = document.getElementById('saturationVal');
+            const hueVal = document.getElementById('hueVal');
+            const resetLayerFilters = document.getElementById('resetLayerFilters');
+
+            const colorPickToggle = document.getElementById('colorPickToggle');
+            const eraseModeToggle = document.getElementById('eraseModeToggle');
+            const brushSizeSlider = document.getElementById('brushSizeSlider');
+            const brushSizeVal = document.getElementById('brushSizeVal');
+            const clearErasure = document.getElementById('clearErasure');
+
+            // ========== 状态 ==========
+            let layers = [];
+            let selectedLayerId = null;
+            let nextId = 1;
+
+            let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
+
+            let colorPickMode = false;
+            let eraseMode = false;
+            let brushSize = 20;
+            let isErasing = false;
+
+            let isDraggingView = false;
+            let dragStartX = 0,
+                dragStartY = 0;
+            let dragStartOffsetX = 0,
+                dragStartOffsetY = 0;
+            let lastTouchDist = 0;
+            let isPinching = false;
+
+            let isDraggingLayer = false;
+            let dragLayerStartX = 0,
+                dragLayerStartY = 0;
+            let dragLayerOrigX = 0,
+                dragLayerOrigY = 0;
+            let draggedLayerId = null;
+
+            // ========== 颜色转换 ==========
+            function componentToHex(c) {
+                const hex = c.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }
+
+            function rgbToHex(r, g, b) {
+                return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b);
+            }
+
+            function rgbToHsl(r, g, b) {
+                r /= 255;
+                g /= 255;
+                b /= 255;
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+                if (max === min) {
+                    h = s = 0;
+                } else {
+                    const d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r:
+                            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                            break;
+                        case g:
+                            h = ((b - r) / d + 2) / 6;
+                            break;
+                        case b:
+                            h = ((r - g) / d + 4) / 6;
+                            break;
+                    }
+                }
+                return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+            }
+
+            function rgbToHsv(r, g, b) {
+                r /= 255;
+                g /= 255;
+                b /= 255;
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const d = max - min;
+                let h = 0,
+                    s = 0,
+                    v = max;
+                if (d !== 0) {
+                    s = d / max;
+                    switch (max) {
+                        case r:
+                            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                            break;
+                        case g:
+                            h = ((b - r) / d + 2) / 6;
+                            break;
+                        case b:
+                            h = ((r - g) / d + 4) / 6;
+                            break;
+                    }
+                }
+                return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
+            }
+
+            function rgbToCmyk(r, g, b) {
+                const cr = 1 - (r / 255);
+                const cg = 1 - (g / 255);
+                const cb = 1 - (b / 255);
+                const k = Math.min(cr, cg, cb);
+                if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+                const c = Math.round(((cr - k) / (1 - k)) * 100);
+                const m = Math.round(((cg - k) / (1 - k)) * 100);
+                const y = Math.round(((cb - k) / (1 - k)) * 100);
+                const kk = Math.round(k * 100);
+                return { c, m, y, k: kk };
+            }
+
+            // ========== 图层核心 ==========
+
+            function createLayer(imageObj, name) {
+                const id = nextId++;
+                const layerCanvas = document.createElement('canvas');
+                layerCanvas.width = imageObj.width;
+                layerCanvas.height = imageObj.height;
+                const lCtx = layerCanvas.getContext('2d');
+                lCtx.imageSmoothingEnabled = true;
+                lCtx.drawImage(imageObj, 0, 0);
+
+                const cx = (canvas.width - imageObj.width) / 2;
+                const cy = (canvas.height - imageObj.height) / 2;
+
+                const layer = {
+                    id: id,
+                    canvas: layerCanvas,
+                    x: cx,
+                    y: cy,
+                    rotation: 0,
+                    visible: true,
+                    filters: { brightness: 100, contrast: 100, saturation: 100, hue: 0 },
+                    name: name || `图层 ${id}`,
+                    image: imageObj
+                };
+                layers.push(layer);
+                selectLayer(id);
+                renderAll();
+                updateLayerList();
+                return id;
+            }
+
+            function deleteLayer(id) {
+                const idx = layers.findIndex(l => l.id === id);
+                if (idx === -1) return;
+                layers.splice(idx, 1);
+                if (selectedLayerId === id) {
+                    selectedLayerId = layers.length > 0 ? layers[0].id : null;
+                }
+                renderAll();
+                updateLayerList();
+                updateControls();
+            }
+
+            function selectLayer(id) {
+                selectedLayerId = id;
+                updateLayerList();
+                updateControls();
+                const layer = getSelectedLayer();
+                if (layer) {
+                    layerX.value = layer.x;
+                    layerY.value = layer.y;
+                    layerRotation.value = layer.rotation;
+                    brightnessSlider.value = layer.filters.brightness;
+                    contrastSlider.value = layer.filters.contrast;
+                    saturationSlider.value = layer.filters.saturation;
+                    hueSlider.value = layer.filters.hue;
+                    brightnessVal.textContent = layer.filters.brightness + '%';
+                    contrastVal.textContent = layer.filters.contrast + '%';
+                    saturationVal.textContent = layer.filters.saturation + '%';
+                    hueVal.textContent = layer.filters.hue + '°';
+                    hintMsg.textContent = '💡 已选中图层: ' + layer.name;
+                } else {
+                    hintMsg.textContent = '💡 选中图层才可对图层进行操作';
+                }
+            }
+
+            function getSelectedLayer() {
+                return layers.find(l => l.id === selectedLayerId) || null;
+            }
+
+            function moveLayerUp(id) {
+                const idx = layers.findIndex(l => l.id === id);
+                if (idx <= 0) return;
+                [layers[idx], layers[idx - 1]] = [layers[idx - 1], layers[idx]];
+                renderAll();
+                updateLayerList();
+                selectLayer(id);
+            }
+
+            function moveLayerDown(id) {
+                const idx = layers.findIndex(l => l.id === id);
+                if (idx === -1 || idx === layers.length - 1) return;
+                [layers[idx], layers[idx + 1]] = [layers[idx + 1], layers[idx]];
+                renderAll();
+                updateLayerList();
+                selectLayer(id);
+            }
+
+            function updateLayerList() {
+                layerList.innerHTML = '';
+                layers.forEach((layer, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'layer-item' + (layer.id === selectedLayerId ? ' selected' : '');
+
+                    const thumb = document.createElement('canvas');
+                    thumb.className = 'thumb';
+                    thumb.width = 36;
+                    thumb.height = 36;
+                    const tCtx = thumb.getContext('2d');
+                    tCtx.imageSmoothingEnabled = true;
+                    tCtx.drawImage(layer.canvas, 0, 0, 36, 36);
+                    div.appendChild(thumb);
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'layer-name';
+                    nameSpan.textContent = layer.name;
+                    div.appendChild(nameSpan);
+
+                    const actions = document.createElement('div');
+                    actions.className = 'layer-actions';
+
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'move-btn';
+                    upBtn.textContent = '▲';
+                    upBtn.title = '上移图层';
+                    upBtn.disabled = (index === 0);
+                    upBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        moveLayerUp(layer.id);
+                    });
+                    actions.appendChild(upBtn);
+
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'move-btn';
+                    downBtn.textContent = '▼';
+                    downBtn.title = '下移图层';
+                    downBtn.disabled = (index === layers.length - 1);
+                    downBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        moveLayerDown(layer.id);
+                    });
+                    actions.appendChild(downBtn);
+
+                    const visBtn = document.createElement('button');
+                    visBtn.className = 'vis-toggle';
+                    visBtn.textContent = layer.visible ? '👁️' : '👁️‍🗨️';
+                    visBtn.title = '切换可见性';
+                    visBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        layer.visible = !layer.visible;
+                        renderAll();
+                        updateLayerList();
+                    });
+                    actions.appendChild(visBtn);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'del-btn';
+                    delBtn.textContent = '✕';
+                    delBtn.title = '删除图层';
+                    delBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteLayer(layer.id);
+                    });
+                    actions.appendChild(delBtn);
+
+                    div.appendChild(actions);
+
+                    div.addEventListener('click', function() {
+                        selectLayer(layer.id);
+                    });
+
+                    layerList.appendChild(div);
+                });
+                const sel = getSelectedLayer();
+                if (sel) {
+                    layerX.value = sel.x;
+                    layerY.value = sel.y;
+                    layerRotation.value = sel.rotation;
+                }
+            }
+
+            function updateControls() {
+                const sel = getSelectedLayer();
+                const hasSel = !!sel;
+                layerX.disabled = !hasSel;
+                layerY.disabled = !hasSel;
+                layerRotation.disabled = !hasSel;
+                applyLayerPos.disabled = !hasSel;
+                deleteSelectedBtn.disabled = !hasSel;
+                brightnessSlider.disabled = !hasSel;
+                contrastSlider.disabled = !hasSel;
+                saturationSlider.disabled = !hasSel;
+                hueSlider.disabled = !hasSel;
+                resetLayerFilters.disabled = !hasSel;
+                brushSizeSlider.disabled = false;
+                clearErasure.disabled = !hasSel;
+                if (!hasSel) {
+                    brightnessSlider.value = 100;
+                    contrastSlider.value = 100;
+                    saturationSlider.value = 100;
+                    hueSlider.value = 0;
+                    brightnessVal.textContent = '100%';
+                    contrastVal.textContent = '100%';
+                    saturationVal.textContent = '100%';
+                    hueVal.textContent = '0°';
+                    layerX.value = '';
+                    layerY.value = '';
+                    layerRotation.value = '';
+                    hintMsg.textContent = '💡 选中图层才可对图层进行操作';
+                }
+            }
+
+            // ========== 渲染 ==========
+
+            function renderAll() {
+                if (layers.length === 0) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    zoomIndicator.classList.remove('show');
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    return;
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                ctx.save();
+                ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
+                ctx.scale(viewTransform.scale, viewTransform.scale);
+
+                layers.forEach(layer => {
+                    if (!layer.visible) return;
+                    const lw = layer.canvas.width;
+                    const lh = layer.canvas.height;
+                    const cx = layer.x + lw / 2;
+                    const cy = layer.y + lh / 2;
+                    const angle = layer.rotation * Math.PI / 180;
+                    const f = layer.filters;
+                    const filterStr =
+                        `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
+
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(angle);
+                    ctx.filter = filterStr;
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.drawImage(layer.canvas, -lw / 2, -lh / 2);
+                    ctx.restore();
+                });
+
+                ctx.restore();
+
+                const percent = Math.round(viewTransform.scale * 100);
+                zoomIndicator.textContent = percent + '%';
+                zoomIndicator.classList.add('show');
+
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+
+            // ========== 擦除 ==========
+
+            function applyEraserAt(layer, x, y, size) {
+                const lctx = layer.canvas.getContext('2d');
+                lctx.imageSmoothingEnabled = true;
+                lctx.save();
+                lctx.globalCompositeOperation = 'destination-out';
+                lctx.beginPath();
+                lctx.arc(x, y, size / 2, 0, Math.PI * 2);
+                lctx.fill();
+                lctx.restore();
+            }
+
+            function getLayerCoord(layer, clientX, clientY) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const cx = (clientX - rect.left) * scaleX;
+                const cy = (clientY - rect.top) * scaleY;
+
+                const worldX = (cx - viewTransform.offsetX) / viewTransform.scale;
+                const worldY = (cy - viewTransform.offsetY) / viewTransform.scale;
+
+                const lcx = layer.x + layer.canvas.width / 2;
+                const lcy = layer.y + layer.canvas.height / 2;
+
+                const dx = worldX - lcx;
+                const dy = worldY - lcy;
+
+                const angle = -layer.rotation * Math.PI / 180;
+                const cosA = Math.cos(angle);
+                const sinA = Math.sin(angle);
+                const localX = dx * cosA - dy * sinA + layer.canvas.width / 2;
+                const localY = dx * sinA + dy * cosA + layer.canvas.height / 2;
+
+                if (localX >= 0 && localX < layer.canvas.width &&
+                    localY >= 0 && localY < layer.canvas.height) {
+                    return { x: localX, y: localY };
+                }
+                return null;
+            }
+
+            // ========== 取色 ==========
+
+            function getColorFromCanvas(clientX, clientY) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const cx = (clientX - rect.left) * scaleX;
+                const cy = (clientY - rect.top) * scaleY;
+
+                try {
+                    const pixel = ctx.getImageData(Math.round(cx), Math.round(cy), 1, 1).data;
+                    const r = pixel[0],
+                        g = pixel[1],
+                        b = pixel[2];
+                    const hex = rgbToHex(r, g, b);
+                    const hsl = rgbToHsl(r, g, b);
+                    const hsv = rgbToHsv(r, g, b);
+                    const cmyk = rgbToCmyk(r, g, b);
+                    colorSwatch.style.background = hex;
+                    hexDisplay.textContent = hex.toUpperCase();
+                    vHex.textContent = hex.toUpperCase();
+                    vRgb.textContent = `${r}, ${g}, ${b}`;
+                    vHsl.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+                    vHsv.textContent = `${hsv.h}°, ${hsv.s}%, ${hsv.v}%`;
+                    vCmyk.textContent = `${cmyk.c}, ${cmyk.m}, ${cmyk.y}, ${cmyk.k}`;
+                } catch (_) {}
+            }
+
+            // ========== 导出 (修复: 计算所有图层有像素的并集边界) ==========
+
+            function exportImage(format) {
+                if (layers.length === 0) {
+                    alert('请先添加图层');
+                    return;
+                }
+
+                // 1. 计算所有可见图层有像素内容的并集边界 (世界坐标)
+                let globalMinX = Infinity,
+                    globalMinY = Infinity;
+                let globalMaxX = -Infinity,
+                    globalMaxY = -Infinity;
+                let hasAnyPixel = false;
+
+                layers.forEach(layer => {
+                    if (!layer.visible) return;
+
+                    const w = layer.canvas.width;
+                    const h = layer.canvas.height;
+
+                    // 扫描图层像素，找到不透明像素的边界 (本地坐标)
+                    const imageData = layer.canvas.getContext('2d').getImageData(0, 0, w, h);
+                    const data = imageData.data;
+                    let minX = w,
+                        minY = h,
+                        maxX = -1,
+                        maxY = -1;
+
+                    // 快速扫描: 逐行逐列检查透明度
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = (y * w + x) * 4;
+                            if (data[idx + 3] > 0) { // 不透明像素
+                                if (x < minX) minX = x;
+                                if (x > maxX) maxX = x;
+                                if (y < minY) minY = y;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    // 如果没有不透明像素，跳过该图层
+                    if (maxX < 0) return;
+
+                    // 本地边界框的四个角点
+                    const corners = [
+                        { x: minX, y: minY },
+                        { x: maxX, y: minY },
+                        { x: minX, y: maxY },
+                        { x: maxX, y: maxY }
+                    ];
+
+                    // 应用旋转和平移，转换到世界坐标
+                    const angle = layer.rotation * Math.PI / 180;
+                    const cosA = Math.cos(angle);
+                    const sinA = Math.sin(angle);
+                    const cx = layer.x + w / 2;
+                    const cy = layer.y + h / 2;
+
+                    corners.forEach(corner => {
+                        // 相对于图层中心
+                        const dx = corner.x - w / 2;
+                        const dy = corner.y - h / 2;
+                        // 旋转
+                        const rx = dx * cosA - dy * sinA;
+                        const ry = dx * sinA + dy * cosA;
+                        // 平移到世界坐标
+                        const wx = cx + rx;
+                        const wy = cy + ry;
+                        if (wx < globalMinX) globalMinX = wx;
+                        if (wy < globalMinY) globalMinY = wy;
+                        if (wx > globalMaxX) globalMaxX = wx;
+                        if (wy > globalMaxY) globalMaxY = wy;
+                    });
+
+                    hasAnyPixel = true;
+                });
+
+                if (!hasAnyPixel || !isFinite(globalMinX)) {
+                    alert('没有可见的图层内容 (所有图层均为透明)');
+                    return;
+                }
+
+                // 稍微扩展边界，避免边缘像素被裁切 (加1像素安全边距)
+                const padding = 0;
+                globalMinX -= padding;
+                globalMinY -= padding;
+                globalMaxX += padding;
+                globalMaxY += padding;
+
+                const outW = Math.ceil(globalMaxX - globalMinX);
+                const outH = Math.ceil(globalMaxY - globalMinY);
+
+                if (outW < 1 || outH < 1) {
+                    alert('导出区域太小');
+                    return;
+                }
+
+                // 2. 创建输出 Canvas
+                const outCanvas = document.createElement('canvas');
+                outCanvas.width = outW;
+                outCanvas.height = outH;
+                const outCtx = outCanvas.getContext('2d');
+                outCtx.imageSmoothingEnabled = true;
+                outCtx.imageSmoothingQuality = 'high';
+
+                // 对于 JPG，填充白色背景 (因为 JPG 不支持透明)
+                if (format === 'jpg') {
+                    outCtx.fillStyle = '#FFFFFF';
+                    outCtx.fillRect(0, 0, outW, outH);
+                }
+
+                // 3. 绘制每个可见图层
+                layers.forEach(layer => {
+                    if (!layer.visible) return;
+                    const lw = layer.canvas.width;
+                    const lh = layer.canvas.height;
+                    const dx = layer.x - globalMinX;
+                    const dy = layer.y - globalMinY;
+                    const angle = layer.rotation * Math.PI / 180;
+                    const cx = dx + lw / 2;
+                    const cy = dy + lh / 2;
+
+                    const f = layer.filters;
+                    const filterStr =
+                        `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
+
+                    outCtx.save();
+                    outCtx.translate(cx, cy);
+                    outCtx.rotate(angle);
+                    outCtx.filter = filterStr;
+                    outCtx.imageSmoothingEnabled = true;
+                    outCtx.drawImage(layer.canvas, -lw / 2, -lh / 2);
+                    outCtx.restore();
+                });
+
+                // 4. 导出
+                let mimeType = '',
+                    ext = '';
+                switch (format) {
+                    case 'png':
+                        mimeType = 'image/png';
+                        ext = 'png';
+                        break;
+                    case 'jpg':
+                        mimeType = 'image/jpeg';
+                        ext = 'jpg';
+                        break;
+                    case 'webp':
+                        mimeType = 'image/webp';
+                        ext = 'webp';
+                        break;
+                    case 'bmp':
+                        mimeType = 'image/bmp';
+                        ext = 'bmp';
+                        break;
+                    default:
+                        return;
+                }
+
+                try {
+                    outCanvas.toBlob(function(blob) {
+                        if (!blob) {
+                            const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
+                            download(dataUrl, `image.${ext}`);
+                            return;
+                        }
+                        const url = URL.createObjectURL(blob);
+                        download(url, `image.${ext}`);
+                        setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    }, mimeType, 0.95);
+                } catch (_) {
+                    const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
+                    download(dataUrl, `image.${ext}`);
+                }
+            }
+
+            function download(url, filename) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // ========== 模式切换 ==========
+
+            function setMode(mode) {
+                colorPickMode = (mode === 'color');
+                eraseMode = (mode === 'erase');
+                colorPickToggle.classList.toggle('active', colorPickMode);
+                eraseModeToggle.classList.toggle('active', eraseMode);
+                if (colorPickMode) {
+                    canvas.style.cursor = 'crosshair';
+                } else if (eraseMode) {
+                    canvas.style.cursor = 'none';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+                colorPickToggle.textContent = colorPickMode ? '🎨 取色中 (关闭)' : '🎨 取色模式';
+                eraseModeToggle.textContent = eraseMode ? '🖍️ 擦除中 (关闭)' : '🖍️ 擦除模式';
+                if (eraseMode) {
+                    overlayCanvas.style.display = 'block';
+                } else {
+                    overlayCanvas.style.display = 'none';
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                }
+            }
+
+            function updateEraseCursor(clientX, clientY) {
+                if (!eraseMode) return;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const cx = (clientX - rect.left) * scaleX;
+                const cy = (clientY - rect.top) * scaleY;
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                const radius = brushSize / 2 * viewTransform.scale;
+                overlayCtx.beginPath();
+                overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+                overlayCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+                overlayCtx.lineWidth = 2;
+                overlayCtx.setLineDash([4, 4]);
+                overlayCtx.stroke();
+                overlayCtx.setLineDash([]);
+                overlayCtx.beginPath();
+                overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+                overlayCtx.fillStyle = 'rgba(255,255,255,0.15)';
+                overlayCtx.fill();
+            }
+
+            // ========== 事件绑定 ==========
+
+            fileInput.addEventListener('change', function(e) {
+                const files = this.files;
+                if (!files || files.length === 0) return;
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (!file.type.startsWith('image/')) continue;
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const name = file.name || `图层 ${nextId}`;
+                            createLayer(img, name);
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+                this.value = '';
+            });
+
+            uploadArea.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'LABEL' && !e.target.closest('label')) {
+                    fileInput.click();
+                }
+            });
+
+            applyLayerPos.addEventListener('click', function() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                const x = parseInt(layerX.value);
+                const y = parseInt(layerY.value);
+                const rot = parseFloat(layerRotation.value) || 0;
+                if (isNaN(x) || isNaN(y)) return;
+                layer.x = x;
+                layer.y = y;
+                layer.rotation = rot;
+                renderAll();
+                updateLayerList();
+            });
+
+            layerRotation.addEventListener('input', function() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                const rot = parseFloat(this.value) || 0;
+                layer.rotation = rot;
+                renderAll();
+                updateLayerList();
+            });
+
+            deleteSelectedBtn.addEventListener('click', function() {
+                if (selectedLayerId === null) return;
+                deleteLayer(selectedLayerId);
+            });
+
+            function updateLayerFilters() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                layer.filters.brightness = parseInt(brightnessSlider.value);
+                layer.filters.contrast = parseInt(contrastSlider.value);
+                layer.filters.saturation = parseInt(saturationSlider.value);
+                layer.filters.hue = parseInt(hueSlider.value);
+                brightnessVal.textContent = layer.filters.brightness + '%';
+                contrastVal.textContent = layer.filters.contrast + '%';
+                saturationVal.textContent = layer.filters.saturation + '%';
+                hueVal.textContent = layer.filters.hue + '°';
+                renderAll();
+                updateLayerList();
+            }
+
+            brightnessSlider.addEventListener('input', updateLayerFilters);
+            contrastSlider.addEventListener('input', updateLayerFilters);
+            saturationSlider.addEventListener('input', updateLayerFilters);
+            hueSlider.addEventListener('input', updateLayerFilters);
+
+            resetLayerFilters.addEventListener('click', function() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                layer.filters = { brightness: 100, contrast: 100, saturation: 100, hue: 0 };
+                brightnessSlider.value = 100;
+                contrastSlider.value = 100;
+                saturationSlider.value = 100;
+                hueSlider.value = 0;
+                brightnessVal.textContent = '100%';
+                contrastVal.textContent = '100%';
+                saturationVal.textContent = '100%';
+                hueVal.textContent = '0°';
+                renderAll();
+                updateLayerList();
+            });
+
+            colorPickToggle.addEventListener('click', function() {
+                if (colorPickMode) setMode('select');
+                else {
+                    if (eraseMode) setMode('select');
+                    setMode('color');
+                }
+            });
+
+            eraseModeToggle.addEventListener('click', function() {
+                if (eraseMode) setMode('select');
+                else {
+                    if (colorPickMode) setMode('select');
+                    setMode('erase');
+                }
+            });
+
+            brushSizeSlider.addEventListener('input', function() {
+                brushSize = parseInt(this.value);
+                brushSizeVal.textContent = brushSize;
+                if (eraseMode) {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                }
+            });
+
+            clearErasure.addEventListener('click', function() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                const lctx = layer.canvas.getContext('2d');
+                lctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+                lctx.drawImage(layer.image, 0, 0);
+                renderAll();
+                updateLayerList();
+            });
+
+            // ========== 画布交互 ==========
+
+            canvas.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -1 : 1;
+                const factor = 1 + delta * 0.1;
+                const newScale = Math.min(Math.max(viewTransform.scale * factor, 0.1), 10);
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top) * scaleY;
+                const wx = (mx - viewTransform.offsetX) / viewTransform.scale;
+                const wy = (my - viewTransform.offsetY) / viewTransform.scale;
+                viewTransform.scale = newScale;
+                viewTransform.offsetX = mx - wx * newScale;
+                viewTransform.offsetY = my - wy * newScale;
+                renderAll();
+            }, { passive: false });
+
+            canvas.addEventListener('mousemove', function(e) {
+                if (eraseMode) {
+                    updateEraseCursor(e.clientX, e.clientY);
+                    if (isErasing) {
+                        const layer = getSelectedLayer();
+                        if (!layer) return;
+                        const coord = getLayerCoord(layer, e.clientX, e.clientY);
+                        if (coord) {
+                            applyEraserAt(layer, coord.x, coord.y, brushSize);
+                            renderAll();
+                            updateLayerList();
+                        }
+                    }
+                }
+            });
+
+            canvas.addEventListener('mouseleave', function() {
+                if (eraseMode) {
+                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                }
+            });
+
+            canvas.addEventListener('mousedown', function(e) {
+                if (colorPickMode) {
+                    getColorFromCanvas(e.clientX, e.clientY);
+                    return;
+                }
+                if (eraseMode) {
+                    const layer = getSelectedLayer();
+                    if (!layer) return;
+                    const coord = getLayerCoord(layer, e.clientX, e.clientY);
+                    if (coord) {
+                        applyEraserAt(layer, coord.x, coord.y, brushSize);
+                        renderAll();
+                        updateLayerList();
+                        isErasing = true;
+                    }
+                    return;
+                }
+
+                const layer = getSelectedLayer();
+                if (!layer) {
+                    isDraggingView = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragStartOffsetX = viewTransform.offsetX;
+                    dragStartOffsetY = viewTransform.offsetY;
+                    canvas.style.cursor = 'grabbing';
+                    return;
+                }
+                const coord = getLayerCoord(layer, e.clientX, e.clientY);
+                if (coord) {
+                    isDraggingLayer = true;
+                    draggedLayerId = layer.id;
+                    dragLayerStartX = e.clientX;
+                    dragLayerStartY = e.clientY;
+                    dragLayerOrigX = layer.x;
+                    dragLayerOrigY = layer.y;
+                    canvas.style.cursor = 'move';
+                } else {
+                    isDraggingView = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    dragStartOffsetX = viewTransform.offsetX;
+                    dragStartOffsetY = viewTransform.offsetY;
+                    canvas.style.cursor = 'grabbing';
+                }
+            });
+
+            window.addEventListener('mousemove', function(e) {
+                if (isDraggingView) {
+                    const dx = e.clientX - dragStartX;
+                    const dy = e.clientY - dragStartY;
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+                    viewTransform.offsetX = dragStartOffsetX + dx * scaleX;
+                    viewTransform.offsetY = dragStartOffsetY + dy * scaleY;
+                    renderAll();
+                } else if (isDraggingLayer) {
+                    const dx = e.clientX - dragLayerStartX;
+                    const dy = e.clientY - dragLayerStartY;
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+                    const deltaX = dx * scaleX / viewTransform.scale;
+                    const deltaY = dy * scaleY / viewTransform.scale;
+                    const layer = layers.find(l => l.id === draggedLayerId);
+                    if (layer) {
+                        layer.x = dragLayerOrigX + deltaX;
+                        layer.y = dragLayerOrigY + deltaY;
+                        renderAll();
+                        updateLayerList();
+                        layerX.value = layer.x;
+                        layerY.value = layer.y;
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', function() {
+                if (isDraggingView || isDraggingLayer) {
+                    isDraggingView = false;
+                    isDraggingLayer = false;
+                    draggedLayerId = null;
+                    canvas.style.cursor = 'default';
+                }
+                if (isErasing) {
+                    isErasing = false;
+                }
+            });
+
+            // 触摸支持
+            let touchStartDist = 0;
+            let touchStartScale = 1;
+            let touchStartOffsetX = 0,
+                touchStartOffsetY = 0;
+
+            canvas.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) {
+                    if (colorPickMode || eraseMode) return;
+                    const touch = e.touches[0];
+                    isDraggingView = true;
+                    dragStartX = touch.clientX;
+                    dragStartY = touch.clientY;
+                    dragStartOffsetX = viewTransform.offsetX;
+                    dragStartOffsetY = viewTransform.offsetY;
+                } else if (e.touches.length === 2) {
+                    const t1 = e.touches[0],
+                        t2 = e.touches[1];
+                    const dx = t1.clientX - t2.clientX;
+                    const dy = t1.clientY - t2.clientY;
+                    touchStartDist = Math.sqrt(dx * dx + dy * dy);
+                    touchStartScale = viewTransform.scale;
+                    touchStartOffsetX = viewTransform.offsetX;
+                    touchStartOffsetY = viewTransform.offsetY;
+                    isPinching = true;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                if (e.touches.length === 1 && isDraggingView) {
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - dragStartX;
+                    const dy = touch.clientY - dragStartY;
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+                    viewTransform.offsetX = dragStartOffsetX + dx * scaleX;
+                    viewTransform.offsetY = dragStartOffsetY + dy * scaleY;
+                    renderAll();
+                } else if (e.touches.length === 2 && isPinching) {
+                    const t1 = e.touches[0],
+                        t2 = e.touches[1];
+                    const dx = t1.clientX - t2.clientX;
+                    const dy = t1.clientY - t2.clientY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const scaleFactor = dist / touchStartDist;
+                    const newScale = Math.min(Math.max(touchStartScale * scaleFactor, 0.1), 10);
+                    const centerX = (t1.clientX + t2.clientX) / 2;
+                    const centerY = (t1.clientY + t2.clientY) / 2;
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / rect.width;
+                    const scaleY = canvas.height / rect.height;
+                    const mx = (centerX - rect.left) * scaleX;
+                    const my = (centerY - rect.top) * scaleY;
+                    const wx = (mx - touchStartOffsetX) / touchStartScale;
+                    const wy = (my - touchStartOffsetY) / touchStartScale;
+                    viewTransform.scale = newScale;
+                    viewTransform.offsetX = mx - wx * newScale;
+                    viewTransform.offsetY = my - wy * newScale;
+                    renderAll();
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', function() {
+                isDraggingView = false;
+                isPinching = false;
+            });
+
+            canvas.addEventListener('touchcancel', function() {
+                isDraggingView = false;
+                isPinching = false;
+            });
+
+            // ========== 导出按钮 ==========
+            exportBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const format = this.getAttribute('data-format');
+                    exportImage(format);
+                });
+            });
+
+            // ========== 初始化 ==========
+            canvas.width = 700;
+            canvas.height = 480;
+            canvas.style.width = '100%';
+            canvas.style.height = 'auto';
+            overlayCanvas.width = canvas.width;
+            overlayCanvas.height = canvas.height;
+            overlayCanvas.style.width = '100%';
+            overlayCanvas.style.height = '100%';
+            overlayCanvas.style.position = 'absolute';
+            overlayCanvas.style.top = '0';
+            overlayCanvas.style.left = '0';
+            overlayCanvas.style.pointerEvents = 'none';
+            overlayCanvas.style.display = 'none';
+
+            viewTransform.scale = 1;
+            viewTransform.offsetX = 0;
+            viewTransform.offsetY = 0;
+
+            setMode('select');
+            updateLayerList();
+            updateControls();
+
+            console.log('🖼️ 多图层编辑器 (导出已修复: 精确计算有像素区域并集)');
+        })();
+    </script>
+
+</body>
+</html>
