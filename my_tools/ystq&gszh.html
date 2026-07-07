@@ -6,217 +6,575 @@
     <title>多图层编辑器</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { min-height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f2f6; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding:16px; touch-action:manipulation; }
-               /* ===== 新增：让顶部画布区域滚动时粘在顶部 ===== */
-        .sticky-section {
-            position: sticky;
-            top: 0;
-            background: #ffffff;
-            z-index: 20;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #eef2f8;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        body {
+            min-height: 100vh;
+            background: #f0f2f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            touch-action: manipulation;
+            overflow: hidden;
+            height: 100vh;
         }
-        /* 确保画布容器内部的相对定位不受干扰 */
-        .canvas-wrapper {
+
+        /* ===== 全局布局 ===== */
+        .app-layout {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            max-width: 100vw;
+            background: #f8faff;
+        }
+
+        /* ===== 左侧边栏 (桌面) ===== */
+        .sidebar {
+            width: 80px;
+            background: #ffffff;
+            border-right: 1px solid #e6ebf3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0 16px;
+            flex-shrink: 0;
+            z-index: 30;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.02);
+            overflow-y: auto;
+        }
+        .sidebar .logo {
+            font-size: 28px;
+            margin-bottom: 16px;
+            padding: 8px 0;
+            cursor: default;
+            user-select: none;
+        }
+        .tools-nav {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+            flex: 1;
+        }
+        .tool-btn {
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 0;
+            width: 64px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 11px;
+            color: #6a7b8e;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+            font-family: inherit;
+            touch-action: manipulation;
             position: relative;
         }
-	   .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
-        .upload-area { border:2px dashed #d0d7e2; border-radius:12px; padding:12px 14px; text-align:center; cursor:pointer; background:#fafcff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s; -webkit-tap-highlight-color:transparent; }
-        .upload-area:active { background:#eaf1fe; border-color:#7a8ba3; }
-        .upload-area label { display:block; font-size:15px; color:#3d4a5c; font-weight:450; cursor:pointer; }
-        .upload-area label span { display:inline-block; background:#e6ecf5; padding:5px 16px; border-radius:40px; font-weight:500; color:#1f2a3a; margin-top:4px; }
-        #fileInput { display:none; }
-        .canvas-wrapper { position:relative; background:#eef0f4; border-radius:12px; overflow:hidden; touch-action:none; min-height:220px; }
-        #imageCanvas { display:block; max-width:100%; max-height:520px; cursor:default; background:#eef0f4; width:auto; height:auto; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; }
-        #overlayCanvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
-        .zoom-indicator { position:absolute; top:12px; left:14px; background:rgba(20,28,40,0.7); backdrop-filter:blur(4px); color:#f0f4fc; padding:4px 12px; border-radius:30px; font-size:13px; font-weight:500; font-family:"SF Mono","Menlo",monospace; pointer-events:none; user-select:none; opacity:0; transition:opacity 0.25s ease; z-index:2; }
-        .zoom-indicator.show { opacity:1; }
-        .hint-msg { margin:8px 0 0 4px; font-size:13px; color:#7a8aa0; user-select:none; }
-        .info-section { margin:14px 0 18px; }
-        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; background:#f8faff; border-radius:12px; padding:10px 14px; }
-        .info-item { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #eef2f8; font-size:14px; }
-        .info-item .label { color:#7c8aa0; font-weight:450; }
-        .info-item .value { color:#1a2330; font-weight:500; font-family:"SF Mono","Menlo",monospace; font-size:13px; text-align:right; }
-        .color-preview { display:flex; align-items:center; gap:14px; margin-bottom:6px; padding:0 14px; }
-        .color-swatch { width:38px; height:38px; border-radius:12px; border:1px solid #dee5ef; flex-shrink:0; background:#888; }
-        .color-hex-large { font-size:18px; font-weight:500; color:#1a2330; letter-spacing:0.5px; word-break:break-all; }
-        .export-section { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
-        .export-btn { flex:1; min-width:68px; padding:12px 0; border:none; border-radius:14px; background:#edf0f6; color:#1f2a3a; font-size:15px; font-weight:500; cursor:pointer; transition:background 0.18s, transform 0.1s; font-family:inherit; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-        .export-btn:active { transform:scale(0.94); background:#d5dce6; }
-        .export-btn[data-format="png"] { background:#e3eaf7; color:#1c3b6b; }
-        .export-btn[data-format="jpg"] { background:#f7ede6; color:#6b3d1c; }
-        .export-btn[data-format="webp"] { background:#e6f7ed; color:#1c6b3d; }
-        .export-btn[data-format="bmp"] { background:#efe6f7; color:#4a1c6b; }
-        .export-btn:active[data-format="png"] { background:#c8d6ed; }
-        .export-btn:active[data-format="jpg"] { background:#edd5c4; }
-        .export-btn:active[data-format="webp"] { background:#c4edcf; }
-        .export-btn:active[data-format="bmp"] { background:#d9c4ed; }
-        .advanced-panel { margin-top:14px; padding:16px 14px 18px; background:#f8faff; border-radius:16px; border:1px solid #e6ebf3; max-height:650px; overflow-y:auto; }
-        .adv-group { margin-bottom:16px; }
-        .adv-group-title { font-size:14px; font-weight:600; color:#2c3e5a; margin-bottom:8px; letter-spacing:0.3px; }
-        .adv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
-        .adv-row label { font-size:13px; color:#4a5a72; min-width:40px; }
-        .adv-row input[type="number"] { width:70px; padding:5px 8px; border:1px solid #d0d7e2; border-radius:8px; font-size:13px; background:#fff; font-family:inherit; }
-        .adv-row input[type="number"]:focus { outline:none; border-color:#7a8ba3; }
-        .adv-row input[type="range"] { flex:1; min-width:100px; accent-color:#3d6b9b; }
-        .adv-row .value-label { min-width:36px; font-size:13px; color:#3d4a5c; font-weight:500; }
-        .adv-btn { padding:6px 18px; border:none; border-radius:30px; background:#e6ecf5; font-size:13px; font-weight:500; color:#1f2a3a; cursor:pointer; transition:background 0.15s; font-family:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
-        .adv-btn:active { background:#cdd6e3; }
-        .adv-btn.primary { background:#2c3e5a; color:#fff; }
-        .adv-btn.primary:active { background:#1a2a3f; }
-        .adv-btn.danger { background:#e8d5d5; color:#7a3a3a; }
-        .adv-btn.danger:active { background:#dbbdbd; }
-        .layer-list { display:flex; flex-direction:column; gap:6px; margin-top:4px; max-height:180px; overflow-y:auto; border:1px solid #e2e6ee; border-radius:12px; padding:6px 8px; background:#fff; }
-        .layer-item { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:10px; background:#fafcff; border:1px solid #eef2f8; transition:background 0.15s, border-color 0.15s; user-select:none; min-height:40px; }
-        .layer-item.selected { border-color:#2c3e5a; background:#eaf1fe; }
-        .layer-item .thumb { width:32px; height:32px; border-radius:6px; object-fit:cover; background:#eef0f4; border:1px solid #d0d7e2; flex-shrink:0; }
-        .layer-item .layer-name { flex:1; font-size:13px; font-weight:500; color:#1f2a3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .layer-item .layer-actions { display:flex; gap:0px; align-items:center; flex-shrink:0; }
-        .layer-item .layer-actions button { background:none; border:none; font-size:16px; cursor:pointer; padding:2px 4px; border-radius:6px; transition:background 0.1s; line-height:1; color:#2c3e5a; touch-action:manipulation; -webkit-tap-highlight-color:transparent; min-width:28px; min-height:28px; display:flex; align-items:center; justify-content:center; }
-        .layer-item .layer-actions button:active { background:#d0d7e2; }
-        .layer-item .layer-actions .vis-toggle { font-size:16px; }
-        .layer-item .layer-actions .del-btn { color:#b33; font-size:16px; }
-        .layer-item .layer-actions .move-btn { font-size:14px; color:#4a5a72; padding:2px 3px; }
-        .layer-item .layer-actions .move-btn:disabled { opacity:0.3; cursor:not-allowed; }
-        .layer-controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; align-items:center; }
-        .layer-controls .adv-row { margin-bottom:0; }
-        .tool-group { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:4px; }
-        .tool-group .adv-btn { min-width:80px; }
-        .tool-group .adv-btn.active { background:#2c3e5a; color:#fff; }
-        .erase-tool { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-        .erase-tool label { font-size:13px; color:#4a5a72; }
-        .erase-tool input[type="range"] { width:120px; accent-color:#3d6b9b; }
-        .erase-tool .size-val { min-width:30px; font-size:13px; font-weight:500; }
-        @media (max-width:500px) { .container { padding:12px 10px 16px; } .info-grid { grid-template-columns:1fr; gap:0; padding:6px 12px; } .info-item { font-size:13px; padding:4px 0; } .export-btn { font-size:14px; padding:11px 0; min-width:58px; } .color-hex-large { font-size:16px; } .adv-row input[type="number"] { width:60px; } .adv-row { gap:6px; } .layer-item { padding:3px 4px; min-height:36px; gap:6px; } .layer-item .thumb { width:28px; height:28px; } .layer-item .layer-actions button { font-size:14px; padding:2px 3px; min-width:24px; min-height:24px; } .layer-item .layer-actions .move-btn { font-size:12px; } .layer-item .layer-actions .vis-toggle { font-size:14px; } .layer-item .layer-actions .del-btn { font-size:14px; } .erase-tool input[type="range"] { width:80px; } }
-        @media (hover:none) { .export-btn:hover { background:inherit; } .export-btn:hover[data-format="png"] { background:#e3eaf7; } .export-btn:hover[data-format="jpg"] { background:#f7ede6; } .export-btn:hover[data-format="webp"] { background:#e6f7ed; } .export-btn:hover[data-format="bmp"] { background:#efe6f7; } .upload-area:hover { background:#fafcff; border-color:#d0d7e2; } }
+        .tool-btn .icon { font-size: 24px; line-height: 1.2; }
+        .tool-btn .label { font-size: 10px; font-weight: 500; line-height: 1.2; white-space: nowrap; }
+        .tool-btn:active { transform: scale(0.92); }
+        .tool-btn.active { background: #eaf1fe; color: #1f2a3a; font-weight: 600; }
+        .tool-btn.active .label { color: #1f2a3a; }
+        .tool-btn.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 20px;
+            background: #2c3e5a;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* ===== 主内容区 ===== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #f8faff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #eef2f8;
+            flex-shrink: 0;
+            min-height: 56px;
+            gap: 12px;
+        }
+        .main-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2a3a;
+            white-space: nowrap;
+        }
+        .header-color-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .header-color-info .color-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid #dee5ef;
+            flex-shrink: 0;
+            background: #a0aab8;
+        }
+        .header-color-info .color-hex {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1a2330;
+            font-family: "SF Mono", "Menlo", monospace;
+            min-width: 50px;
+        }
+
+        /* ===== 画布区域 ===== */
+        .canvas-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px 8px 16px;
+            min-height: 0;
+            background: #f8faff;
+        }
+        /* ===== 关键修复：使用 aspect-ratio + object-fit: contain 防止拉伸 ===== */
+        .canvas-wrapper {
+            position: relative;
+            background: #eef0f4;
+            border-radius: 16px;
+            overflow: hidden;
+            touch-action: none;
+            flex: 1;
+            min-height: 200px;
+            border: 1px solid #e6ebf3;
+            aspect-ratio: 700 / 480;
+            max-height: 100%;
+            align-self: center;
+            width: 100%;
+        }
+        #imageCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            background: #eef0f4;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            cursor: default;
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            object-fit: contain;
+        }
+        .zoom-indicator {
+            position: absolute;
+            bottom: 12px;
+            left: 14px;
+            background: rgba(20,28,40,0.7);
+            backdrop-filter: blur(4px);
+            color: #f0f4fc;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: "SF Mono", "Menlo", monospace;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            z-index: 2;
+        }
+        .zoom-indicator.show { opacity: 1; }
+
+        .hint-msg {
+            margin: 6px 4px 0 4px;
+            font-size: 12px;
+            color: #7a8aa0;
+            user-select: none;
+            flex-shrink: 0;
+            min-height: 22px;
+        }
+
+        /* ===== 工具面板 (下方) ===== */
+        .tool-panel {
+            background: #ffffff;
+            border-top: 1px solid #eef2f8;
+            padding: 12px 16px 16px 16px;
+            flex-shrink: 0;
+            max-height: 50vh;
+            overflow-y: auto;
+            transition: max-height 0.25s ease;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.02);
+        }
+        .panel-content { display: none; animation: fadeUp 0.2s ease; }
+        .panel-content.active { display: block; }
+        @keyframes fadeUp { 0% { opacity:0; transform:translateY(8px); } 100% { opacity:1; transform:translateY(0); } }
+
+        /* ===== 工具面板内部样式 ===== */
+        .adv-group { margin-bottom: 14px; }
+        .adv-group:last-child { margin-bottom: 0; }
+        .adv-group-title { font-size: 13px; font-weight: 600; color: #2c3e5a; margin-bottom: 6px; letter-spacing: 0.3px; }
+        .adv-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+        .adv-row label { font-size: 12px; color: #4a5a72; min-width: 32px; }
+        .adv-row input[type="number"] { width: 60px; padding: 4px 6px; border: 1px solid #d0d7e2; border-radius: 6px; font-size: 12px; background: #fff; font-family: inherit; }
+        .adv-row input[type="number"]:focus { outline: none; border-color: #7a8ba3; }
+        .adv-row input[type="range"] { flex: 1; min-width: 80px; accent-color: #3d6b9b; }
+        .adv-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2c3e5a;
+            cursor: pointer;
+        }
+        .adv-row .value-label { min-width: 36px; font-size: 12px; color: #3d4a5c; font-weight: 500; }
+        .adv-btn { padding: 5px 14px; border: none; border-radius: 30px; background: #e6ecf5; font-size: 12px; font-weight: 500; color: #1f2a3a; cursor: pointer; transition: background 0.15s; font-family: inherit; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        .adv-btn:active { background: #cdd6e3; }
+        .adv-btn.primary { background: #2c3e5a; color: #fff; }
+        .adv-btn.primary:active { background: #1a2a3f; }
+        .adv-btn.danger { background: #e8d5d5; color: #7a3a3a; }
+        .adv-btn.danger:active { background: #dbbdbd; }
+
+        /* 图层列表 */
+        .layer-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; max-height: 140px; overflow-y: auto; border: 1px solid #e2e6ee; border-radius: 10px; padding: 4px 6px; background: #fff; }
+        .layer-item { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; background: #fafcff; border: 1px solid #eef2f8; transition: background 0.15s, border-color 0.15s; user-select: none; min-height: 34px; }
+        .layer-item.selected { border-color: #2c3e5a; background: #eaf1fe; }
+        .layer-item .thumb { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; background: #eef0f4; border: 1px solid #d0d7e2; flex-shrink: 0; }
+        .layer-item .layer-name { flex: 1; font-size: 12px; font-weight: 500; color: #1f2a3a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .layer-item .layer-actions { display: flex; gap: 0px; align-items: center; flex-shrink: 0; }
+        .layer-item .layer-actions button { background: none; border: none; font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.1s; line-height: 1; color: #2c3e5a; touch-action: manipulation; -webkit-tap-highlight-color: transparent; min-width: 24px; min-height: 24px; display: flex; align-items: center; justify-content: center; }
+        .layer-item .layer-actions button:active { background: #d0d7e2; }
+        .layer-item .layer-actions .vis-toggle { font-size: 14px; }
+        .layer-item .layer-actions .del-btn { color: #b33; font-size: 14px; }
+        .layer-item .layer-actions .move-btn { font-size: 12px; color: #4a5a72; padding: 2px 3px; }
+        .layer-item .layer-actions .move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .layer-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-items: center; }
+        .layer-controls .adv-row { margin-bottom: 0; }
+
+        /* 裁剪复选框 */
+        .crop-checkboxes { display: flex; flex-wrap: wrap; gap: 4px 10px; flex: 1; }
+        .crop-checkboxes label { display: flex; align-items: center; gap: 3px; font-size: 12px; color: #2c3e5a; cursor: pointer; }
+
+        /* 擦除工具 */
+        .erase-tool { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .erase-tool label { font-size: 12px; color: #4a5a72; }
+        .erase-tool input[type="range"] { width: 100px; accent-color: #3d6b9b; }
+        .erase-tool .size-val { min-width: 24px; font-size: 12px; font-weight: 500; }
+
+        /* 导出 */
+        .export-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .export-grid .adv-btn { flex: 1; min-width: 56px; text-align: center; padding: 8px 0; font-size: 13px; }
+        .export-grid .adv-btn[data-format="png"] { background: #e3eaf7; color: #1c3b6b; }
+        .export-grid .adv-btn[data-format="jpg"] { background: #f7ede6; color: #6b3d1c; }
+        .export-grid .adv-btn[data-format="webp"] { background: #e6f7ed; color: #1c6b3d; }
+        .export-grid .adv-btn[data-format="bmp"] { background: #efe6f7; color: #4a1c6b; }
+        .export-grid .adv-btn:active { transform: scale(0.94); }
+
+        /* 上传蒙版 */
+        .upload-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(238, 240, 244, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 10;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+            gap: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #3d4a5c;
+            border: 2px dashed #d0d7e2;
+        }
+        .upload-overlay.hidden { opacity: 0; pointer-events: none; }
+        .upload-overlay .upload-icon { font-size: 48px; }
+        .upload-overlay .upload-title { font-size: 16px; font-weight: 500; color: #1f2a3a; }
+        .upload-overlay .upload-sub { font-size: 13px; color: #6a7b8e; }
+        #fileInput { display: none; }
+
+        /* ===== 移动端适配 ===== */
+        @media (max-width: 768px) {
+            .app-layout { flex-direction: column-reverse; height: 100vh; }
+            .sidebar {
+                width: 100%; flex-direction: row; height: 64px; border-right: none;
+                border-top: 1px solid #e6ebf3; padding: 4px 4px 6px 4px;
+                box-shadow: 0 -2px 12px rgba(0,0,0,0.04); overflow-x: auto; overflow-y: hidden;
+                flex-shrink: 0; background: #ffffff; z-index: 30;
+            }
+            .sidebar .logo { display: none; }
+            .tools-nav {
+                flex-direction: row; justify-content: space-around; gap: 0px;
+                flex: 1; min-width: 320px;
+            }
+            .tool-btn {
+                flex-direction: column; padding: 4px 0; width: auto; flex: 1;
+                min-width: 44px; gap: 0px; border-radius: 8px;
+            }
+            .tool-btn .icon { font-size: 20px; }
+            .tool-btn .label { font-size: 9px; margin-top: 1px; }
+            .tool-btn.active::before {
+                top: auto; bottom: 0; left: 50%; transform: translateX(-50%);
+                width: 20px; height: 3px; border-radius: 4px 4px 0 0;
+            }
+            .main-content { height: calc(100vh - 64px); }
+            .main-header h1 { font-size: 15px; }
+            .main-header { padding: 6px 12px; min-height: 44px; }
+            .header-color-info .color-swatch { width: 22px; height: 22px; }
+            .header-color-info .color-hex { font-size: 12px; min-width: 40px; }
+            .canvas-section { padding: 6px 8px 4px 8px; }
+            .canvas-wrapper { border-radius: 12px; min-height: 120px; }
+            .tool-panel { padding: 8px 10px 12px 10px; max-height: 45vh; }
+            .adv-row { gap: 6px; }
+            .adv-row input[type="number"] { width: 50px; padding: 3px 4px; font-size: 11px; }
+            .adv-row input[type="range"] { min-width: 60px; }
+            .adv-btn { font-size: 11px; padding: 4px 10px; }
+            .layer-item { min-height: 30px; padding: 2px 4px; }
+            .layer-item .thumb { width: 22px; height: 22px; }
+            .layer-item .layer-actions button { font-size: 12px; min-width: 20px; min-height: 20px; }
+            .export-grid .adv-btn { font-size: 12px; padding: 6px 0; min-width: 48px; }
+            .upload-overlay .upload-icon { font-size: 32px; }
+            .upload-overlay .upload-title { font-size: 14px; }
+            .upload-overlay .upload-sub { font-size: 12px; }
+            .hint-msg { font-size: 11px; min-height: 18px; margin: 4px 2px 0 2px; }
+            .zoom-indicator { font-size: 11px; padding: 2px 10px; bottom: 8px; left: 10px; }
+        }
+
+        @media (max-width: 400px) {
+            .tool-btn .label { font-size: 8px; }
+            .tool-btn .icon { font-size: 18px; }
+            .main-header h1 { font-size: 13px; }
+            .header-color-info .color-hex { font-size: 10px; min-width: 30px; }
+            .adv-row label { font-size: 11px; min-width: 24px; }
+            .adv-row input[type="number"] { width: 44px; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-	<div class="sticky-section">
-        <div class="upload-area" id="uploadArea">
-            <label for="fileInput">
-                <span>📁 点击上传图片 (添加为图层)</span><br />
-                <span style="font-weight:400; color:#6a7b8e; font-size:14px; display:inline-block; margin-top:4px;">JPG / PNG / WebP / BMP</span>
-            </label>
-            <input type="file" id="fileInput" accept="image/*" multiple />
-        </div>
+<div class="app-layout">
 
-        <div class="canvas-wrapper" id="canvasWrapper">
-            <canvas id="imageCanvas"></canvas>
-            <canvas id="overlayCanvas"></canvas>
-            <div class="zoom-indicator" id="zoomIndicator">100%</div>
-        </div>
+    <!-- ===== 左侧边栏 / 底部导航 ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="logo">🎨</div>
+        <nav class="tools-nav">
+            <button class="tool-btn active" data-tool="upload" title="上传图片"><span class="icon">📁</span><span class="label">上传</span></button>
+            <button class="tool-btn" data-tool="layers" title="图层管理"><span class="icon">📚</span><span class="label">图层</span></button>
+            <button class="tool-btn" data-tool="filters" title="滤镜调整"><span class="icon">🎨</span><span class="label">滤镜</span></button>
+            <button class="tool-btn" data-tool="crop" title="裁剪"><span class="icon">✂️</span><span class="label">裁剪</span></button>
+            <button class="tool-btn" data-tool="colorpicker" title="取色器"><span class="icon">💉</span><span class="label">取色</span></button>
+            <button class="tool-btn" data-tool="erase" title="擦除"><span class="icon">🧹</span><span class="label">擦除</span></button>
+            <button class="tool-btn" data-tool="export" title="导出"><span class="icon">💾</span><span class="label">导出</span></button>
+        </nav>
+    </aside>
 
-        <div class="hint-msg" id="hintMsg">💡 选中图层才可对图层进行操作</div>
+    <!-- ===== 主内容 ===== -->
+    <div class="main-content">
 
-        <div class="info-section">
-            <div class="color-preview">
+        <!-- 顶部标题栏 -->
+        <header class="main-header">
+            <h1>🖼️ 多图层编辑器</h1>
+            <div class="header-color-info">
                 <div class="color-swatch" id="colorSwatch" style="background:#a0aab8;"></div>
-                <span class="color-hex-large" id="hexDisplay">—</span>
+                <span class="color-hex" id="hexDisplay">—</span>
             </div>
-            <div class="info-grid">
-                <div class="info-item"><span class="label">HEX</span><span class="value" id="vHex">—</span></div>
-                <div class="info-item"><span class="label">RGB</span><span class="value" id="vRgb">—</span></div>
-                <div class="info-item"><span class="label">HSL</span><span class="value" id="vHsl">—</span></div>
-                <div class="info-item"><span class="label">HSV</span><span class="value" id="vHsv">—</span></div>
-                <div class="info-item"><span class="label">CMYK</span><span class="value" id="vCmyk">—</span></div>
+        </header>
+
+        <!-- 画布区域 -->
+        <section class="canvas-section">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <!-- 上传蒙版（无图片时显示） -->
+                <div class="upload-overlay" id="uploadOverlay">
+                    <span class="upload-icon">📁</span>
+                    <span class="upload-title">点击上传图片</span>
+                    <span class="upload-sub">JPG / PNG / WebP / BMP</span>
+                </div>
+                <canvas id="imageCanvas"></canvas>
+                <canvas id="overlayCanvas"></canvas>
+                <div class="zoom-indicator" id="zoomIndicator">100%</div>
             </div>
-        </div>
+            <div class="hint-msg" id="hintMsg">💡 点击左侧工具开始编辑</div>
+        </section>
 
-        <div class="export-section">
-            <button class="export-btn" data-format="png">PNG</button>
-            <button class="export-btn" data-format="jpg">JPG</button>
-            <button class="export-btn" data-format="webp">WEBP</button>
-            <button class="export-btn" data-format="bmp">BMP</button>
-        </div>
+        <!-- 工具面板 -->
+        <section class="tool-panel" id="toolPanel">
+            <!-- 上传 -->
+            <div class="panel-content active" id="panel-upload">
+                <div class="adv-group">
+                    <div class="adv-group-title">📁 上传图片</div>
+                    <div class="adv-row" style="gap:12px;">
+                        <button class="adv-btn primary" id="uploadBtn" style="padding:8px 24px;">选择图片</button>
+                        <span style="font-size:12px; color:#7a8aa0;">支持多选</span>
+                    </div>
+                    <div style="font-size:12px; color:#8a9ab0; margin-top:4px;">点击侧边栏「上传」或点击画布也可上传</div>
+                </div>
+            </div>
 
-        <div class="advanced-panel" id="advancedPanel">
-            <div class="adv-group">
-                <div class="adv-group-title">图层管理</div>
-                <div class="layer-list" id="layerList"></div>
-                <div class="layer-controls">
+            <!-- 图层 -->
+            <div class="panel-content" id="panel-layers">
+                <div class="adv-group">
+                    <div class="adv-group-title">📚 图层管理</div>
+                    <div class="layer-list" id="layerList"></div>
+                    <div class="layer-controls">
+                        <div class="adv-row">
+                            <label>X</label>
+                            <input type="number" id="layerX" value="0" step="1" style="width:60px;" />
+                            <label>Y</label>
+                            <input type="number" id="layerY" value="0" step="1" style="width:60px;" />
+                            <label>旋转</label>
+                            <input type="number" id="layerRotation" value="0" step="1" min="0" max="360" style="width:50px;" />
+                            <label>°</label>
+                            <button class="adv-btn" id="applyLayerPos">应用</button>
+                            <button class="adv-btn danger" id="deleteSelectedLayer">删除</button>
+                        </div>
+                        <div class="adv-row">
+                            <label>大小</label>
+                            <input type="range" id="layerScaleSlider" min="10" max="200" value="100" step="1" style="flex:1; min-width:70px;" />
+                            <span class="value-label" id="layerScaleVal">100%</span>
+                        </div>
+                        <!-- ===== 新增：不透明度滑块 ===== -->
+                        <div class="adv-row">
+                            <label>不透明度</label>
+                            <input type="range" id="layerOpacitySlider" min="0" max="100" value="100" step="1" style="flex:1; min-width:70px;" />
+                            <span class="value-label" id="layerOpacityVal">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 滤镜 -->
+            <div class="panel-content" id="panel-filters">
+                <div class="adv-group">
+                    <div class="adv-group-title">🎨 图层滤镜</div>
                     <div class="adv-row">
-                        <label>X</label>
-                        <input type="number" id="layerX" value="0" step="1" style="width:70px;" />
-                        <label>Y</label>
-                        <input type="number" id="layerY" value="0" step="1" style="width:70px;" />
-                        <label>旋转</label>
-                        <input type="number" id="layerRotation" value="0" step="1" min="0" max="360" style="width:60px;" />
-                        <label>°</label>
-                        <button class="adv-btn" id="applyLayerPos">应用</button>
-                        <button class="adv-btn danger" id="deleteSelectedLayer">删除</button>
+                        <label>亮度</label>
+                        <input type="range" id="brightnessSlider" min="0" max="200" value="100" />
+                        <span class="value-label" id="brightnessVal">100%</span>
                     </div>
                     <div class="adv-row">
-                        <label>大小</label>
-                        <input type="range" id="layerScaleSlider" min="10" max="200" value="100" step="1" style="flex:1; min-width:80px;" />
-                        <span class="value-label" id="layerScaleVal">100%</span>
+                        <label>对比度</label>
+                        <input type="range" id="contrastSlider" min="0" max="200" value="100" />
+                        <span class="value-label" id="contrastVal">100%</span>
+                    </div>
+                    <div class="adv-row">
+                        <label>饱和度</label>
+                        <input type="range" id="saturationSlider" min="0" max="200" value="100" />
+                        <span class="value-label" id="saturationVal">100%</span>
+                    </div>
+                    <div class="adv-row">
+                        <label>色相</label>
+                        <input type="range" id="hueSlider" min="0" max="360" value="0" />
+                        <span class="value-label" id="hueVal">0°</span>
+                    </div>
+                    <div class="adv-row">
+                        <button class="adv-btn danger" id="resetLayerFilters">重置滤镜</button>
                     </div>
                 </div>
             </div>
 
-            <div class="adv-group">
-                <div class="adv-group-title">图层滤镜</div>
-                <div class="adv-row">
-                    <label>亮度</label>
-                    <input type="range" id="brightnessSlider" min="0" max="200" value="100" />
-                    <span class="value-label" id="brightnessVal">100%</span>
-                </div>
-                <div class="adv-row">
-                    <label>对比度</label>
-                    <input type="range" id="contrastSlider" min="0" max="200" value="100" />
-                    <span class="value-label" id="contrastVal">100%</span>
-                </div>
-                <div class="adv-row">
-                    <label>饱和度</label>
-                    <input type="range" id="saturationSlider" min="0" max="200" value="100" />
-                    <span class="value-label" id="saturationVal">100%</span>
-                </div>
-                <div class="adv-row">
-                    <label>色相</label>
-                    <input type="range" id="hueSlider" min="0" max="360" value="0" />
-                    <span class="value-label" id="hueVal">0°</span>
-                </div>
-                <div class="adv-row">
-                    <button class="adv-btn danger" id="resetLayerFilters">重置滤镜</button>
+            <!-- 裁剪 -->
+            <div class="panel-content" id="panel-crop">
+                <div class="adv-group">
+                    <div class="adv-group-title">✂️ 裁剪</div>
+                    <div class="adv-row">
+                        <label>比例</label>
+                        <input type="number" id="cropRatioW" value="16" style="width:50px;" min="1" step="1" />
+                        <span style="color:#4a5a72;">:</span>
+                        <input type="number" id="cropRatioH" value="9" style="width:50px;" min="1" step="1" />
+                        <button class="adv-btn primary" id="cropApplyBtn" style="padding:4px 16px;">裁剪</button>
+                    </div>
+                    <div class="adv-row" style="gap:4px; flex-wrap:wrap;">
+                        <label style="min-width:32px;">预设</label>
+                        <button class="adv-btn crop-preset" data-w="1" data-h="1">1:1</button>
+                        <button class="adv-btn crop-preset" data-w="4" data-h="3">4:3</button>
+                        <button class="adv-btn crop-preset" data-w="16" data-h="9">16:9</button>
+                        <button class="adv-btn crop-preset" data-w="3" data-h="2">3:2</button>
+                        <button class="adv-btn crop-preset" data-w="21" data-h="9">21:9</button>
+                    </div>
+                    <div class="adv-row" style="flex-wrap:wrap; gap:4px; margin-top:4px;">
+                        <label style="min-width:32px;">图层</label>
+                        <div class="crop-checkboxes" id="cropLayerCheckboxes"></div>
+                        <button class="adv-btn" id="cropSelectAll" style="font-size:11px; padding:2px 10px;">全选</button>
+                        <button class="adv-btn" id="cropSelectNone" style="font-size:11px; padding:2px 10px;">取消</button>
+                    </div>
+                    <div style="font-size:11px; color:#8a9ab0; margin-top:2px;">⚠️ 裁剪后不可恢复</div>
                 </div>
             </div>
 
-            <div class="adv-group">
-                <div class="adv-group-title">取色与擦除</div>
-				            <!-- ========== 新增：裁剪功能 ========== -->
-            <div class="adv-group">
-                <div class="adv-group-title">✂️ 裁剪</div>
-                <div class="adv-row">
-                    <label>比例</label>
-                    <input type="number" id="cropRatioW" value="16" style="width:60px;" min="1" step="1" />
-                    <span style="color:#4a5a72;">:</span>
-                    <input type="number" id="cropRatioH" value="9" style="width:60px;" min="1" step="1" />
-                    <button class="adv-btn primary" id="cropApplyBtn" style="padding:6px 20px;">裁剪</button>
+            <!-- 取色器 -->
+            <div class="panel-content" id="panel-colorpicker">
+                <div class="adv-group">
+                    <div class="adv-group-title">💉 取色器</div>
+                    <div class="adv-row">
+                        <button class="adv-btn" id="colorPickToggle" style="min-width:100px;">🎨 取色模式</button>
+                        <span style="font-size:12px; color:#7a8aa0;">点击画布取色</span>
+                    </div>
+                    <div class="adv-row" style="margin-top:6px; gap:16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#4a5a72;">HEX</span>
+                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHex">—</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#4a5a72;">RGB</span>
+                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vRgb">—</span>
+                        </div>
+                    </div>
+                    <div class="adv-row" style="gap:16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#4a5a72;">HSL</span>
+                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsl">—</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#4a5a72;">HSV</span>
+                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vHsv">—</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:12px; color:#4a5a72;">CMYK</span>
+                            <span style="font-weight:500; font-family:monospace; font-size:13px;" id="vCmyk">—</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="adv-row" style="gap:6px; flex-wrap:wrap;">
-                    <label style="min-width:40px;">预设</label>
-                    <button class="adv-btn crop-preset" data-w="1" data-h="1">1:1</button>
-                    <button class="adv-btn crop-preset" data-w="4" data-h="3">4:3</button>
-                    <button class="adv-btn crop-preset" data-w="16" data-h="9">16:9</button>
-                    <button class="adv-btn crop-preset" data-w="3" data-h="2">3:2</button>
-                    <button class="adv-btn crop-preset" data-w="21" data-h="9">21:9</button>
-                </div>
-                <div class="adv-row" style="flex-wrap:wrap; gap:6px; margin-top:4px;">
-                    <label style="min-width:40px;">图层</label>
-                    <div id="cropLayerCheckboxes" style="display:flex; flex-wrap:wrap; gap:4px 10px; flex:1;"></div>
-                    <button class="adv-btn" id="cropSelectAll" style="font-size:12px; padding:4px 12px;">全选</button>
-                    <button class="adv-btn" id="cropSelectNone" style="font-size:12px; padding:4px 12px;">取消</button>
-                </div>
-                <div style="font-size:12px; color:#8a9ab0; margin-top:2px;">⚠️ 裁剪后不可恢复，请谨慎操作</div>
             </div>
-            <!-- ========== 新增结束 ========== -->
-                <div class="tool-group">
-                    <button class="adv-btn" id="colorPickToggle">🎨 取色模式</button>
-                    <button class="adv-btn" id="eraseModeToggle">🖍️ 擦除模式</button>
-                    <div class="erase-tool">
+
+            <!-- 擦除 -->
+            <div class="panel-content" id="panel-erase">
+                <div class="adv-group">
+                    <div class="adv-group-title">🧹 擦除</div>
+                    <div class="adv-row">
+                        <button class="adv-btn" id="eraseModeToggle" style="min-width:100px;">🖍️ 擦除模式</button>
+                        <span style="font-size:12px; color:#7a8aa0;">在画布上拖动擦除</span>
+                    </div>
+                    <div class="adv-row erase-tool">
                         <label>画笔大小</label>
                         <input type="range" id="brushSizeSlider" min="1" max="1000" value="20" />
                         <span class="size-val" id="brushSizeVal">20</span>
@@ -225,803 +583,1384 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div style="margin-top:10px; font-size:12px; color:#aab4c6; text-align:center;">滚轮缩放 · 拖拽平移 · 点击选中图层</div>
+            <!-- 导出 -->
+            <div class="panel-content" id="panel-export">
+                <div class="adv-group">
+                    <div class="adv-group-title">💾 导出</div>
+                    <div class="adv-row">
+                        <span style="font-size:12px; color:#4a5a72;">选择格式导出合成图像</span>
+                    </div>
+                    <div class="export-grid">
+                        <button class="adv-btn" data-format="png">PNG</button>
+                        <button class="adv-btn" data-format="jpg">JPG</button>
+                        <button class="adv-btn" data-format="webp">WEBP</button>
+                        <button class="adv-btn" data-format="bmp">BMP</button>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
+</div>
 
-    <script>
-        (function() {
-            'use strict';
+<!-- 隐藏 file input -->
+<input type="file" id="fileInput" accept="image/*" multiple />
 
-            // ========== DOM 引用 ==========
-            const fileInput = document.getElementById('fileInput');
-            const uploadArea = document.getElementById('uploadArea');
-            const canvas = document.getElementById('imageCanvas');
-            const ctx = canvas.getContext('2d');
-            const overlayCanvas = document.getElementById('overlayCanvas');
-            const overlayCtx = overlayCanvas.getContext('2d');
-            const zoomIndicator = document.getElementById('zoomIndicator');
-            const hintMsg = document.getElementById('hintMsg');
+<script>
+    (function() {
+        'use strict';
 
-            const colorSwatch = document.getElementById('colorSwatch');
-            const hexDisplay = document.getElementById('hexDisplay');
-            const vHex = document.getElementById('vHex');
-            const vRgb = document.getElementById('vRgb');
-            const vHsl = document.getElementById('vHsl');
-            const vHsv = document.getElementById('vHsv');
-            const vCmyk = document.getElementById('vCmyk');
+        // ========== DOM 引用 ==========
+        const fileInput = document.getElementById('fileInput');
+        const uploadOverlay = document.getElementById('uploadOverlay');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        const zoomIndicator = document.getElementById('zoomIndicator');
+        const hintMsg = document.getElementById('hintMsg');
 
-            const exportBtns = document.querySelectorAll('.export-btn');
+        const colorSwatch = document.getElementById('colorSwatch');
+        const hexDisplay = document.getElementById('hexDisplay');
+        const vHex = document.getElementById('vHex');
+        const vRgb = document.getElementById('vRgb');
+        const vHsl = document.getElementById('vHsl');
+        const vHsv = document.getElementById('vHsv');
+        const vCmyk = document.getElementById('vCmyk');
 
-            const layerList = document.getElementById('layerList');
-            const layerX = document.getElementById('layerX');
-            const layerY = document.getElementById('layerY');
-            const layerRotation = document.getElementById('layerRotation');
-            const layerScaleSlider = document.getElementById('layerScaleSlider');
-            const layerScaleVal = document.getElementById('layerScaleVal');
-            const applyLayerPos = document.getElementById('applyLayerPos');
-            const deleteSelectedBtn = document.getElementById('deleteSelectedLayer');
+        const exportBtns = document.querySelectorAll('.export-grid .adv-btn');
 
-            const brightnessSlider = document.getElementById('brightnessSlider');
-            const contrastSlider = document.getElementById('contrastSlider');
-            const saturationSlider = document.getElementById('saturationSlider');
-            const hueSlider = document.getElementById('hueSlider');
-            const brightnessVal = document.getElementById('brightnessVal');
-            const contrastVal = document.getElementById('contrastVal');
-            const saturationVal = document.getElementById('saturationVal');
-            const hueVal = document.getElementById('hueVal');
-            const resetLayerFilters = document.getElementById('resetLayerFilters');
+        const layerList = document.getElementById('layerList');
+        const layerX = document.getElementById('layerX');
+        const layerY = document.getElementById('layerY');
+        const layerRotation = document.getElementById('layerRotation');
+        const layerScaleSlider = document.getElementById('layerScaleSlider');
+        const layerScaleVal = document.getElementById('layerScaleVal');
+        // ===== 新增：不透明度 DOM =====
+        const layerOpacitySlider = document.getElementById('layerOpacitySlider');
+        const layerOpacityVal = document.getElementById('layerOpacityVal');
+        const applyLayerPos = document.getElementById('applyLayerPos');
+        const deleteSelectedBtn = document.getElementById('deleteSelectedLayer');
 
-            const colorPickToggle = document.getElementById('colorPickToggle');
-            const eraseModeToggle = document.getElementById('eraseModeToggle');
-            const brushSizeSlider = document.getElementById('brushSizeSlider');
-            const brushSizeVal = document.getElementById('brushSizeVal');
-            const clearErasure = document.getElementById('clearErasure');
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const contrastSlider = document.getElementById('contrastSlider');
+        const saturationSlider = document.getElementById('saturationSlider');
+        const hueSlider = document.getElementById('hueSlider');
+        const brightnessVal = document.getElementById('brightnessVal');
+        const contrastVal = document.getElementById('contrastVal');
+        const saturationVal = document.getElementById('saturationVal');
+        const hueVal = document.getElementById('hueVal');
+        const resetLayerFilters = document.getElementById('resetLayerFilters');
 
-            // ========== 状态 ==========
-            let layers = [];
-            let selectedLayerId = null;
-            let nextId = 1;
+        const colorPickToggle = document.getElementById('colorPickToggle');
+        const eraseModeToggle = document.getElementById('eraseModeToggle');
+        const brushSizeSlider = document.getElementById('brushSizeSlider');
+        const brushSizeVal = document.getElementById('brushSizeVal');
+        const clearErasure = document.getElementById('clearErasure');
 
-            let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
+        // 裁剪
+        const cropRatioW = document.getElementById('cropRatioW');
+        const cropRatioH = document.getElementById('cropRatioH');
+        const cropApplyBtn = document.getElementById('cropApplyBtn');
+        const cropLayerCheckboxes = document.getElementById('cropLayerCheckboxes');
+        const cropSelectAll = document.getElementById('cropSelectAll');
+        const cropSelectNone = document.getElementById('cropSelectNone');
+        const cropPresetBtns = document.querySelectorAll('.crop-preset');
 
-            let colorPickMode = false;
-            let eraseMode = false;
-            let brushSize = 20;
-            let isErasing = false;
+        // 侧边栏工具
+        const toolBtns = document.querySelectorAll('.tool-btn');
+        const panelContents = document.querySelectorAll('.panel-content');
 
-            let isDraggingView = false;
-            let dragStartX = 0,
-                dragStartY = 0;
-            let dragStartOffsetX = 0,
-                dragStartOffsetY = 0;
+        // ========== 状态 ==========
+        let layers = [];
+        let selectedLayerId = null;
+        let nextId = 1;
 
-            let isDraggingLayer = false;
-            let dragLayerStartX = 0,
-                dragLayerStartY = 0;
-            let dragLayerOrigX = 0,
-                dragLayerOrigY = 0;
-            let draggedLayerId = null;
+        let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
 
-            let isPinching = false;
-            let pinchStartDist = 0;
-            let pinchStartScale = 1;
-            let pinchStartOffsetX = 0,
-                pinchStartOffsetY = 0;
-            let pinchCenterX = 0,
-                pinchCenterY = 0;
+        let colorPickMode = false;
+        let eraseMode = false;
+        let brushSize = 20;
+        let isErasing = false;
 
-            let lastErasePoint = null;
+        let isDraggingView = false;
+        let dragStartX = 0, dragStartY = 0;
+        let dragStartOffsetX = 0, dragStartOffsetY = 0;
 
-            // ========== 颜色转换 ==========
-            function componentToHex(c) { const hex = c.toString(16); return hex.length === 1 ? '0' + hex : hex; }
+        let isDraggingLayer = false;
+        let dragLayerStartX = 0, dragLayerStartY = 0;
+        let dragLayerOrigX = 0, dragLayerOrigY = 0;
+        let draggedLayerId = null;
 
-            function rgbToHex(r, g, b) { return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b); }
+        let isPinching = false;
+        let pinchStartDist = 0;
+        let pinchStartScale = 1;
+        let pinchStartOffsetX = 0, pinchStartOffsetY = 0;
+        let pinchCenterX = 0, pinchCenterY = 0;
 
-            function rgbToHsl(r, g, b) {
-                r /= 255;
-                g /= 255;
-                b /= 255;
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
-                let h, s, l = (max + min) / 2;
-                if (max === min) { h = s = 0; } else {
-                    const d = max - min;
-                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-                    switch (max) {
-                        case r:
-                            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-                            break;
-                        case g:
-                            h = ((b - r) / d + 2) / 6;
-                            break;
-                        case b:
-                            h = ((r - g) / d + 4) / 6;
-                            break;
-                    }
-                }
-                return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
-            }
+        let lastErasePoint = null;
+        let touchId = null;
 
-            function rgbToHsv(r, g, b) {
-                r /= 255;
-                g /= 255;
-                b /= 255;
-                const max = Math.max(r, g, b);
-                const min = Math.min(r, g, b);
+        // =============================================
+        //  坐标转换 (修复椭圆问题)
+        // =============================================
+        function getCanvasCoords(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const containerWidth = rect.width;
+            const containerHeight = rect.height;
+            const logicalWidth = canvas.width;
+            const logicalHeight = canvas.height;
+            const scaleX = containerWidth / logicalWidth;
+            const scaleY = containerHeight / logicalHeight;
+            const scale = Math.min(scaleX, scaleY);
+            const displayWidth = logicalWidth * scale;
+            const displayHeight = logicalHeight * scale;
+            const offsetX = (containerWidth - displayWidth) / 2;
+            const offsetY = (containerHeight - displayHeight) / 2;
+
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const logicX = (x - offsetX) / scale;
+            const logicY = (y - offsetY) / scale;
+            return { x: logicX, y: logicY };
+        }
+
+        // ========== 颜色转换 ==========
+        function componentToHex(c) { const hex = c.toString(16); return hex.length === 1 ? '0' + hex : hex; }
+        function rgbToHex(r, g, b) { return '#' + componentToHex(r) + componentToHex(g) + componentToHex(b); }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) { h = s = 0; } else {
                 const d = max - min;
-                let h = 0,
-                    s = 0,
-                    v = max;
-                if (d !== 0) {
-                    s = d / max;
-                    switch (max) {
-                        case r:
-                            h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-                            break;
-                        case g:
-                            h = ((b - r) / d + 2) / 6;
-                            break;
-                        case b:
-                            h = ((r - g) / d + 4) / 6;
-                            break;
-                    }
-                }
-                return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
-            }
-
-            function rgbToCmyk(r, g, b) {
-                const cr = 1 - (r / 255);
-                const cg = 1 - (g / 255);
-                const cb = 1 - (b / 255);
-                const k = Math.min(cr, cg, cb);
-                if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
-                const c = Math.round(((cr - k) / (1 - k)) * 100);
-                const m = Math.round(((cg - k) / (1 - k)) * 100);
-                const y = Math.round(((cb - k) / (1 - k)) * 100);
-                const kk = Math.round(k * 100);
-                return { c, m, y, k: kk };
-            }
-
-            // ========== 图层核心 ==========
-
-            function createLayer(imageObj, name) {
-                const id = nextId++;
-                const layerCanvas = document.createElement('canvas');
-                layerCanvas.width = imageObj.width;
-                layerCanvas.height = imageObj.height;
-                const lCtx = layerCanvas.getContext('2d');
-                lCtx.imageSmoothingEnabled = true;
-                lCtx.drawImage(imageObj, 0, 0);
-
-                const cx = (canvas.width - imageObj.width) / 2;
-                const cy = (canvas.height - imageObj.height) / 2;
-
-                const layer = {
-                    id: id,
-                    canvas: layerCanvas,
-                    x: cx,
-                    y: cy,
-                    rotation: 0,
-                    scale: 1,
-                    visible: true,
-                    filters: { brightness: 100, contrast: 100, saturation: 100, hue: 0 },
-                    name: name || `图层 ${id}`,
-                    image: imageObj
-                };
-                layers.push(layer);
-                selectLayer(id);
-                renderAll();
-                updateLayerList();
-                return id;
-            }
-
-            function deleteLayer(id) {
-                const idx = layers.findIndex(l => l.id === id);
-                if (idx === -1) return;
-                layers.splice(idx, 1);
-                if (selectedLayerId === id) {
-                    selectedLayerId = layers.length > 0 ? layers[0].id : null;
-                }
-                renderAll();
-                updateLayerList();
-                updateControls();
-            }
-
-            function selectLayer(id) {
-                selectedLayerId = id;
-                updateLayerList();
-                updateControls();
-                const layer = getSelectedLayer();
-                if (layer) {
-                    layerX.value = layer.x;
-                    layerY.value = layer.y;
-                    layerRotation.value = layer.rotation;
-                    layerScaleSlider.value = Math.round(layer.scale * 100);
-                    layerScaleVal.textContent = Math.round(layer.scale * 100) + '%';
-                    brightnessSlider.value = layer.filters.brightness;
-                    contrastSlider.value = layer.filters.contrast;
-                    saturationSlider.value = layer.filters.saturation;
-                    hueSlider.value = layer.filters.hue;
-                    brightnessVal.textContent = layer.filters.brightness + '%';
-                    contrastVal.textContent = layer.filters.contrast + '%';
-                    saturationVal.textContent = layer.filters.saturation + '%';
-                    hueVal.textContent = layer.filters.hue + '°';
-                    hintMsg.textContent = '💡 已选中图层: ' + layer.name;
-                } else {
-                    hintMsg.textContent = '💡 选中图层才可对图层进行操作';
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
                 }
             }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        }
 
-            function getSelectedLayer() {
-                return layers.find(l => l.id === selectedLayerId) || null;
-            }
-
-            // ===== 图层排序（方向已修复）=====
-            // 在数组中：索引0为底层，索引 length-1 为顶层
-            // 显示时反向显示：顶层在上，底层在下
-            // ▲ 上移 → 显示中上升 → 数组索引增大 → 调用 moveDown
-            // ▼ 下移 → 显示中下降 → 数组索引减小 → 调用 moveUp
-
-            function moveUpInArray(id) {
-                const idx = layers.findIndex(l => l.id === id);
-                if (idx <= 0) return;
-                [layers[idx], layers[idx - 1]] = [layers[idx - 1], layers[idx]];
-                renderAll();
-                updateLayerList();
-                selectLayer(id);
-            }
-
-            function moveDownInArray(id) {
-                const idx = layers.findIndex(l => l.id === id);
-                if (idx === -1 || idx === layers.length - 1) return;
-                [layers[idx], layers[idx + 1]] = [layers[idx + 1], layers[idx]];
-                renderAll();
-                updateLayerList();
-                selectLayer(id);
-            }
-
-            // 图层面板渲染（反向显示，顶层在上）
-            function updateLayerList() {
-                layerList.innerHTML = '';
-                // 从后往前遍历（顶层在数组末尾，显示在列表顶部）
-                for (let i = layers.length - 1; i >= 0; i--) {
-                    const layer = layers[i];
-                    const index = i; // 数组中的实际索引
-                    const div = document.createElement('div');
-                    div.className = 'layer-item' + (layer.id === selectedLayerId ? ' selected' : '');
-
-                    const thumb = document.createElement('canvas');
-                    thumb.className = 'thumb';
-                    thumb.width = 32;
-                    thumb.height = 32;
-                    const tCtx = thumb.getContext('2d');
-                    tCtx.imageSmoothingEnabled = true;
-                    tCtx.drawImage(layer.canvas, 0, 0, 32, 32);
-                    div.appendChild(thumb);
-
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'layer-name';
-                    nameSpan.textContent = layer.name;
-                    div.appendChild(nameSpan);
-
-                    const actions = document.createElement('div');
-                    actions.className = 'layer-actions';
-
-                    // ▲ 上移：显示中上升 → 数组索引增大 → moveDownInArray
-                    const upBtn = document.createElement('button');
-                    upBtn.className = 'move-btn';
-                    upBtn.textContent = '▲';
-                    upBtn.title = '上移图层';
-                    upBtn.disabled = (index === layers.length - 1); // 最顶层不能上移
-                    upBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        if (!this.disabled) moveDownInArray(layer.id);
-                    });
-                    actions.appendChild(upBtn);
-
-                    // ▼ 下移：显示中下降 → 数组索引减小 → moveUpInArray
-                    const downBtn = document.createElement('button');
-                    downBtn.className = 'move-btn';
-                    downBtn.textContent = '▼';
-                    downBtn.title = '下移图层';
-                    downBtn.disabled = (index === 0); // 最底层不能下移
-                    downBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        if (!this.disabled) moveUpInArray(layer.id);
-                    });
-                    actions.appendChild(downBtn);
-
-                    // 可见性
-                    const visBtn = document.createElement('button');
-                    visBtn.className = 'vis-toggle';
-                    visBtn.textContent = layer.visible ? '👁️' : '👁️‍🗨️';
-                    visBtn.title = '切换可见性';
-                    visBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        layer.visible = !layer.visible;
-                        renderAll();
-                        updateLayerList();
-                    });
-                    actions.appendChild(visBtn);
-
-                    // 删除
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'del-btn';
-                    delBtn.textContent = '✕';
-                    delBtn.title = '删除图层';
-                    delBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        deleteLayer(layer.id);
-                    });
-                    actions.appendChild(delBtn);
-
-                    div.appendChild(actions);
-
-                    div.addEventListener('click', function() {
-                        selectLayer(layer.id);
-                    });
-
-                    layerList.appendChild(div);
-                }
-                const sel = getSelectedLayer();
-                if (sel) {
-                    layerX.value = sel.x;
-                    layerY.value = sel.y;
-                    layerRotation.value = sel.rotation;
-                    layerScaleSlider.value = Math.round(sel.scale * 100);
-                    layerScaleVal.textContent = Math.round(sel.scale * 100) + '%';
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            const d = max - min;
+            let h = 0, s = 0, v = max;
+            if (d !== 0) {
+                s = d / max;
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
                 }
             }
+            return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
+        }
 
-            function updateControls() {
-                const sel = getSelectedLayer();
-                const hasSel = !!sel;
-                layerX.disabled = !hasSel;
-                layerY.disabled = !hasSel;
-                layerRotation.disabled = !hasSel;
-                layerScaleSlider.disabled = !hasSel;
-                applyLayerPos.disabled = !hasSel;
-                deleteSelectedBtn.disabled = !hasSel;
-                brightnessSlider.disabled = !hasSel;
-                contrastSlider.disabled = !hasSel;
-                saturationSlider.disabled = !hasSel;
-                hueSlider.disabled = !hasSel;
-                resetLayerFilters.disabled = !hasSel;
-                brushSizeSlider.disabled = false;
-                clearErasure.disabled = !hasSel;
-                if (!hasSel) {
-                    brightnessSlider.value = 100;
-                    contrastSlider.value = 100;
-                    saturationSlider.value = 100;
-                    hueSlider.value = 0;
-                    brightnessVal.textContent = '100%';
-                    contrastVal.textContent = '100%';
-                    saturationVal.textContent = '100%';
-                    hueVal.textContent = '0°';
-                    layerX.value = '';
-                    layerY.value = '';
-                    layerRotation.value = '';
-                    layerScaleSlider.value = 100;
-                    layerScaleVal.textContent = '100%';
-                    hintMsg.textContent = '💡 选中图层才可对图层进行操作';
-                }
+        function rgbToCmyk(r, g, b) {
+            const cr = 1 - (r / 255), cg = 1 - (g / 255), cb = 1 - (b / 255);
+            const k = Math.min(cr, cg, cb);
+            if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+            return {
+                c: Math.round(((cr - k) / (1 - k)) * 100),
+                m: Math.round(((cg - k) / (1 - k)) * 100),
+                y: Math.round(((cb - k) / (1 - k)) * 100),
+                k: Math.round(k * 100)
+            };
+        }
+
+        // ========== 图层核心 ==========
+
+        function createLayer(imageObj, name) {
+            const id = nextId++;
+            const layerCanvas = document.createElement('canvas');
+            layerCanvas.width = imageObj.width;
+            layerCanvas.height = imageObj.height;
+            const lCtx = layerCanvas.getContext('2d');
+            lCtx.imageSmoothingEnabled = true;
+            lCtx.drawImage(imageObj, 0, 0);
+
+            const cx = (canvas.width - imageObj.width) / 2;
+            const cy = (canvas.height - imageObj.height) / 2;
+
+            const layer = {
+                id: id,
+                canvas: layerCanvas,
+                x: cx,
+                y: cy,
+                rotation: 0,
+                scale: 1,
+                visible: true,
+                opacity: 1, // ===== 新增：不透明度 =====
+                filters: { brightness: 100, contrast: 100, saturation: 100, hue: 0 },
+                name: name || `图层 ${id}`,
+                image: imageObj
+            };
+            layers.push(layer);
+            selectLayer(id);
+            renderAll();
+            updateLayerList();
+            uploadOverlay.classList.add('hidden');
+            return id;
+        }
+
+        function deleteLayer(id) {
+            const idx = layers.findIndex(l => l.id === id);
+            if (idx === -1) return;
+            layers.splice(idx, 1);
+            if (selectedLayerId === id) {
+                selectedLayerId = layers.length > 0 ? layers[0].id : null;
             }
+            renderAll();
+            updateLayerList();
+            updateControls();
+            if (layers.length === 0) uploadOverlay.classList.remove('hidden');
+        }
 
-            // ========== 渲染 ==========
+        function selectLayer(id) {
+            selectedLayerId = id;
+            updateLayerList();
+            updateControls();
+            const layer = getSelectedLayer();
+            if (layer) {
+                layerX.value = layer.x;
+                layerY.value = layer.y;
+                layerRotation.value = layer.rotation;
+                layerScaleSlider.value = Math.round(layer.scale * 100);
+                layerScaleVal.textContent = Math.round(layer.scale * 100) + '%';
+                // ===== 新增：更新不透明度显示 =====
+                layerOpacitySlider.value = Math.round((layer.opacity || 1) * 100);
+                layerOpacityVal.textContent = Math.round((layer.opacity || 1) * 100) + '%';
+                brightnessSlider.value = layer.filters.brightness;
+                contrastSlider.value = layer.filters.contrast;
+                saturationSlider.value = layer.filters.saturation;
+                hueSlider.value = layer.filters.hue;
+                brightnessVal.textContent = layer.filters.brightness + '%';
+                contrastVal.textContent = layer.filters.contrast + '%';
+                saturationVal.textContent = layer.filters.saturation + '%';
+                hueVal.textContent = layer.filters.hue + '°';
+                hintMsg.textContent = '💡 已选中图层: ' + layer.name;
+            } else {
+                hintMsg.textContent = '💡 选中图层才可对图层进行操作';
+            }
+        }
 
-            function renderAll() {
-                if (layers.length === 0) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    zoomIndicator.classList.remove('show');
-                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                    return;
-                }
+        function getSelectedLayer() {
+            return layers.find(l => l.id === selectedLayerId) || null;
+        }
 
+        // 图层排序
+        function moveUpInArray(id) {
+            const idx = layers.findIndex(l => l.id === id);
+            if (idx <= 0) return;
+            [layers[idx], layers[idx - 1]] = [layers[idx - 1], layers[idx]];
+            renderAll();
+            updateLayerList();
+            selectLayer(id);
+        }
+
+        function moveDownInArray(id) {
+            const idx = layers.findIndex(l => l.id === id);
+            if (idx === -1 || idx === layers.length - 1) return;
+            [layers[idx], layers[idx + 1]] = [layers[idx + 1], layers[idx]];
+            renderAll();
+            updateLayerList();
+            selectLayer(id);
+        }
+
+        function updateLayerList() {
+            layerList.innerHTML = '';
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                const index = i;
+                const div = document.createElement('div');
+                div.className = 'layer-item' + (layer.id === selectedLayerId ? ' selected' : '');
+
+                const thumb = document.createElement('canvas');
+                thumb.className = 'thumb';
+                thumb.width = 32;
+                thumb.height = 32;
+                const tCtx = thumb.getContext('2d');
+                tCtx.imageSmoothingEnabled = true;
+                tCtx.drawImage(layer.canvas, 0, 0, 32, 32);
+                div.appendChild(thumb);
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'layer-name';
+                nameSpan.textContent = layer.name;
+                div.appendChild(nameSpan);
+
+                const actions = document.createElement('div');
+                actions.className = 'layer-actions';
+
+                const upBtn = document.createElement('button');
+                upBtn.className = 'move-btn';
+                upBtn.textContent = '▲';
+                upBtn.title = '上移';
+                upBtn.disabled = (index === layers.length - 1);
+                upBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!this.disabled) moveDownInArray(layer.id);
+                });
+                actions.appendChild(upBtn);
+
+                const downBtn = document.createElement('button');
+                downBtn.className = 'move-btn';
+                downBtn.textContent = '▼';
+                downBtn.title = '下移';
+                downBtn.disabled = (index === 0);
+                downBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!this.disabled) moveUpInArray(layer.id);
+                });
+                actions.appendChild(downBtn);
+
+                const visBtn = document.createElement('button');
+                visBtn.className = 'vis-toggle';
+                visBtn.textContent = layer.visible ? '👁️' : '👁️‍🗨️';
+                visBtn.title = '切换可见性';
+                visBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    layer.visible = !layer.visible;
+                    renderAll();
+                    updateLayerList();
+                });
+                actions.appendChild(visBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'del-btn';
+                delBtn.textContent = '✕';
+                delBtn.title = '删除';
+                delBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deleteLayer(layer.id);
+                });
+                actions.appendChild(delBtn);
+
+                div.appendChild(actions);
+                div.addEventListener('click', function() {
+                    selectLayer(layer.id);
+                });
+                layerList.appendChild(div);
+            }
+            const sel = getSelectedLayer();
+            if (sel) {
+                layerX.value = sel.x;
+                layerY.value = sel.y;
+                layerRotation.value = sel.rotation;
+                layerScaleSlider.value = Math.round(sel.scale * 100);
+                layerScaleVal.textContent = Math.round(sel.scale * 100) + '%';
+                layerOpacitySlider.value = Math.round((sel.opacity || 1) * 100);
+                layerOpacityVal.textContent = Math.round((sel.opacity || 1) * 100) + '%';
+            }
+        }
+
+        function updateControls() {
+            const sel = getSelectedLayer();
+            const hasSel = !!sel;
+            layerX.disabled = !hasSel;
+            layerY.disabled = !hasSel;
+            layerRotation.disabled = !hasSel;
+            layerScaleSlider.disabled = !hasSel;
+            // ===== 新增：不透明度控件禁用 =====
+            layerOpacitySlider.disabled = !hasSel;
+            applyLayerPos.disabled = !hasSel;
+            deleteSelectedBtn.disabled = !hasSel;
+            brightnessSlider.disabled = !hasSel;
+            contrastSlider.disabled = !hasSel;
+            saturationSlider.disabled = !hasSel;
+            hueSlider.disabled = !hasSel;
+            resetLayerFilters.disabled = !hasSel;
+            brushSizeSlider.disabled = false;
+            clearErasure.disabled = !hasSel;
+            if (!hasSel) {
+                brightnessSlider.value = 100;
+                contrastSlider.value = 100;
+                saturationSlider.value = 100;
+                hueSlider.value = 0;
+                brightnessVal.textContent = '100%';
+                contrastVal.textContent = '100%';
+                saturationVal.textContent = '100%';
+                hueVal.textContent = '0°';
+                layerX.value = '';
+                layerY.value = '';
+                layerRotation.value = '';
+                layerScaleSlider.value = 100;
+                layerScaleVal.textContent = '100%';
+                layerOpacitySlider.value = 100;
+                layerOpacityVal.textContent = '100%';
+                hintMsg.textContent = '💡 选中图层才可对图层进行操作';
+            }
+        }
+
+        // ========== 渲染 ==========
+
+        function renderAll() {
+            if (layers.length === 0) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                zoomIndicator.classList.remove('show');
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
+            ctx.scale(viewTransform.scale, viewTransform.scale);
+
+            layers.forEach(layer => {
+                if (!layer.visible) return;
+                const lw = layer.canvas.width * layer.scale;
+                const lh = layer.canvas.height * layer.scale;
+                const cx = layer.x + layer.canvas.width / 2;
+                const cy = layer.y + layer.canvas.height / 2;
+                const angle = layer.rotation * Math.PI / 180;
+                const f = layer.filters;
+                const filterStr =
+                    `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
+                // ===== 新增：应用不透明度 =====
+                const opacity = layer.opacity !== undefined ? layer.opacity : 1;
 
                 ctx.save();
-                ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
-                ctx.scale(viewTransform.scale, viewTransform.scale);
-
-                layers.forEach(layer => {
-                    if (!layer.visible) return;
-                    const lw = layer.canvas.width * layer.scale;
-                    const lh = layer.canvas.height * layer.scale;
-                    const cx = layer.x + layer.canvas.width / 2;
-                    const cy = layer.y + layer.canvas.height / 2;
-                    const angle = layer.rotation * Math.PI / 180;
-                    const f = layer.filters;
-                    const filterStr =
-                        `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
-
-                    ctx.save();
-                    ctx.translate(cx, cy);
-                    ctx.rotate(angle);
-                    ctx.filter = filterStr;
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
-                    ctx.restore();
-                });
-
+                ctx.globalAlpha = opacity;
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.filter = filterStr;
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
                 ctx.restore();
+            });
 
-                const percent = Math.round(viewTransform.scale * 100);
-                zoomIndicator.textContent = percent + '%';
-                zoomIndicator.classList.add('show');
+            ctx.restore();
 
-                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            const percent = Math.round(viewTransform.scale * 100);
+            zoomIndicator.textContent = percent + '%';
+            zoomIndicator.classList.add('show');
+
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+
+        // ========== 擦除功能 ==========
+
+        function applyEraserAt(layer, x, y, size) {
+            const lctx = layer.canvas.getContext('2d');
+            lctx.imageSmoothingEnabled = true;
+            lctx.save();
+            lctx.globalCompositeOperation = 'destination-out';
+            lctx.beginPath();
+            lctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            lctx.fill();
+            lctx.restore();
+        }
+
+        function eraseLine(layer, x1, y1, x2, y2, size) {
+            const dx = x2 - x1, dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1) { applyEraserAt(layer, x1, y1, size); return; }
+            const step = Math.max(1, size / 4);
+            const steps = Math.max(1, Math.ceil(dist / step));
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                applyEraserAt(layer, x1 + dx * t, y1 + dy * t, size);
+            }
+        }
+
+        // ===== 修复：使用新的坐标转换 =====
+        function getLayerCoord(layer, clientX, clientY) {
+            const coord = getCanvasCoords(clientX, clientY);
+            const cx = coord.x, cy = coord.y;
+
+            const worldX = (cx - viewTransform.offsetX) / viewTransform.scale;
+            const worldY = (cy - viewTransform.offsetY) / viewTransform.scale;
+
+            const lcx = layer.x + layer.canvas.width / 2;
+            const lcy = layer.y + layer.canvas.height / 2;
+            const dx = worldX - lcx;
+            const dy = worldY - lcy;
+            const angle = -layer.rotation * Math.PI / 180;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            const localX = dx * cosA - dy * sinA + layer.canvas.width / 2;
+            const localY = dx * sinA + dy * cosA + layer.canvas.height / 2;
+
+            if (localX >= 0 && localX < layer.canvas.width &&
+                localY >= 0 && localY < layer.canvas.height) {
+                return { x: localX, y: localY };
+            }
+            return null;
+        }
+
+        // ========== 取色 ==========
+
+        function getColorFromCanvas(clientX, clientY) {
+            const coord = getCanvasCoords(clientX, clientY);
+            const cx = coord.x, cy = coord.y;
+            try {
+                const pixel = ctx.getImageData(Math.round(cx), Math.round(cy), 1, 1).data;
+                const r = pixel[0], g = pixel[1], b = pixel[2];
+                const hex = rgbToHex(r, g, b);
+                const hsl = rgbToHsl(r, g, b);
+                const hsv = rgbToHsv(r, g, b);
+                const cmyk = rgbToCmyk(r, g, b);
+                colorSwatch.style.background = hex;
+                hexDisplay.textContent = hex.toUpperCase();
+                vHex.textContent = hex.toUpperCase();
+                vRgb.textContent = `${r}, ${g}, ${b}`;
+                vHsl.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
+                vHsv.textContent = `${hsv.h}°, ${hsv.s}%, ${hsv.v}%`;
+                vCmyk.textContent = `${cmyk.c}, ${cmyk.m}, ${cmyk.y}, ${cmyk.k}`;
+            } catch (_) {}
+        }
+
+        // ========== 导出 ==========
+
+        function exportImage(format) {
+            if (layers.length === 0) { alert('请先添加图层'); return; }
+
+            let globalMinX = Infinity, globalMinY = Infinity;
+            let globalMaxX = -Infinity, globalMaxY = -Infinity;
+            let hasAnyPixel = false;
+
+            layers.forEach(layer => {
+                if (!layer.visible) return;
+                const w = layer.canvas.width * layer.scale;
+                const h = layer.canvas.height * layer.scale;
+                const angle = layer.rotation * Math.PI / 180;
+                const cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+                const rotW = w * cos + h * sin;
+                const rotH = w * sin + h * cos;
+                const cx = layer.x + layer.canvas.width / 2;
+                const cy = layer.y + layer.canvas.height / 2;
+                const x1 = cx - rotW / 2, y1 = cy - rotH / 2;
+                const x2 = cx + rotW / 2, y2 = cy + rotH / 2;
+                if (x1 < globalMinX) globalMinX = x1;
+                if (y1 < globalMinY) globalMinY = y1;
+                if (x2 > globalMaxX) globalMaxX = x2;
+                if (y2 > globalMaxY) globalMaxY = y2;
+                hasAnyPixel = true;
+            });
+
+            if (!hasAnyPixel || !isFinite(globalMinX)) { alert('没有可见的图层内容'); return; }
+            const outW = Math.ceil(globalMaxX - globalMinX);
+            const outH = Math.ceil(globalMaxY - globalMinY);
+            if (outW < 1 || outH < 1) { alert('导出区域太小'); return; }
+
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = outW;
+            outCanvas.height = outH;
+            const outCtx = outCanvas.getContext('2d');
+            outCtx.imageSmoothingEnabled = true;
+            outCtx.imageSmoothingQuality = 'high';
+
+            if (format === 'jpg') {
+                outCtx.fillStyle = '#FFFFFF';
+                outCtx.fillRect(0, 0, outW, outH);
             }
 
-            // ========== 擦除功能 ==========
+            layers.forEach(layer => {
+                if (!layer.visible) return;
+                const lw = layer.canvas.width * layer.scale;
+                const lh = layer.canvas.height * layer.scale;
+                const cx = layer.x + layer.canvas.width / 2 - globalMinX;
+                const cy = layer.y + layer.canvas.height / 2 - globalMinY;
+                const angle = layer.rotation * Math.PI / 180;
+                const f = layer.filters;
+                const filterStr =
+                    `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
+                const opacity = layer.opacity !== undefined ? layer.opacity : 1;
 
-            function applyEraserAt(layer, x, y, size) {
-                const lctx = layer.canvas.getContext('2d');
-                lctx.imageSmoothingEnabled = true;
-                lctx.save();
-                lctx.globalCompositeOperation = 'destination-out';
-                lctx.beginPath();
-                lctx.arc(x, y, size / 2, 0, Math.PI * 2);
-                lctx.fill();
-                lctx.restore();
-            }
-
-            function eraseLine(layer, x1, y1, x2, y2, size) {
-                const dx = x2 - x1;
-                const dy = y2 - y1;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 1) {
-                    applyEraserAt(layer, x1, y1, size);
-                    return;
-                }
-                const step = Math.max(1, size / 4);
-                const steps = Math.max(1, Math.ceil(dist / step));
-                for (let i = 0; i <= steps; i++) {
-                    const t = i / steps;
-                    const x = x1 + dx * t;
-                    const y = y1 + dy * t;
-                    applyEraserAt(layer, x, y, size);
-                }
-            }
-
-            function getLayerCoord(layer, clientX, clientY) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const cx = (clientX - rect.left) * scaleX;
-                const cy = (clientY - rect.top) * scaleY;
-
-                const worldX = (cx - viewTransform.offsetX) / viewTransform.scale;
-                const worldY = (cy - viewTransform.offsetY) / viewTransform.scale;
-
-                const lcx = layer.x + layer.canvas.width / 2;
-                const lcy = layer.y + layer.canvas.height / 2;
-
-                const dx = worldX - lcx;
-                const dy = worldY - lcy;
-
-                const angle = -layer.rotation * Math.PI / 180;
-                const cosA = Math.cos(angle);
-                const sinA = Math.sin(angle);
-                const localX = dx * cosA - dy * sinA + layer.canvas.width / 2;
-                const localY = dx * sinA + dy * cosA + layer.canvas.height / 2;
-
-                if (localX >= 0 && localX < layer.canvas.width &&
-                    localY >= 0 && localY < layer.canvas.height) {
-                    return { x: localX, y: localY };
-                }
-                return null;
-            }
-
-            // ========== 取色 ==========
-
-            function getColorFromCanvas(clientX, clientY) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const cx = (clientX - rect.left) * scaleX;
-                const cy = (clientY - rect.top) * scaleY;
-
-                try {
-                    const pixel = ctx.getImageData(Math.round(cx), Math.round(cy), 1, 1).data;
-                    const r = pixel[0],
-                        g = pixel[1],
-                        b = pixel[2];
-                    const hex = rgbToHex(r, g, b);
-                    const hsl = rgbToHsl(r, g, b);
-                    const hsv = rgbToHsv(r, g, b);
-                    const cmyk = rgbToCmyk(r, g, b);
-                    colorSwatch.style.background = hex;
-                    hexDisplay.textContent = hex.toUpperCase();
-                    vHex.textContent = hex.toUpperCase();
-                    vRgb.textContent = `${r}, ${g}, ${b}`;
-                    vHsl.textContent = `${hsl.h}°, ${hsl.s}%, ${hsl.l}%`;
-                    vHsv.textContent = `${hsv.h}°, ${hsv.s}%, ${hsv.v}%`;
-                    vCmyk.textContent = `${cmyk.c}, ${cmyk.m}, ${cmyk.y}, ${cmyk.k}`;
-                } catch (_) {}
-            }
-
-            // ========== 导出 ==========
-
-            function exportImage(format) {
-                if (layers.length === 0) {
-                    alert('请先添加图层');
-                    return;
-                }
-
-                let globalMinX = Infinity,
-                    globalMinY = Infinity;
-                let globalMaxX = -Infinity,
-                    globalMaxY = -Infinity;
-                let hasAnyPixel = false;
-
-                layers.forEach(layer => {
-                    if (!layer.visible) return;
-                    const w = layer.canvas.width * layer.scale;
-                    const h = layer.canvas.height * layer.scale;
-                    const angle = layer.rotation * Math.PI / 180;
-                    const cos = Math.abs(Math.cos(angle));
-                    const sin = Math.abs(Math.sin(angle));
-                    const rotW = w * cos + h * sin;
-                    const rotH = w * sin + h * cos;
-                    const cx = layer.x + layer.canvas.width / 2;
-                    const cy = layer.y + layer.canvas.height / 2;
-                    const x1 = cx - rotW / 2;
-                    const y1 = cy - rotH / 2;
-                    const x2 = cx + rotW / 2;
-                    const y2 = cy + rotH / 2;
-                    if (x1 < globalMinX) globalMinX = x1;
-                    if (y1 < globalMinY) globalMinY = y1;
-                    if (x2 > globalMaxX) globalMaxX = x2;
-                    if (y2 > globalMaxY) globalMaxY = y2;
-                    hasAnyPixel = true;
-                });
-
-                if (!hasAnyPixel || !isFinite(globalMinX)) {
-                    alert('没有可见的图层内容');
-                    return;
-                }
-
-                const outW = Math.ceil(globalMaxX - globalMinX);
-                const outH = Math.ceil(globalMaxY - globalMinY);
-                if (outW < 1 || outH < 1) {
-                    alert('导出区域太小');
-                    return;
-                }
-
-                const outCanvas = document.createElement('canvas');
-                outCanvas.width = outW;
-                outCanvas.height = outH;
-                const outCtx = outCanvas.getContext('2d');
+                outCtx.save();
+                outCtx.globalAlpha = opacity;
+                outCtx.translate(cx, cy);
+                outCtx.rotate(angle);
+                outCtx.filter = filterStr;
                 outCtx.imageSmoothingEnabled = true;
-                outCtx.imageSmoothingQuality = 'high';
+                outCtx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
+                outCtx.restore();
+            });
 
-                if (format === 'jpg') {
-                    outCtx.fillStyle = '#FFFFFF';
-                    outCtx.fillRect(0, 0, outW, outH);
-                }
+            let mimeType = '', ext = '';
+            switch (format) {
+                case 'png': mimeType = 'image/png'; ext = 'png'; break;
+                case 'jpg': mimeType = 'image/jpeg'; ext = 'jpg'; break;
+                case 'webp': mimeType = 'image/webp'; ext = 'webp'; break;
+                case 'bmp': mimeType = 'image/bmp'; ext = 'bmp'; break;
+                default: return;
+            }
 
-                layers.forEach(layer => {
-                    if (!layer.visible) return;
-                    const lw = layer.canvas.width * layer.scale;
-                    const lh = layer.canvas.height * layer.scale;
-                    const cx = layer.x + layer.canvas.width / 2 - globalMinX;
-                    const cy = layer.y + layer.canvas.height / 2 - globalMinY;
-                    const angle = layer.rotation * Math.PI / 180;
-
-                    const f = layer.filters;
-                    const filterStr =
-                        `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturation}%) hue-rotate(${f.hue}deg)`;
-
-                    outCtx.save();
-                    outCtx.translate(cx, cy);
-                    outCtx.rotate(angle);
-                    outCtx.filter = filterStr;
-                    outCtx.imageSmoothingEnabled = true;
-                    outCtx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
-                    outCtx.restore();
-                });
-
-                let mimeType = '',
-                    ext = '';
-                switch (format) {
-                    case 'png':
-                        mimeType = 'image/png';
-                        ext = 'png';
-                        break;
-                    case 'jpg':
-                        mimeType = 'image/jpeg';
-                        ext = 'jpg';
-                        break;
-                    case 'webp':
-                        mimeType = 'image/webp';
-                        ext = 'webp';
-                        break;
-                    case 'bmp':
-                        mimeType = 'image/bmp';
-                        ext = 'bmp';
-                        break;
-                    default:
+            try {
+                outCanvas.toBlob(function(blob) {
+                    if (!blob) {
+                        const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
+                        download(dataUrl, `image.${ext}`);
                         return;
-                }
-
-                try {
-                    outCanvas.toBlob(function(blob) {
-                        if (!blob) {
-                            const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
-                            download(dataUrl, `image.${ext}`);
-                            return;
-                        }
-                        const url = URL.createObjectURL(blob);
-                        download(url, `image.${ext}`);
-                        setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    }, mimeType, 0.95);
-                } catch (_) {
-                    const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
-                    download(dataUrl, `image.${ext}`);
-                }
+                    }
+                    const url = URL.createObjectURL(blob);
+                    download(url, `image.${ext}`);
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                }, mimeType, 0.95);
+            } catch (_) {
+                const dataUrl = outCanvas.toDataURL(mimeType, 0.95);
+                download(dataUrl, `image.${ext}`);
             }
+        }
 
-            function download(url, filename) {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+        function download(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // ========== 模式切换 ==========
+
+        function setMode(mode) {
+            colorPickMode = (mode === 'color');
+            eraseMode = (mode === 'erase');
+            colorPickToggle.classList.toggle('active', colorPickMode);
+            eraseModeToggle.classList.toggle('active', eraseMode);
+            if (colorPickMode) {
+                canvas.style.cursor = 'crosshair';
+            } else if (eraseMode) {
+                canvas.style.cursor = 'none';
+            } else {
+                canvas.style.cursor = 'default';
             }
-
-            // ========== 模式切换 ==========
-
-            function setMode(mode) {
-                colorPickMode = (mode === 'color');
-                eraseMode = (mode === 'erase');
-                colorPickToggle.classList.toggle('active', colorPickMode);
-                eraseModeToggle.classList.toggle('active', eraseMode);
-                if (colorPickMode) {
-                    canvas.style.cursor = 'crosshair';
-                } else if (eraseMode) {
-                    canvas.style.cursor = 'none';
-                } else {
-                    canvas.style.cursor = 'default';
-                }
-                colorPickToggle.textContent = colorPickMode ? '🎨 取色中 (关闭)' : '🎨 取色模式';
-                eraseModeToggle.textContent = eraseMode ? '🖍️ 擦除中 (关闭)' : '🖍️ 擦除模式';
-                if (eraseMode) {
-                    overlayCanvas.style.display = 'block';
-                } else {
-                    overlayCanvas.style.display = 'none';
-                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                }
-                lastErasePoint = null;
-            }
-
-            function updateEraseCursor(clientX, clientY) {
-                if (!eraseMode) return;
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const cx = (clientX - rect.left) * scaleX;
-                const cy = (clientY - rect.top) * scaleY;
+            colorPickToggle.textContent = colorPickMode ? '🎨 取色中 (关闭)' : '🎨 取色模式';
+            eraseModeToggle.textContent = eraseMode ? '🖍️ 擦除中 (关闭)' : '🖍️ 擦除模式';
+            if (eraseMode) {
+                overlayCanvas.style.display = 'block';
+            } else {
+                overlayCanvas.style.display = 'none';
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                const radius = brushSize / 2 * viewTransform.scale;
-                overlayCtx.beginPath();
-                overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-                overlayCtx.strokeStyle = 'rgba(255,255,255,0.8)';
-                overlayCtx.lineWidth = 2;
-                overlayCtx.setLineDash([4, 4]);
-                overlayCtx.stroke();
-                overlayCtx.setLineDash([]);
-                overlayCtx.beginPath();
-                overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
-                overlayCtx.fillStyle = 'rgba(255,255,255,0.15)';
-                overlayCtx.fill();
+            }
+            lastErasePoint = null;
+        }
+
+        // ===== 修复：擦除光标使用新的坐标转换 =====
+        function updateEraseCursor(clientX, clientY) {
+            if (!eraseMode) return;
+            const coord = getCanvasCoords(clientX, clientY);
+            const cx = coord.x, cy = coord.y;
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            const radius = brushSize / 2 * viewTransform.scale;
+            overlayCtx.beginPath();
+            overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+            overlayCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+            overlayCtx.lineWidth = 2;
+            overlayCtx.setLineDash([4, 4]);
+            overlayCtx.stroke();
+            overlayCtx.setLineDash([]);
+            overlayCtx.beginPath();
+            overlayCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+            overlayCtx.fillStyle = 'rgba(255,255,255,0.15)';
+            overlayCtx.fill();
+        }
+
+        // ========== 工具切换 ==========
+
+        function switchTool(toolId) {
+            toolBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === toolId);
+            });
+            panelContents.forEach(p => {
+                p.classList.toggle('active', p.id === 'panel-' + toolId);
+            });
+        }
+
+        // ========== 事件绑定 ==========
+
+        // 侧边栏点击
+        toolBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tool = this.dataset.tool;
+                if (tool === 'upload') {
+                    fileInput.click();
+                    switchTool('upload');
+                    return;
+                }
+                switchTool(tool);
+            });
+        });
+
+        // 上传
+        uploadBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileInput.click();
+        });
+        uploadOverlay.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function(e) {
+            const files = this.files;
+            if (!files || files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) continue;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const name = file.name || `图层 ${nextId}`;
+                        createLayer(img, name);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            this.value = '';
+        });
+
+        // 图层操作
+        applyLayerPos.addEventListener('click', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            const x = parseInt(layerX.value);
+            const y = parseInt(layerY.value);
+            const rot = parseFloat(layerRotation.value) || 0;
+            if (isNaN(x) || isNaN(y)) return;
+            layer.x = x;
+            layer.y = y;
+            layer.rotation = rot;
+            renderAll();
+            updateLayerList();
+        });
+
+        layerRotation.addEventListener('input', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            layer.rotation = parseFloat(this.value) || 0;
+            renderAll();
+            updateLayerList();
+        });
+
+        layerScaleSlider.addEventListener('input', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            const val = parseInt(this.value) / 100;
+            layer.scale = val;
+            layerScaleVal.textContent = Math.round(val * 100) + '%';
+            renderAll();
+            updateLayerList();
+        });
+
+        // ===== 新增：不透明度滑块事件 =====
+        layerOpacitySlider.addEventListener('input', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            const val = parseInt(this.value) / 100;
+            layer.opacity = val;
+            layerOpacityVal.textContent = Math.round(val * 100) + '%';
+            renderAll();
+            updateLayerList();
+        });
+
+        deleteSelectedBtn.addEventListener('click', function() {
+            if (selectedLayerId === null) return;
+            deleteLayer(selectedLayerId);
+        });
+
+        // 滤镜
+        function updateLayerFilters() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            layer.filters.brightness = parseInt(brightnessSlider.value);
+            layer.filters.contrast = parseInt(contrastSlider.value);
+            layer.filters.saturation = parseInt(saturationSlider.value);
+            layer.filters.hue = parseInt(hueSlider.value);
+            brightnessVal.textContent = layer.filters.brightness + '%';
+            contrastVal.textContent = layer.filters.contrast + '%';
+            saturationVal.textContent = layer.filters.saturation + '%';
+            hueVal.textContent = layer.filters.hue + '°';
+            renderAll();
+            updateLayerList();
+        }
+
+        brightnessSlider.addEventListener('input', updateLayerFilters);
+        contrastSlider.addEventListener('input', updateLayerFilters);
+        saturationSlider.addEventListener('input', updateLayerFilters);
+        hueSlider.addEventListener('input', updateLayerFilters);
+
+        resetLayerFilters.addEventListener('click', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            layer.filters = { brightness: 100, contrast: 100, saturation: 100, hue: 0 };
+            brightnessSlider.value = 100;
+            contrastSlider.value = 100;
+            saturationSlider.value = 100;
+            hueSlider.value = 0;
+            brightnessVal.textContent = '100%';
+            contrastVal.textContent = '100%';
+            saturationVal.textContent = '100%';
+            hueVal.textContent = '0°';
+            renderAll();
+            updateLayerList();
+        });
+
+        // 取色
+        colorPickToggle.addEventListener('click', function() {
+            if (colorPickMode) setMode('select');
+            else {
+                if (eraseMode) setMode('select');
+                setMode('color');
+                switchTool('colorpicker');
+            }
+        });
+
+        // 擦除
+        eraseModeToggle.addEventListener('click', function() {
+            if (eraseMode) setMode('select');
+            else {
+                if (colorPickMode) setMode('select');
+                setMode('erase');
+                switchTool('erase');
+            }
+        });
+
+        brushSizeSlider.addEventListener('input', function() {
+            brushSize = parseInt(this.value);
+            brushSizeVal.textContent = brushSize;
+            if (eraseMode) {
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+        });
+
+        clearErasure.addEventListener('click', function() {
+            const layer = getSelectedLayer();
+            if (!layer) return;
+            const lctx = layer.canvas.getContext('2d');
+            lctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+            lctx.drawImage(layer.image, 0, 0);
+            renderAll();
+            updateLayerList();
+        });
+
+        // 导出
+        exportBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const format = this.getAttribute('data-format');
+                exportImage(format);
+                switchTool('export');
+            });
+        });
+
+        // ========== 裁剪功能 ==========
+
+        function updateCropLayerCheckboxes() {
+            cropLayerCheckboxes.innerHTML = '';
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                const label = document.createElement('label');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = layer.id;
+                cb.dataset.layerId = layer.id;
+                if (layer.id === selectedLayerId) {
+                    cb.checked = true;
+                }
+                const span = document.createElement('span');
+                span.textContent = layer.name;
+                label.appendChild(cb);
+                label.appendChild(span);
+                cropLayerCheckboxes.appendChild(label);
+            }
+        }
+
+        function getCheckedLayerIds() {
+            const ids = [];
+            const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
+            cbs.forEach(cb => { ids.push(parseInt(cb.dataset.layerId)); });
+            return ids;
+        }
+
+        function getCheckedLayers() {
+            const ids = getCheckedLayerIds();
+            return layers.filter(l => ids.includes(l.id));
+        }
+
+        function cropLayers(ratioW, ratioH) {
+            if (ratioW <= 0 || ratioH <= 0) {
+                alert('请输入有效的宽高比（大于0）');
+                return false;
+            }
+            const targetRatio = ratioW / ratioH;
+            const selectedLayers = getCheckedLayers();
+            if (selectedLayers.length === 0) {
+                alert('请至少勾选一个要裁剪的图层');
+                return false;
             }
 
-            // ========== 事件绑定 ==========
+            let croppedCount = 0;
+            selectedLayers.forEach(layer => {
+                const w = layer.canvas.width;
+                const h = layer.canvas.height;
+                const currentRatio = w / h;
 
-            // --- 鼠标滚轮缩放 ---
-            canvas.addEventListener('wheel', function(e) {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? -1 : 1;
-                const factor = 1 + delta * 0.1;
-                const newScale = Math.min(Math.max(viewTransform.scale * factor, 0.1), 10);
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const mx = (e.clientX - rect.left) * scaleX;
-                const my = (e.clientY - rect.top) * scaleY;
-                const wx = (mx - viewTransform.offsetX) / viewTransform.scale;
-                const wy = (my - viewTransform.offsetY) / viewTransform.scale;
-                viewTransform.scale = newScale;
-                viewTransform.offsetX = mx - wx * newScale;
-                viewTransform.offsetY = my - wy * newScale;
-                renderAll();
-            }, { passive: false });
+                if (Math.abs(currentRatio - targetRatio) < 0.0001) {
+                    return;
+                }
 
-            // --- 鼠标移动 ---
-            canvas.addEventListener('mousemove', function(e) {
-                if (eraseMode) {
-                    updateEraseCursor(e.clientX, e.clientY);
-                    if (isErasing) {
-                        const layer = getSelectedLayer();
-                        if (!layer) return;
-                        const coord = getLayerCoord(layer, e.clientX, e.clientY);
-                        if (coord) {
-                            if (lastErasePoint) {
-                                eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
-                            } else {
-                                applyEraserAt(layer, coord.x, coord.y, brushSize);
-                            }
-                            lastErasePoint = coord;
-                            renderAll();
-                            updateLayerList();
-                        }
+                let newW, newH, sx, sy;
+                if (targetRatio > currentRatio) {
+                    newH = h;
+                    newW = h * targetRatio;
+                    if (newW > w) {
+                        newW = w;
+                        newH = w / targetRatio;
+                        sx = 0;
+                        sy = (h - newH) / 2;
+                    } else {
+                        sx = (w - newW) / 2;
+                        sy = 0;
+                    }
+                } else {
+                    newW = w;
+                    newH = w / targetRatio;
+                    if (newH > h) {
+                        newH = h;
+                        newW = h * targetRatio;
+                        sx = (w - newW) / 2;
+                        sy = 0;
+                    } else {
+                        sx = 0;
+                        sy = (h - newH) / 2;
                     }
                 }
-            });
 
-            canvas.addEventListener('mouseleave', function() {
-                if (eraseMode) {
-                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                }
-                lastErasePoint = null;
-            });
+                newW = Math.round(newW);
+                newH = Math.round(newH);
+                sx = Math.round(sx);
+                sy = Math.round(sy);
 
-            // --- 鼠标按下 ---
-            canvas.addEventListener('mousedown', function(e) {
-                if (colorPickMode) {
-                    getColorFromCanvas(e.clientX, e.clientY);
+                if (newW < 1 || newH < 1) {
                     return;
                 }
-                if (eraseMode) {
+
+                const newCanvas = document.createElement('canvas');
+                newCanvas.width = newW;
+                newCanvas.height = newH;
+                const newCtx = newCanvas.getContext('2d');
+                newCtx.imageSmoothingEnabled = true;
+                newCtx.imageSmoothingQuality = 'high';
+                newCtx.drawImage(layer.canvas, sx, sy, newW, newH, 0, 0, newW, newH);
+
+                layer.canvas = newCanvas;
+
+                const imgCanvas = document.createElement('canvas');
+                imgCanvas.width = newW;
+                imgCanvas.height = newH;
+                const imgCtx = imgCanvas.getContext('2d');
+                imgCtx.imageSmoothingEnabled = true;
+                imgCtx.drawImage(newCanvas, 0, 0);
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    layer.image = tempImg;
+                    renderAll();
+                    updateLayerList();
+                    updateCropLayerCheckboxes();
+                };
+                tempImg.src = imgCanvas.toDataURL('image/png');
+
+                const oldW = w, oldH = h;
+                layer.x += (oldW - newW) / 2;
+                layer.y += (oldH - newH) / 2;
+
+                croppedCount++;
+            });
+
+            renderAll();
+            updateLayerList();
+            updateCropLayerCheckboxes();
+
+            if (croppedCount > 0) {
+                hintMsg.textContent = '✅ 已裁剪 ' + croppedCount + ' 个图层';
+            } else {
+                hintMsg.textContent = 'ℹ️ 没有图层被裁剪（比例可能已匹配）';
+            }
+            return true;
+        }
+
+        cropPresetBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const w = parseInt(this.dataset.w);
+                const h = parseInt(this.dataset.h);
+                cropRatioW.value = w;
+                cropRatioH.value = h;
+                updateCropLayerCheckboxes();
+            });
+        });
+
+        cropApplyBtn.addEventListener('click', function() {
+            const w = parseFloat(cropRatioW.value);
+            const h = parseFloat(cropRatioH.value);
+            updateCropLayerCheckboxes();
+            cropLayers(w, h);
+        });
+
+        cropSelectAll.addEventListener('click', function() {
+            const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
+            cbs.forEach(cb => cb.checked = true);
+        });
+
+        cropSelectNone.addEventListener('click', function() {
+            const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
+            cbs.forEach(cb => cb.checked = false);
+        });
+
+        // 覆写 updateLayerList 和 selectLayer
+        const origUpdateLayerList = updateLayerList;
+        updateLayerList = function() {
+            origUpdateLayerList();
+            updateCropLayerCheckboxes();
+        };
+
+        const origSelectLayer = selectLayer;
+        selectLayer = function(id) {
+            origSelectLayer(id);
+            updateCropLayerCheckboxes();
+        };
+
+        updateCropLayerCheckboxes();
+
+        cropRatioW.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { cropApplyBtn.click(); }
+        });
+        cropRatioH.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { cropApplyBtn.click(); }
+        });
+
+        // =============================================
+        //  画布事件 (鼠标)
+        // =============================================
+
+        // 滚轮缩放
+        canvas.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1;
+            const factor = 1 + delta * 0.1;
+            const newScale = Math.min(Math.max(viewTransform.scale * factor, 0.1), 10);
+            const coord = getCanvasCoords(e.clientX, e.clientY);
+            const mx = coord.x, my = coord.y;
+            const wx = (mx - viewTransform.offsetX) / viewTransform.scale;
+            const wy = (my - viewTransform.offsetY) / viewTransform.scale;
+            viewTransform.scale = newScale;
+            viewTransform.offsetX = mx - wx * newScale;
+            viewTransform.offsetY = my - wy * newScale;
+            renderAll();
+        }, { passive: false });
+
+        // 鼠标移动 (擦除)
+        canvas.addEventListener('mousemove', function(e) {
+            if (eraseMode) {
+                updateEraseCursor(e.clientX, e.clientY);
+                if (isErasing) {
                     const layer = getSelectedLayer();
                     if (!layer) return;
                     const coord = getLayerCoord(layer, e.clientX, e.clientY);
+                    if (coord) {
+                        if (lastErasePoint) {
+                            eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
+                        } else {
+                            applyEraserAt(layer, coord.x, coord.y, brushSize);
+                        }
+                        lastErasePoint = coord;
+                        renderAll();
+                        updateLayerList();
+                    }
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            if (eraseMode) {
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+            lastErasePoint = null;
+        });
+
+        // 鼠标按下
+        canvas.addEventListener('mousedown', function(e) {
+            if (colorPickMode) {
+                getColorFromCanvas(e.clientX, e.clientY);
+                return;
+            }
+            if (eraseMode) {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                const coord = getLayerCoord(layer, e.clientX, e.clientY);
+                if (coord) {
+                    applyEraserAt(layer, coord.x, coord.y, brushSize);
+                    lastErasePoint = coord;
+                    renderAll();
+                    updateLayerList();
+                    isErasing = true;
+                }
+                return;
+            }
+
+            // 点击选中图层
+            const coord = getCanvasCoords(e.clientX, e.clientY);
+            const worldX = (coord.x - viewTransform.offsetX) / viewTransform.scale;
+            const worldY = (coord.y - viewTransform.offsetY) / viewTransform.scale;
+            let found = false;
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                if (!layer.visible) continue;
+                const lcx = layer.x + layer.canvas.width / 2;
+                const lcy = layer.y + layer.canvas.height / 2;
+                const dx = worldX - lcx;
+                const dy = worldY - lcy;
+                const angle = -layer.rotation * Math.PI / 180;
+                const cosA = Math.cos(angle), sinA = Math.sin(angle);
+                const localX = dx * cosA - dy * sinA + layer.canvas.width / 2;
+                const localY = dx * sinA + dy * cosA + layer.canvas.height / 2;
+                if (localX >= 0 && localX < layer.canvas.width && localY >= 0 && localY < layer.canvas.height) {
+                    selectLayer(layer.id);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                selectedLayerId = null;
+                selectLayer(null);
+            }
+
+            const layer = getSelectedLayer();
+            if (!layer) {
+                isDraggingView = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                dragStartOffsetX = viewTransform.offsetX;
+                dragStartOffsetY = viewTransform.offsetY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            const coord2 = getLayerCoord(layer, e.clientX, e.clientY);
+            if (coord2) {
+                isDraggingLayer = true;
+                draggedLayerId = layer.id;
+                dragLayerStartX = e.clientX;
+                dragLayerStartY = e.clientY;
+                dragLayerOrigX = layer.x;
+                dragLayerOrigY = layer.y;
+                canvas.style.cursor = 'move';
+            } else {
+                isDraggingView = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                dragStartOffsetX = viewTransform.offsetX;
+                dragStartOffsetY = viewTransform.offsetY;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', function(e) {
+            if (isDraggingView) {
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                viewTransform.offsetX = dragStartOffsetX + dx * scaleX;
+                viewTransform.offsetY = dragStartOffsetY + dy * scaleY;
+                renderAll();
+            } else if (isDraggingLayer) {
+                const dx = e.clientX - dragLayerStartX;
+                const dy = e.clientY - dragLayerStartY;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const deltaX = dx * scaleX / viewTransform.scale;
+                const deltaY = dy * scaleY / viewTransform.scale;
+                const layer = layers.find(l => l.id === draggedLayerId);
+                if (layer) {
+                    layer.x = dragLayerOrigX + deltaX;
+                    layer.y = dragLayerOrigY + deltaY;
+                    renderAll();
+                    updateLayerList();
+                    layerX.value = layer.x;
+                    layerY.value = layer.y;
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', function() {
+            if (isDraggingView || isDraggingLayer) {
+                isDraggingView = false;
+                isDraggingLayer = false;
+                draggedLayerId = null;
+                canvas.style.cursor = 'default';
+            }
+            if (isErasing) {
+                isErasing = false;
+                lastErasePoint = null;
+            }
+        });
+
+        // =============================================
+        //  触摸事件
+        // =============================================
+
+        canvas.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touches = e.touches;
+
+            if (touches.length === 2) {
+                isDraggingView = false;
+                isDraggingLayer = false;
+                isErasing = false;
+                lastErasePoint = null;
+
+                const t1 = touches[0], t2 = touches[1];
+                const dx = t1.clientX - t2.clientX;
+                const dy = t1.clientY - t2.clientY;
+                pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+                pinchStartScale = viewTransform.scale;
+                pinchStartOffsetX = viewTransform.offsetX;
+                pinchStartOffsetY = viewTransform.offsetY;
+                pinchCenterX = (t1.clientX + t2.clientX) / 2;
+                pinchCenterY = (t1.clientY + t2.clientY) / 2;
+                isPinching = true;
+                return;
+            }
+
+            if (touches.length === 1) {
+                const touch = touches[0];
+                const clientX = touch.clientX, clientY = touch.clientY;
+
+                if (colorPickMode) {
+                    getColorFromCanvas(clientX, clientY);
+                    return;
+                }
+
+                if (eraseMode) {
+                    const layer = getSelectedLayer();
+                    if (!layer) return;
+                    const coord = getLayerCoord(layer, clientX, clientY);
                     if (coord) {
                         applyEraserAt(layer, coord.x, coord.y, brushSize);
                         lastErasePoint = coord;
                         renderAll();
                         updateLayerList();
                         isErasing = true;
+                        touchId = touch.identifier;
                     }
                     return;
+                }
+
+                // 点击选中图层
+                const coord = getCanvasCoords(clientX, clientY);
+                const worldX = (coord.x - viewTransform.offsetX) / viewTransform.scale;
+                const worldY = (coord.y - viewTransform.offsetY) / viewTransform.scale;
+                let found = false;
+                for (let i = layers.length - 1; i >= 0; i--) {
+                    const layer = layers[i];
+                    if (!layer.visible) continue;
+                    const lcx = layer.x + layer.canvas.width / 2;
+                    const lcy = layer.y + layer.canvas.height / 2;
+                    const dx = worldX - lcx;
+                    const dy = worldY - lcy;
+                    const angle = -layer.rotation * Math.PI / 180;
+                    const cosA = Math.cos(angle), sinA = Math.sin(angle);
+                    const localX = dx * cosA - dy * sinA + layer.canvas.width / 2;
+                    const localY = dx * sinA + dy * cosA + layer.canvas.height / 2;
+                    if (localX >= 0 && localX < layer.canvas.width && localY >= 0 && localY < layer.canvas.height) {
+                        selectLayer(layer.id);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    selectedLayerId = null;
+                    selectLayer(null);
                 }
 
                 const layer = getSelectedLayer();
                 if (!layer) {
                     isDraggingView = true;
-                    dragStartX = e.clientX;
-                    dragStartY = e.clientY;
+                    dragStartX = clientX;
+                    dragStartY = clientY;
                     dragStartOffsetX = viewTransform.offsetX;
                     dragStartOffsetY = viewTransform.offsetY;
-                    canvas.style.cursor = 'grabbing';
                     return;
                 }
-                const coord = getLayerCoord(layer, e.clientX, e.clientY);
-                if (coord) {
+                const coord2 = getLayerCoord(layer, clientX, clientY);
+                if (coord2) {
                     isDraggingLayer = true;
                     draggedLayerId = layer.id;
-                    dragLayerStartX = e.clientX;
-                    dragLayerStartY = e.clientY;
+                    dragLayerStartX = clientX;
+                    dragLayerStartY = clientY;
                     dragLayerOrigX = layer.x;
                     dragLayerOrigY = layer.y;
-                    canvas.style.cursor = 'move';
                 } else {
                     isDraggingView = true;
-                    dragStartX = e.clientX;
-                    dragStartY = e.clientY;
+                    dragStartX = clientX;
+                    dragStartY = clientY;
                     dragStartOffsetX = viewTransform.offsetX;
                     dragStartOffsetY = viewTransform.offsetY;
-                    canvas.style.cursor = 'grabbing';
                 }
-            });
+            }
+        }, { passive: false });
 
-            window.addEventListener('mousemove', function(e) {
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            const touches = e.touches;
+
+            if (touches.length === 2 && isPinching) {
+                const t1 = touches[0], t2 = touches[1];
+                const dx = t1.clientX - t2.clientX;
+                const dy = t1.clientY - t2.clientY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const scaleFactor = dist / pinchStartDist;
+                let newScale = Math.min(Math.max(pinchStartScale * scaleFactor, 0.1), 10);
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mx = (pinchCenterX - rect.left) * scaleX;
+                const my = (pinchCenterY - rect.top) * scaleY;
+                const wx = (mx - pinchStartOffsetX) / pinchStartScale;
+                const wy = (my - pinchStartOffsetY) / pinchStartScale;
+                viewTransform.scale = newScale;
+                viewTransform.offsetX = mx - wx * newScale;
+                viewTransform.offsetY = my - wy * newScale;
+                renderAll();
+                return;
+            }
+
+            if (eraseMode && isErasing && touches.length === 1) {
+                const touch = touches[0];
+                if (touch.identifier === touchId) {
+                    const layer = getSelectedLayer();
+                    if (!layer) return;
+                    const coord = getLayerCoord(layer, touch.clientX, touch.clientY);
+                    if (coord) {
+                        if (lastErasePoint) {
+                            eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
+                        } else {
+                            applyEraserAt(layer, coord.x, coord.y, brushSize);
+                        }
+                        lastErasePoint = coord;
+                        renderAll();
+                        updateLayerList();
+                    }
+                }
+                return;
+            }
+
+            if (touches.length === 1) {
+                const touch = touches[0];
+                const clientX = touch.clientX, clientY = touch.clientY;
                 if (isDraggingView) {
-                    const dx = e.clientX - dragStartX;
-                    const dy = e.clientY - dragStartY;
+                    const dx = clientX - dragStartX;
+                    const dy = clientY - dragStartY;
                     const rect = canvas.getBoundingClientRect();
                     const scaleX = canvas.width / rect.width;
                     const scaleY = canvas.height / rect.height;
@@ -1029,8 +1968,8 @@
                     viewTransform.offsetY = dragStartOffsetY + dy * scaleY;
                     renderAll();
                 } else if (isDraggingLayer) {
-                    const dx = e.clientX - dragLayerStartX;
-                    const dy = e.clientY - dragLayerStartY;
+                    const dx = clientX - dragLayerStartX;
+                    const dy = clientY - dragLayerStartY;
                     const rect = canvas.getBoundingClientRect();
                     const scaleX = canvas.width / rect.width;
                     const scaleY = canvas.height / rect.height;
@@ -1046,634 +1985,62 @@
                         layerY.value = layer.y;
                     }
                 }
-            });
+            }
+        }, { passive: false });
 
-            window.addEventListener('mouseup', function() {
-                if (isDraggingView || isDraggingLayer) {
-                    isDraggingView = false;
-                    isDraggingLayer = false;
-                    draggedLayerId = null;
-                    canvas.style.cursor = 'default';
-                }
-                if (isErasing) {
-                    isErasing = false;
-                    lastErasePoint = null;
-                }
-            });
-
-            // --- 触摸事件 ---
-
-            let touchId = null;
-
-            canvas.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-                const touches = e.touches;
-
-                if (touches.length === 2) {
-                    isDraggingView = false;
-                    isDraggingLayer = false;
-                    isErasing = false;
-                    lastErasePoint = null;
-
-                    const t1 = touches[0],
-                        t2 = touches[1];
-                    const dx = t1.clientX - t2.clientX;
-                    const dy = t1.clientY - t2.clientY;
-                    pinchStartDist = Math.sqrt(dx * dx + dy * dy);
-                    pinchStartScale = viewTransform.scale;
-                    pinchStartOffsetX = viewTransform.offsetX;
-                    pinchStartOffsetY = viewTransform.offsetY;
-                    pinchCenterX = (t1.clientX + t2.clientX) / 2;
-                    pinchCenterY = (t1.clientY + t2.clientY) / 2;
-                    isPinching = true;
-                    return;
-                }
-
-                if (touches.length === 1) {
-                    const touch = touches[0];
-                    const clientX = touch.clientX,
-                        clientY = touch.clientY;
-
-                    if (colorPickMode) {
-                        getColorFromCanvas(clientX, clientY);
-                        return;
-                    }
-
-                    if (eraseMode) {
-                        const layer = getSelectedLayer();
-                        if (!layer) return;
-                        const coord = getLayerCoord(layer, clientX, clientY);
-                        if (coord) {
-                            applyEraserAt(layer, coord.x, coord.y, brushSize);
-                            lastErasePoint = coord;
-                            renderAll();
-                            updateLayerList();
-                            isErasing = true;
-                            touchId = touch.identifier;
-                        }
-                        return;
-                    }
-
-                    const layer = getSelectedLayer();
-                    if (!layer) {
-                        isDraggingView = true;
-                        dragStartX = clientX;
-                        dragStartY = clientY;
-                        dragStartOffsetX = viewTransform.offsetX;
-                        dragStartOffsetY = viewTransform.offsetY;
-                        return;
-                    }
-                    const coord = getLayerCoord(layer, clientX, clientY);
-                    if (coord) {
-                        isDraggingLayer = true;
-                        draggedLayerId = layer.id;
-                        dragLayerStartX = clientX;
-                        dragLayerStartY = clientY;
-                        dragLayerOrigX = layer.x;
-                        dragLayerOrigY = layer.y;
-                    } else {
-                        isDraggingView = true;
-                        dragStartX = clientX;
-                        dragStartY = clientY;
-                        dragStartOffsetX = viewTransform.offsetX;
-                        dragStartOffsetY = viewTransform.offsetY;
-                    }
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchmove', function(e) {
-                e.preventDefault();
-                const touches = e.touches;
-
-                if (touches.length === 2 && isPinching) {
-                    const t1 = touches[0],
-                        t2 = touches[1];
-                    const dx = t1.clientX - t2.clientX;
-                    const dy = t1.clientY - t2.clientY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    const scaleFactor = dist / pinchStartDist;
-                    let newScale = Math.min(Math.max(pinchStartScale * scaleFactor, 0.1), 10);
-                    const rect = canvas.getBoundingClientRect();
-                    const scaleX = canvas.width / rect.width;
-                    const scaleY = canvas.height / rect.height;
-                    const mx = (pinchCenterX - rect.left) * scaleX;
-                    const my = (pinchCenterY - rect.top) * scaleY;
-                    const wx = (mx - pinchStartOffsetX) / pinchStartScale;
-                    const wy = (my - pinchStartOffsetY) / pinchStartScale;
-                    viewTransform.scale = newScale;
-                    viewTransform.offsetX = mx - wx * newScale;
-                    viewTransform.offsetY = my - wy * newScale;
-                    renderAll();
-                    return;
-                }
-
-                if (eraseMode && isErasing && touches.length === 1) {
-                    const touch = touches[0];
-                    if (touch.identifier === touchId) {
-                        const layer = getSelectedLayer();
-                        if (!layer) return;
-                        const coord = getLayerCoord(layer, touch.clientX, touch.clientY);
-                        if (coord) {
-                            if (lastErasePoint) {
-                                eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
-                            } else {
-                                applyEraserAt(layer, coord.x, coord.y, brushSize);
-                            }
-                            lastErasePoint = coord;
-                            renderAll();
-                            updateLayerList();
-                        }
-                    }
-                    return;
-                }
-
-                if (touches.length === 1) {
-                    const touch = touches[0];
-                    const clientX = touch.clientX,
-                        clientY = touch.clientY;
-                    if (isDraggingView) {
-                        const dx = clientX - dragStartX;
-                        const dy = clientY - dragStartY;
-                        const rect = canvas.getBoundingClientRect();
-                        const scaleX = canvas.width / rect.width;
-                        const scaleY = canvas.height / rect.height;
-                        viewTransform.offsetX = dragStartOffsetX + dx * scaleX;
-                        viewTransform.offsetY = dragStartOffsetY + dy * scaleY;
-                        renderAll();
-                    } else if (isDraggingLayer) {
-                        const dx = clientX - dragLayerStartX;
-                        const dy = clientY - dragLayerStartY;
-                        const rect = canvas.getBoundingClientRect();
-                        const scaleX = canvas.width / rect.width;
-                        const scaleY = canvas.height / rect.height;
-                        const deltaX = dx * scaleX / viewTransform.scale;
-                        const deltaY = dy * scaleY / viewTransform.scale;
-                        const layer = layers.find(l => l.id === draggedLayerId);
-                        if (layer) {
-                            layer.x = dragLayerOrigX + deltaX;
-                            layer.y = dragLayerOrigY + deltaY;
-                            renderAll();
-                            updateLayerList();
-                            layerX.value = layer.x;
-                            layerY.value = layer.y;
-                        }
-                    }
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                if (isErasing) {
-                    isErasing = false;
-                    lastErasePoint = null;
-                    touchId = null;
-                }
-                if (isDraggingView || isDraggingLayer) {
-                    isDraggingView = false;
-                    isDraggingLayer = false;
-                    draggedLayerId = null;
-                }
-                if (isPinching) {
-                    isPinching = false;
-                }
-                if (e.touches.length === 0) {
-                    isDraggingView = false;
-                    isDraggingLayer = false;
-                    isErasing = false;
-                    touchId = null;
-                    lastErasePoint = null;
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchcancel', function(e) {
-                e.preventDefault();
+        canvas.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            if (isErasing) {
+                isErasing = false;
+                lastErasePoint = null;
+                touchId = null;
+            }
+            if (isDraggingView || isDraggingLayer) {
+                isDraggingView = false;
+                isDraggingLayer = false;
+                draggedLayerId = null;
+            }
+            if (isPinching) {
+                isPinching = false;
+            }
+            if (e.touches.length === 0) {
                 isDraggingView = false;
                 isDraggingLayer = false;
                 isErasing = false;
                 touchId = null;
                 lastErasePoint = null;
-                isPinching = false;
-            }, { passive: false });
-
-            // ========== 其他事件 ==========
-
-            fileInput.addEventListener('change', function(e) {
-                const files = this.files;
-                if (!files || files.length === 0) return;
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (!file.type.startsWith('image/')) continue;
-                    const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        const img = new Image();
-                        img.onload = function() {
-                            const name = file.name || `图层 ${nextId}`;
-                            createLayer(img, name);
-                        };
-                        img.src = ev.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-                this.value = '';
-            });
-
-            uploadArea.addEventListener('click', function(e) {
-                if (e.target.tagName !== 'LABEL' && !e.target.closest('label')) {
-                    fileInput.click();
-                }
-            });
-
-            applyLayerPos.addEventListener('click', function() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                const x = parseInt(layerX.value);
-                const y = parseInt(layerY.value);
-                const rot = parseFloat(layerRotation.value) || 0;
-                if (isNaN(x) || isNaN(y)) return;
-                layer.x = x;
-                layer.y = y;
-                layer.rotation = rot;
-                renderAll();
-                updateLayerList();
-            });
-
-            layerRotation.addEventListener('input', function() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                const rot = parseFloat(this.value) || 0;
-                layer.rotation = rot;
-                renderAll();
-                updateLayerList();
-            });
-
-            layerScaleSlider.addEventListener('input', function() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                const val = parseInt(this.value) / 100;
-                layer.scale = val;
-                layerScaleVal.textContent = Math.round(val * 100) + '%';
-                renderAll();
-                updateLayerList();
-            });
-
-            deleteSelectedBtn.addEventListener('click', function() {
-                if (selectedLayerId === null) return;
-                deleteLayer(selectedLayerId);
-            });
-
-            function updateLayerFilters() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                layer.filters.brightness = parseInt(brightnessSlider.value);
-                layer.filters.contrast = parseInt(contrastSlider.value);
-                layer.filters.saturation = parseInt(saturationSlider.value);
-                layer.filters.hue = parseInt(hueSlider.value);
-                brightnessVal.textContent = layer.filters.brightness + '%';
-                contrastVal.textContent = layer.filters.contrast + '%';
-                saturationVal.textContent = layer.filters.saturation + '%';
-                hueVal.textContent = layer.filters.hue + '°';
-                renderAll();
-                updateLayerList();
             }
+        }, { passive: false });
 
-            brightnessSlider.addEventListener('input', updateLayerFilters);
-            contrastSlider.addEventListener('input', updateLayerFilters);
-            saturationSlider.addEventListener('input', updateLayerFilters);
-            hueSlider.addEventListener('input', updateLayerFilters);
+        canvas.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            isDraggingView = false;
+            isDraggingLayer = false;
+            isErasing = false;
+            touchId = null;
+            lastErasePoint = null;
+            isPinching = false;
+        }, { passive: false });
 
-            resetLayerFilters.addEventListener('click', function() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                layer.filters = { brightness: 100, contrast: 100, saturation: 100, hue: 0 };
-                brightnessSlider.value = 100;
-                contrastSlider.value = 100;
-                saturationSlider.value = 100;
-                hueSlider.value = 0;
-                brightnessVal.textContent = '100%';
-                contrastVal.textContent = '100%';
-                saturationVal.textContent = '100%';
-                hueVal.textContent = '0°';
-                renderAll();
-                updateLayerList();
-            });
+        // =============================================
+        //  初始化
+        // =============================================
 
-            colorPickToggle.addEventListener('click', function() {
-                if (colorPickMode) setMode('select');
-                else {
-                    if (eraseMode) setMode('select');
-                    setMode('color');
-                }
-            });
+        canvas.width = 700;
+        canvas.height = 480;
+        overlayCanvas.width = canvas.width;
+        overlayCanvas.height = canvas.height;
 
-            eraseModeToggle.addEventListener('click', function() {
-                if (eraseMode) setMode('select');
-                else {
-                    if (colorPickMode) setMode('select');
-                    setMode('erase');
-                }
-            });
+        viewTransform.scale = 1;
+        viewTransform.offsetX = 0;
+        viewTransform.offsetY = 0;
 
-            brushSizeSlider.addEventListener('input', function() {
-                brushSize = parseInt(this.value);
-                brushSizeVal.textContent = brushSize;
-                if (eraseMode) {
-                    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-                }
-            });
+        setMode('select');
+        switchTool('upload');
 
-            clearErasure.addEventListener('click', function() {
-                const layer = getSelectedLayer();
-                if (!layer) return;
-                const lctx = layer.canvas.getContext('2d');
-                lctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
-                lctx.drawImage(layer.image, 0, 0);
-                renderAll();
-                updateLayerList();
-            });
-
-            exportBtns.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    const format = this.getAttribute('data-format');
-                    exportImage(format);
-                });
-            });
-
-			            // ========== 新增：裁剪功能 ==========
-
-            // DOM 引用
-            const cropRatioW = document.getElementById('cropRatioW');
-            const cropRatioH = document.getElementById('cropRatioH');
-            const cropApplyBtn = document.getElementById('cropApplyBtn');
-            const cropLayerCheckboxes = document.getElementById('cropLayerCheckboxes');
-            const cropSelectAll = document.getElementById('cropSelectAll');
-            const cropSelectNone = document.getElementById('cropSelectNone');
-            const cropPresetBtns = document.querySelectorAll('.crop-preset');
-
-            // 更新裁剪面板的图层复选框列表
-            function updateCropLayerCheckboxes() {
-                cropLayerCheckboxes.innerHTML = '';
-                // 从后往前显示（顶层在上）
-                for (let i = layers.length - 1; i >= 0; i--) {
-                    const layer = layers[i];
-                    const label = document.createElement('label');
-                    label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:13px; color:#2c3e5a; cursor:pointer;';
-                    const cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.value = layer.id;
-                    cb.dataset.layerId = layer.id;
-                    // 默认勾选当前选中的图层（如果有）
-                    if (layer.id === selectedLayerId) {
-                        cb.checked = true;
-                    }
-                    const span = document.createElement('span');
-                    span.textContent = layer.name;
-                    label.appendChild(cb);
-                    label.appendChild(span);
-                    cropLayerCheckboxes.appendChild(label);
-                }
-            }
-
-            // 获取所有被选中的图层ID
-            function getCheckedLayerIds() {
-                const ids = [];
-                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
-                cbs.forEach(cb => {
-                    ids.push(parseInt(cb.dataset.layerId));
-                });
-                return ids;
-            }
-
-            // 获取所有被选中的图层对象
-            function getCheckedLayers() {
-                const ids = getCheckedLayerIds();
-                return layers.filter(l => ids.includes(l.id));
-            }
-
-            // 核心裁剪函数
-            function cropLayers(ratioW, ratioH) {
-                if (ratioW <= 0 || ratioH <= 0) {
-                    alert('请输入有效的宽高比（大于0）');
-                    return false;
-                }
-                const targetRatio = ratioW / ratioH;
-                const selectedLayers = getCheckedLayers();
-                if (selectedLayers.length === 0) {
-                    alert('请至少勾选一个要裁剪的图层');
-                    return false;
-                }
-
-                let croppedCount = 0;
-                selectedLayers.forEach(layer => {
-                    const w = layer.canvas.width;
-                    const h = layer.canvas.height;
-                    const currentRatio = w / h;
-
-                    // 如果比例已经相同，跳过
-                    if (Math.abs(currentRatio - targetRatio) < 0.0001) {
-                        return;
-                    }
-
-                    let newW, newH, sx, sy;
-                    if (targetRatio > currentRatio) {
-                        // 目标更宽 → 裁剪宽度（左右裁）
-                        newH = h;
-                        newW = h * targetRatio;
-                        if (newW > w) {
-                            // 如果计算出的宽度超过原宽度，则反过来裁剪高度
-                            newW = w;
-                            newH = w / targetRatio;
-                            sx = 0;
-                            sy = (h - newH) / 2;
-                        } else {
-                            sx = (w - newW) / 2;
-                            sy = 0;
-                        }
-                    } else {
-                        // 目标更高 → 裁剪高度（上下裁）
-                        newW = w;
-                        newH = w / targetRatio;
-                        if (newH > h) {
-                            // 如果计算出的高度超过原高度，则反过来裁剪宽度
-                            newH = h;
-                            newW = h * targetRatio;
-                            sx = (w - newW) / 2;
-                            sy = 0;
-                        } else {
-                            sx = 0;
-                            sy = (h - newH) / 2;
-                        }
-                    }
-
-                    // 四舍五入确保整数像素
-                    newW = Math.round(newW);
-                    newH = Math.round(newH);
-                    sx = Math.round(sx);
-                    sy = Math.round(sy);
-
-                    if (newW < 1 || newH < 1) {
-                        return;
-                    }
-
-                    // 创建新的 canvas
-                    const newCanvas = document.createElement('canvas');
-                    newCanvas.width = newW;
-                    newCanvas.height = newH;
-                    const newCtx = newCanvas.getContext('2d');
-                    newCtx.imageSmoothingEnabled = true;
-                    newCtx.imageSmoothingQuality = 'high';
-                    newCtx.drawImage(layer.canvas, sx, sy, newW, newH, 0, 0, newW, newH);
-
-                    // 更新图层：替换 canvas
-                    layer.canvas = newCanvas;
-
-                    // 更新 image（用于擦除恢复），复制裁剪后的内容
-                    const imgCanvas = document.createElement('canvas');
-                    imgCanvas.width = newW;
-                    imgCanvas.height = newH;
-                    const imgCtx = imgCanvas.getContext('2d');
-                    imgCtx.imageSmoothingEnabled = true;
-                    imgCtx.drawImage(newCanvas, 0, 0);
-                    const imgObj = new Image();
-                    imgObj.src = imgCanvas.toDataURL('image/png');
-                    imgObj.onload = function() {
-                        layer.image = imgObj;
-                    };
-                    // 同步更新 image（立即生效，但可能还未加载完成）
-                    // 这里使用 toDataURL 创建 Image 对象，需要异步处理
-                    // 为了立即生效，直接使用 imgCanvas 作为 image 的替代
-                    // 但由于 image 需要是 Image 对象，我们创建一个新的 Image
-                    const tempImg = new Image();
-                    tempImg.onload = function() {
-                        layer.image = tempImg;
-                        renderAll();
-                        updateLayerList();
-                        updateCropLayerCheckboxes();
-                    };
-                    tempImg.src = imgCanvas.toDataURL('image/png');
-
-                    // 调整位置，保持中心点不变
-                    const oldW = w;
-                    const oldH = h;
-                    layer.x += (oldW - newW) / 2;
-                    layer.y += (oldH - newH) / 2;
-
-                    croppedCount++;
-                });
-
-                // 重新渲染
-                renderAll();
-                updateLayerList();
-                updateCropLayerCheckboxes();
-
-                if (croppedCount > 0) {
-                    hintMsg.textContent = '✅ 已裁剪 ' + croppedCount + ' 个图层';
-                } else {
-                    hintMsg.textContent = 'ℹ️ 没有图层被裁剪（比例可能已匹配）';
-                }
-                return true;
-            }
-
-            // 预设比例按钮点击
-            cropPresetBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const w = parseInt(this.dataset.w);
-                    const h = parseInt(this.dataset.h);
-                    cropRatioW.value = w;
-                    cropRatioH.value = h;
-                    // 刷新复选框列表
-                    updateCropLayerCheckboxes();
-                });
-            });
-
-            // 裁剪按钮点击
-            cropApplyBtn.addEventListener('click', function() {
-                const w = parseFloat(cropRatioW.value);
-                const h = parseFloat(cropRatioH.value);
-                // 先刷新复选框列表
-                updateCropLayerCheckboxes();
-                cropLayers(w, h);
-            });
-
-            // 全选
-            cropSelectAll.addEventListener('click', function() {
-                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
-                cbs.forEach(cb => cb.checked = true);
-            });
-
-            // 取消全选
-            cropSelectNone.addEventListener('click', function() {
-                const cbs = cropLayerCheckboxes.querySelectorAll('input[type="checkbox"]');
-                cbs.forEach(cb => cb.checked = false);
-            });
-
-            // 在图层发生变化时，同步更新裁剪面板的复选框
-            // 通过 Monkey Patch 方式，在现有函数执行后自动更新
-            // 但不修改原有函数，而是利用 MutationObserver 或定时器
-            // 最简单：每次渲染后更新，但为了性能，只在需要时更新
-
-            // 在 createLayer 和 deleteLayer 之后，原本会调用 updateLayerList 和 renderAll
-            // 我们在这里添加一个钩子：在每次图层列表更新后，同步更新裁剪复选框
-            // 由于不能修改现有代码，我们使用一个定时器来检测图层变化
-            // 但更好的方式：在 updateLayerList 被调用后触发更新
-
-            // 保存原始的 updateLayerList 引用
-            const origUpdateLayerList = updateLayerList;
-            // 重写 updateLayerList，在原有逻辑后追加更新裁剪复选框
-            updateLayerList = function() {
-                origUpdateLayerList();
-                // 更新裁剪面板的复选框
-                updateCropLayerCheckboxes();
-            };
-
-            // 同样，在 selectLayer 后也更新裁剪复选框（保持高亮同步）
-            const origSelectLayer = selectLayer;
-            selectLayer = function(id) {
-                origSelectLayer(id);
-                updateCropLayerCheckboxes();
-            };
-
-            // 初始化裁剪复选框
-            updateCropLayerCheckboxes();
-
-            // 支持回车键快速裁剪
-            cropRatioW.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    cropApplyBtn.click();
-                }
-            });
-            cropRatioH.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    cropApplyBtn.click();
-                }
-            });
-
-            // ========== 新增结束 ==========
-            // ========== 初始化 ==========
-            canvas.width = 700;
-            canvas.height = 480;
-            canvas.style.width = '100%';
-            canvas.style.height = 'auto';
-            overlayCanvas.width = canvas.width;
-            overlayCanvas.height = canvas.height;
-            overlayCanvas.style.width = '100%';
-            overlayCanvas.style.height = '100%';
-            overlayCanvas.style.position = 'absolute';
-            overlayCanvas.style.top = '0';
-            overlayCanvas.style.left = '0';
-            overlayCanvas.style.pointerEvents = 'none';
-            overlayCanvas.style.display = 'none';
-
-            viewTransform.scale = 1;
-            viewTransform.offsetX = 0;
-            viewTransform.offsetY = 0;
-
-            setMode('select');
-            updateLayerList();
-            updateControls();
-
-            console.log('🖼️ 多图层编辑器 (排序方向已修复)');
-        })();
-    </script>
+        console.log('🖼️ 多图层编辑器 (修复椭圆 + 不透明度)');
+    })();
+</script>
 
 </body>
 </html>
