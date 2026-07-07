@@ -5,86 +5,526 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>多图层编辑器</title>
     <style>
-        /* 样式与之前相同，未改动，此处省略以节省空间，实际已包含完整样式 */
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { min-height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f2f6; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding:16px; touch-action:manipulation; }
-        .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
-        .upload-area { border:2px dashed #d0d7e2; border-radius:12px; padding:12px 14px; text-align:center; cursor:pointer; background:#fafcff; margin-bottom:14px; transition:background 0.2s, border-color 0.2s; -webkit-tap-highlight-color:transparent; }
-        .upload-area:active { background:#eaf1fe; border-color:#7a8ba3; }
-        .upload-area label { display:block; font-size:15px; color:#3d4a5c; font-weight:450; cursor:pointer; }
-        .upload-area label span { display:inline-block; background:#e6ecf5; padding:5px 16px; border-radius:40px; font-weight:500; color:#1f2a3a; margin-top:4px; }
-        #fileInput { display:none; }
-        .canvas-wrapper { position:relative; background:#eef0f4; border-radius:12px; overflow:hidden; touch-action:none; min-height:220px; }
-        #imageCanvas { display:block; max-width:100%; max-height:520px; cursor:default; background:#eef0f4; width:auto; height:auto; touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; }
-        #overlayCanvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; }
-        .zoom-indicator { position:absolute; top:12px; left:14px; background:rgba(20,28,40,0.7); backdrop-filter:blur(4px); color:#f0f4fc; padding:4px 12px; border-radius:30px; font-size:13px; font-weight:500; font-family:"SF Mono","Menlo",monospace; pointer-events:none; user-select:none; opacity:0; transition:opacity 0.25s ease; z-index:2; }
-        .zoom-indicator.show { opacity:1; }
-        .hint-msg { margin:8px 0 0 4px; font-size:13px; color:#7a8aa0; user-select:none; }
-        .info-section { margin:14px 0 18px; }
-        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 24px; background:#f8faff; border-radius:12px; padding:10px 14px; }
-        .info-item { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #eef2f8; font-size:14px; }
-        .info-item .label { color:#7c8aa0; font-weight:450; }
-        .info-item .value { color:#1a2330; font-weight:500; font-family:"SF Mono","Menlo",monospace; font-size:13px; text-align:right; }
-        .color-preview { display:flex; align-items:center; gap:14px; margin-bottom:6px; padding:0 14px; }
-        .color-swatch { width:38px; height:38px; border-radius:12px; border:1px solid #dee5ef; flex-shrink:0; background:#888; }
-        .color-hex-large { font-size:18px; font-weight:500; color:#1a2330; letter-spacing:0.5px; word-break:break-all; }
-        .export-section { display:flex; gap:10px; flex-wrap:wrap; margin-top:4px; }
-        .export-btn { flex:1; min-width:68px; padding:12px 0; border:none; border-radius:14px; background:#edf0f6; color:#1f2a3a; font-size:15px; font-weight:500; cursor:pointer; transition:background 0.18s, transform 0.1s; font-family:inherit; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
-        .export-btn:active { transform:scale(0.94); background:#d5dce6; }
-        .export-btn[data-format="png"] { background:#e3eaf7; color:#1c3b6b; }
-        .export-btn[data-format="jpg"] { background:#f7ede6; color:#6b3d1c; }
-        .export-btn[data-format="webp"] { background:#e6f7ed; color:#1c6b3d; }
-        .export-btn[data-format="bmp"] { background:#efe6f7; color:#4a1c6b; }
-        .export-btn:active[data-format="png"] { background:#c8d6ed; }
-        .export-btn:active[data-format="jpg"] { background:#edd5c4; }
-        .export-btn:active[data-format="webp"] { background:#c4edcf; }
-        .export-btn:active[data-format="bmp"] { background:#d9c4ed; }
-        .advanced-panel { margin-top:14px; padding:16px 14px 18px; background:#f8faff; border-radius:16px; border:1px solid #e6ebf3; max-height:650px; overflow-y:auto; }
-        .adv-group { margin-bottom:16px; }
-        .adv-group-title { font-size:14px; font-weight:600; color:#2c3e5a; margin-bottom:8px; letter-spacing:0.3px; }
-        .adv-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
-        .adv-row label { font-size:13px; color:#4a5a72; min-width:40px; }
-        .adv-row input[type="number"] { width:70px; padding:5px 8px; border:1px solid #d0d7e2; border-radius:8px; font-size:13px; background:#fff; font-family:inherit; }
-        .adv-row input[type="number"]:focus { outline:none; border-color:#7a8ba3; }
-        .adv-row input[type="range"] { flex:1; min-width:100px; accent-color:#3d6b9b; }
-        .adv-row .value-label { min-width:36px; font-size:13px; color:#3d4a5c; font-weight:500; }
-        .adv-btn { padding:6px 18px; border:none; border-radius:30px; background:#e6ecf5; font-size:13px; font-weight:500; color:#1f2a3a; cursor:pointer; transition:background 0.15s; font-family:inherit; }
-        .adv-btn:active { background:#cdd6e3; }
-        .adv-btn.primary { background:#2c3e5a; color:#fff; }
-        .adv-btn.primary:active { background:#1a2a3f; }
-        .adv-btn.danger { background:#e8d5d5; color:#7a3a3a; }
-        .adv-btn.danger:active { background:#dbbdbd; }
-        .adv-checkbox { display:flex; align-items:center; gap:6px; font-size:13px; color:#4a5a72; }
-        .adv-checkbox input[type="checkbox"] { width:16px; height:16px; accent-color:#2c3e5a; }
-        .layer-list { display:flex; flex-direction:column; gap:6px; margin-top:4px; max-height:180px; overflow-y:auto; border:1px solid #e2e6ee; border-radius:12px; padding:6px 8px; background:#fff; }
-        .layer-item { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:10px; background:#fafcff; border:1px solid #eef2f8; transition:background 0.15s, border-color 0.15s; user-select:none; }
-        .layer-item.selected { border-color:#2c3e5a; background:#eaf1fe; }
-        .layer-item .thumb { width:36px; height:36px; border-radius:6px; object-fit:cover; background:#eef0f4; border:1px solid #d0d7e2; flex-shrink:0; }
-        .layer-item .layer-name { flex:1; font-size:13px; font-weight:500; color:#1f2a3a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .layer-item .layer-actions { display:flex; gap:2px; align-items:center; }
-        .layer-item .layer-actions button { background:none; border:none; font-size:16px; cursor:pointer; padding:2px 4px; border-radius:6px; transition:background 0.1s; line-height:1; color:#2c3e5a; }
-        .layer-item .layer-actions button:active { background:#d0d7e2; }
-        .layer-item .layer-actions .vis-toggle { font-size:18px; }
-        .layer-item .layer-actions .del-btn { color:#b33; }
-        .layer-item .layer-actions .move-btn { font-size:14px; color:#4a5a72; padding:0 2px; }
-        .layer-item .layer-actions .move-btn:disabled { opacity:0.3; cursor:not-allowed; }
-        .layer-controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; align-items:center; }
-        .layer-controls .adv-row { margin-bottom:0; }
-        .tool-group { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:4px; }
-        .tool-group .adv-btn { min-width:80px; }
-        .tool-group .adv-btn.active { background:#2c3e5a; color:#fff; }
-        .erase-tool { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-        .erase-tool label { font-size:13px; color:#4a5a72; }
-        .erase-tool input[type="range"] { width:120px; accent-color:#3d6b9b; }
-        .erase-tool .size-val { min-width:30px; font-size:13px; font-weight:500; }
-        @media (max-width:500px) { .container { padding:12px 10px 16px; } .info-grid { grid-template-columns:1fr; gap:0; padding:6px 12px; } .info-item { font-size:13px; padding:4px 0; } .export-btn { font-size:14px; padding:11px 0; min-width:58px; } .color-hex-large { font-size:16px; } .adv-row input[type="number"] { width:60px; } .adv-row { gap:6px; } .layer-item { padding:4px 6px; } .layer-item .thumb { width:28px; height:28px; } .erase-tool input[type="range"] { width:80px; } }
-        @media (hover:none) { .export-btn:hover { background:inherit; } .export-btn:hover[data-format="png"] { background:#e3eaf7; } .export-btn:hover[data-format="jpg"] { background:#f7ede6; } .export-btn:hover[data-format="webp"] { background:#e6f7ed; } .export-btn:hover[data-format="bmp"] { background:#efe6f7; } .upload-area:hover { background:#fafcff; border-color:#d0d7e2; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f2f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 16px;
+            touch-action: manipulation;
+        }
+        .container {
+            max-width: 860px;
+            width: 100%;
+            background: #ffffff;
+            padding: 20px 18px 28px;
+        }
+        .upload-area {
+            border: 2px dashed #d0d7e2;
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+            cursor: pointer;
+            background: #fafcff;
+            margin-bottom: 14px;
+            transition: background 0.2s, border-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .upload-area:active {
+            background: #eaf1fe;
+            border-color: #7a8ba3;
+        }
+        .upload-area label {
+            display: block;
+            font-size: 15px;
+            color: #3d4a5c;
+            font-weight: 450;
+            cursor: pointer;
+        }
+        .upload-area label span {
+            display: inline-block;
+            background: #e6ecf5;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            color: #1f2a3a;
+            margin-top: 4px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .canvas-wrapper {
+            position: relative;
+            background: #eef0f4;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: none;
+            min-height: 220px;
+        }
+        #imageCanvas {
+            display: block;
+            max-width: 100%;
+            max-height: 520px;
+            cursor: default;
+            background: #eef0f4;
+            width: auto;
+            height: auto;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+        }
+        .zoom-indicator {
+            position: absolute;
+            top: 12px;
+            left: 14px;
+            background: rgba(20, 28, 40, 0.7);
+            backdrop-filter: blur(4px);
+            color: #f0f4fc;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: "SF Mono", "Menlo", monospace;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            z-index: 2;
+        }
+        .zoom-indicator.show {
+            opacity: 1;
+        }
+        .hint-msg {
+            margin: 8px 0 0 4px;
+            font-size: 13px;
+            color: #7a8aa0;
+            user-select: none;
+        }
+        .info-section {
+            margin: 14px 0 18px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 24px;
+            background: #f8faff;
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eef2f8;
+            font-size: 14px;
+        }
+        .info-item .label {
+            color: #7c8aa0;
+            font-weight: 450;
+        }
+        .info-item .value {
+            color: #1a2330;
+            font-weight: 500;
+            font-family: "SF Mono", "Menlo", monospace;
+            font-size: 13px;
+            text-align: right;
+        }
+        .color-preview {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 6px;
+            padding: 0 14px;
+        }
+        .color-swatch {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            border: 1px solid #dee5ef;
+            flex-shrink: 0;
+            background: #888;
+        }
+        .color-hex-large {
+            font-size: 18px;
+            font-weight: 500;
+            color: #1a2330;
+            letter-spacing: 0.5px;
+            word-break: break-all;
+        }
+        .export-section {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .export-btn {
+            flex: 1;
+            min-width: 68px;
+            padding: 12px 0;
+            border: none;
+            border-radius: 14px;
+            background: #edf0f6;
+            color: #1f2a3a;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.18s, transform 0.1s;
+            font-family: inherit;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .export-btn:active {
+            transform: scale(0.94);
+            background: #d5dce6;
+        }
+        .export-btn[data-format="png"] {
+            background: #e3eaf7;
+            color: #1c3b6b;
+        }
+        .export-btn[data-format="jpg"] {
+            background: #f7ede6;
+            color: #6b3d1c;
+        }
+        .export-btn[data-format="webp"] {
+            background: #e6f7ed;
+            color: #1c6b3d;
+        }
+        .export-btn[data-format="bmp"] {
+            background: #efe6f7;
+            color: #4a1c6b;
+        }
+        .export-btn:active[data-format="png"] {
+            background: #c8d6ed;
+        }
+        .export-btn:active[data-format="jpg"] {
+            background: #edd5c4;
+        }
+        .export-btn:active[data-format="webp"] {
+            background: #c4edcf;
+        }
+        .export-btn:active[data-format="bmp"] {
+            background: #d9c4ed;
+        }
+        .advanced-panel {
+            margin-top: 14px;
+            padding: 16px 14px 18px;
+            background: #f8faff;
+            border-radius: 16px;
+            border: 1px solid #e6ebf3;
+            max-height: 650px;
+            overflow-y: auto;
+        }
+        .adv-group {
+            margin-bottom: 16px;
+        }
+        .adv-group-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e5a;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        .adv-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .adv-row label {
+            font-size: 13px;
+            color: #4a5a72;
+            min-width: 40px;
+        }
+        .adv-row input[type="number"] {
+            width: 70px;
+            padding: 5px 8px;
+            border: 1px solid #d0d7e2;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fff;
+            font-family: inherit;
+        }
+        .adv-row input[type="number"]:focus {
+            outline: none;
+            border-color: #7a8ba3;
+        }
+        .adv-row input[type="range"] {
+            flex: 1;
+            min-width: 100px;
+            accent-color: #3d6b9b;
+        }
+        .adv-row .value-label {
+            min-width: 36px;
+            font-size: 13px;
+            color: #3d4a5c;
+            font-weight: 500;
+        }
+        .adv-btn {
+            padding: 6px 18px;
+            border: none;
+            border-radius: 30px;
+            background: #e6ecf5;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1f2a3a;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: inherit;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .adv-btn:active {
+            background: #cdd6e3;
+        }
+        .adv-btn.primary {
+            background: #2c3e5a;
+            color: #fff;
+        }
+        .adv-btn.primary:active {
+            background: #1a2a3f;
+        }
+        .adv-btn.danger {
+            background: #e8d5d5;
+            color: #7a3a3a;
+        }
+        .adv-btn.danger:active {
+            background: #dbbdbd;
+        }
+        .adv-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #4a5a72;
+        }
+        .adv-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #2c3e5a;
+        }
+        .layer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #e2e6ee;
+            border-radius: 12px;
+            padding: 6px 8px;
+            background: #fff;
+        }
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            background: #fafcff;
+            border: 1px solid #eef2f8;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+            min-height: 48px;
+        }
+        .layer-item.selected {
+            border-color: #2c3e5a;
+            background: #eaf1fe;
+        }
+        .layer-item .thumb {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #eef0f4;
+            border: 1px solid #d0d7e2;
+            flex-shrink: 0;
+        }
+        .layer-item .layer-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1f2a3a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .layer-item .layer-actions {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .layer-item .layer-actions button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 8px;
+            transition: background 0.1s;
+            line-height: 1;
+            color: #2c3e5a;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .layer-item .layer-actions button:active {
+            background: #d0d7e2;
+        }
+        .layer-item .layer-actions .vis-toggle {
+            font-size: 20px;
+        }
+        .layer-item .layer-actions .del-btn {
+            color: #b33;
+        }
+        .layer-item .layer-actions .move-btn {
+            font-size: 18px;
+            color: #4a5a72;
+            padding: 6px 6px;
+        }
+        .layer-item .layer-actions .move-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .layer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 6px;
+            align-items: center;
+        }
+        .layer-controls .adv-row {
+            margin-bottom: 0;
+        }
+        .tool-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-top: 4px;
+        }
+        .tool-group .adv-btn {
+            min-width: 80px;
+        }
+        .tool-group .adv-btn.active {
+            background: #2c3e5a;
+            color: #fff;
+        }
+        .erase-tool {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .erase-tool label {
+            font-size: 13px;
+            color: #4a5a72;
+        }
+        .erase-tool input[type="range"] {
+            width: 120px;
+            accent-color: #3d6b9b;
+        }
+        .erase-tool .size-val {
+            min-width: 30px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        @media (max-width: 500px) {
+            .container {
+                padding: 12px 10px 16px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+                padding: 6px 12px;
+            }
+            .info-item {
+                font-size: 13px;
+                padding: 4px 0;
+            }
+            .export-btn {
+                font-size: 14px;
+                padding: 11px 0;
+                min-width: 58px;
+            }
+            .color-hex-large {
+                font-size: 16px;
+            }
+            .adv-row input[type="number"] {
+                width: 60px;
+            }
+            .adv-row {
+                gap: 6px;
+            }
+            .layer-item {
+                padding: 4px 6px;
+                min-height: 44px;
+            }
+            .layer-item .thumb {
+                width: 28px;
+                height: 28px;
+            }
+            .layer-item .layer-actions button {
+                font-size: 18px;
+                padding: 4px 6px;
+                min-width: 32px;
+                min-height: 32px;
+            }
+            .layer-item .layer-actions .move-btn {
+                font-size: 16px;
+            }
+            .erase-tool input[type="range"] {
+                width: 80px;
+            }
+        }
+        @media (hover: none) {
+            .export-btn:hover {
+                background: inherit;
+            }
+            .export-btn:hover[data-format="png"] {
+                background: #e3eaf7;
+            }
+            .export-btn:hover[data-format="jpg"] {
+                background: #f7ede6;
+            }
+            .export-btn:hover[data-format="webp"] {
+                background: #e6f7ed;
+            }
+            .export-btn:hover[data-format="bmp"] {
+                background: #efe6f7;
+            }
+            .upload-area:hover {
+                background: #fafcff;
+                border-color: #d0d7e2;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- 上传 -->
         <div class="upload-area" id="uploadArea">
             <label for="fileInput">
                 <span>📁 点击上传图片 (添加为图层)</span><br />
@@ -93,17 +533,14 @@
             <input type="file" id="fileInput" accept="image/*" multiple />
         </div>
 
-        <!-- 画布 -->
         <div class="canvas-wrapper" id="canvasWrapper">
             <canvas id="imageCanvas"></canvas>
             <canvas id="overlayCanvas"></canvas>
             <div class="zoom-indicator" id="zoomIndicator">100%</div>
         </div>
 
-        <!-- 提示 -->
         <div class="hint-msg" id="hintMsg">💡 选中图层才可对图层进行操作</div>
 
-        <!-- 颜色信息 -->
         <div class="info-section">
             <div class="color-preview">
                 <div class="color-swatch" id="colorSwatch" style="background:#a0aab8;"></div>
@@ -118,7 +555,6 @@
             </div>
         </div>
 
-        <!-- 导出 -->
         <div class="export-section">
             <button class="export-btn" data-format="png">PNG</button>
             <button class="export-btn" data-format="jpg">JPG</button>
@@ -126,9 +562,7 @@
             <button class="export-btn" data-format="bmp">BMP</button>
         </div>
 
-        <!-- 高级面板 -->
         <div class="advanced-panel" id="advancedPanel">
-            <!-- 图层管理 -->
             <div class="adv-group">
                 <div class="adv-group-title">图层管理</div>
                 <div class="layer-list" id="layerList"></div>
@@ -147,7 +581,6 @@
                 </div>
             </div>
 
-            <!-- 图层滤镜 -->
             <div class="adv-group">
                 <div class="adv-group-title">图层滤镜</div>
                 <div class="adv-row">
@@ -175,7 +608,6 @@
                 </div>
             </div>
 
-            <!-- 取色 & 擦除 -->
             <div class="adv-group">
                 <div class="adv-group-title">取色与擦除</div>
                 <div class="tool-group">
@@ -254,14 +686,12 @@
             let brushSize = 20;
             let isErasing = false;
 
-            // 鼠标拖拽状态
+            // 拖拽状态
             let isDraggingView = false;
             let dragStartX = 0,
                 dragStartY = 0;
             let dragStartOffsetX = 0,
                 dragStartOffsetY = 0;
-            let lastTouchDist = 0;
-            let isPinching = false;
 
             let isDraggingLayer = false;
             let dragLayerStartX = 0,
@@ -270,8 +700,15 @@
                 dragLayerOrigY = 0;
             let draggedLayerId = null;
 
-            // 触摸专用状态 (区分触摸与鼠标)
-            let touchIdentifier = null; // 用于跟踪触摸点
+            // 缩放状态 (双指)
+            let lastTouchDist = 0;
+            let isPinching = false;
+            let touchStartScale = 1;
+            let touchStartOffsetX = 0,
+                touchStartOffsetY = 0;
+
+            // 擦除连续画线
+            let lastErasePoint = null; // {x, y} 在图层本地坐标
 
             // ========== 颜色转换 ==========
             function componentToHex(c) { const hex = c.toString(16); return hex.length === 1 ? '0' + hex : hex; }
@@ -432,13 +869,12 @@
                 selectLayer(id);
             }
 
-            // 修复图层顺序显示：面板从上到下对应从顶层到底层
+            // 图层面板从上到下 = 从顶层到底层 (反向显示)
             function updateLayerList() {
                 layerList.innerHTML = '';
-                // 反向遍历，使得面板第一个为最顶层（索引最大）
                 for (let i = layers.length - 1; i >= 0; i--) {
                     const layer = layers[i];
-                    const index = i; // 实际索引
+                    const index = i;
                     const div = document.createElement('div');
                     div.className = 'layer-item' + (layer.id === selectedLayerId ? ' selected' : '');
 
@@ -463,22 +899,29 @@
                     upBtn.className = 'move-btn';
                     upBtn.textContent = '▲';
                     upBtn.title = '上移图层';
-                    upBtn.disabled = (index === layers.length - 1); // 最顶层不能上移
+                    upBtn.disabled = (index === layers.length - 1);
                     upBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         moveLayerUp(layer.id);
                     });
+                    // 触摸友好
+                    upBtn.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, { passive: true });
                     actions.appendChild(upBtn);
 
                     const downBtn = document.createElement('button');
                     downBtn.className = 'move-btn';
                     downBtn.textContent = '▼';
                     downBtn.title = '下移图层';
-                    downBtn.disabled = (index === 0); // 最底层不能下移
+                    downBtn.disabled = (index === 0);
                     downBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
                         moveLayerDown(layer.id);
                     });
+                    downBtn.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, { passive: true });
                     actions.appendChild(downBtn);
 
                     const visBtn = document.createElement('button');
@@ -491,6 +934,9 @@
                         renderAll();
                         updateLayerList();
                     });
+                    visBtn.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, { passive: true });
                     actions.appendChild(visBtn);
 
                     const delBtn = document.createElement('button');
@@ -501,6 +947,9 @@
                         e.stopPropagation();
                         deleteLayer(layer.id);
                     });
+                    delBtn.addEventListener('touchstart', function(e) {
+                        e.stopPropagation();
+                    }, { passive: true });
                     actions.appendChild(delBtn);
 
                     div.appendChild(actions);
@@ -566,7 +1015,7 @@
                 ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
                 ctx.scale(viewTransform.scale, viewTransform.scale);
 
-                // 按照layers数组顺序绘制（索引从小到大，后面的覆盖前面的）
+                // 按数组顺序绘制 (索引从小到大，后面的覆盖前面的)
                 layers.forEach(layer => {
                     if (!layer.visible) return;
                     const lw = layer.canvas.width;
@@ -596,7 +1045,7 @@
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             }
 
-            // ========== 擦除 ==========
+            // ========== 擦除 (支持连续画线) ==========
 
             function applyEraserAt(layer, x, y, size) {
                 const lctx = layer.canvas.getContext('2d');
@@ -607,6 +1056,25 @@
                 lctx.arc(x, y, size / 2, 0, Math.PI * 2);
                 lctx.fill();
                 lctx.restore();
+            }
+
+            // 在两点之间画线擦除 (连续擦除)
+            function eraseLine(layer, x1, y1, x2, y2, size) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 1) {
+                    applyEraserAt(layer, x1, y1, size);
+                    return;
+                }
+                const step = Math.max(1, size / 4);
+                const steps = Math.max(1, Math.ceil(dist / step));
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const x = x1 + dx * t;
+                    const y = y1 + dy * t;
+                    applyEraserAt(layer, x, y, size);
+                }
             }
 
             function getLayerCoord(layer, clientX, clientY) {
@@ -666,7 +1134,7 @@
                 } catch (_) {}
             }
 
-            // ========== 导出 (修复: 计算所有图层有像素的并集边界) ==========
+            // ========== 导出 ==========
 
             function exportImage(format) {
                 if (layers.length === 0) {
@@ -861,6 +1329,7 @@
                     overlayCanvas.style.display = 'none';
                     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
                 }
+                lastErasePoint = null;
             }
 
             function updateEraseCursor(clientX, clientY) {
@@ -885,18 +1354,10 @@
                 overlayCtx.fill();
             }
 
-            // ========== 事件绑定 (鼠标 + 触摸统一处理) ==========
+            // ========== 事件绑定 ==========
 
-            // 获取客户端坐标 (兼容鼠标和触摸)
-            function getClientPos(e) {
-                if (e.touches) {
-                    const touch = e.touches[0];
-                    return { clientX: touch.clientX, clientY: touch.clientY };
-                }
-                return { clientX: e.clientX, clientY: e.clientY };
-            }
+            // --- 鼠标事件 ---
 
-            // 鼠标事件
             canvas.addEventListener('wheel', function(e) {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -1 : 1;
@@ -923,7 +1384,12 @@
                         if (!layer) return;
                         const coord = getLayerCoord(layer, e.clientX, e.clientY);
                         if (coord) {
-                            applyEraserAt(layer, coord.x, coord.y, brushSize);
+                            if (lastErasePoint) {
+                                eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
+                            } else {
+                                applyEraserAt(layer, coord.x, coord.y, brushSize);
+                            }
+                            lastErasePoint = coord;
                             renderAll();
                             updateLayerList();
                         }
@@ -935,6 +1401,7 @@
                 if (eraseMode) {
                     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
                 }
+                lastErasePoint = null;
             });
 
             canvas.addEventListener('mousedown', function(e) {
@@ -948,6 +1415,7 @@
                     const coord = getLayerCoord(layer, e.clientX, e.clientY);
                     if (coord) {
                         applyEraserAt(layer, coord.x, coord.y, brushSize);
+                        lastErasePoint = coord;
                         renderAll();
                         updateLayerList();
                         isErasing = true;
@@ -1023,23 +1491,44 @@
                 }
                 if (isErasing) {
                     isErasing = false;
+                    lastErasePoint = null;
                 }
             });
 
-            // ========== 触摸事件 (手机适配) ==========
+            // --- 触摸事件 (手机适配) ---
 
-            // 记录触摸点ID和状态
             let activeTouchId = null;
-            let touchStartTime = 0;
+            let touchIdentifier = null;
 
             canvas.addEventListener('touchstart', function(e) {
-                e.preventDefault(); // 防止滚动
+                e.preventDefault();
                 const touches = e.touches;
+
+                // 双指缩放优先
+                if (touches.length === 2) {
+                    // 重置单指拖拽状态，避免冲突
+                    isDraggingView = false;
+                    isDraggingLayer = false;
+                    isErasing = false;
+                    lastErasePoint = null;
+
+                    const t1 = touches[0],
+                        t2 = touches[1];
+                    const dx = t1.clientX - t2.clientX;
+                    const dy = t1.clientY - t2.clientY;
+                    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+                    touchStartScale = viewTransform.scale;
+                    touchStartOffsetX = viewTransform.offsetX;
+                    touchStartOffsetY = viewTransform.offsetY;
+                    isPinching = true;
+                    return;
+                }
+
                 if (touches.length === 1) {
                     const touch = touches[0];
-                    activeTouchId = touch.identifier;
                     const clientX = touch.clientX,
                         clientY = touch.clientY;
+                    activeTouchId = touch.identifier;
 
                     // 取色模式
                     if (colorPickMode) {
@@ -1054,10 +1543,10 @@
                         const coord = getLayerCoord(layer, clientX, clientY);
                         if (coord) {
                             applyEraserAt(layer, coord.x, coord.y, brushSize);
+                            lastErasePoint = coord;
                             renderAll();
                             updateLayerList();
                             isErasing = true;
-                            // 记录触摸标识以便在touchmove中继续
                             touchIdentifier = touch.identifier;
                         }
                         return;
@@ -1066,13 +1555,11 @@
                     // 选择/移动模式
                     const layer = getSelectedLayer();
                     if (!layer) {
-                        // 视图平移
                         isDraggingView = true;
                         dragStartX = clientX;
                         dragStartY = clientY;
                         dragStartOffsetX = viewTransform.offsetX;
                         dragStartOffsetY = viewTransform.offsetY;
-                        canvas.style.cursor = 'grabbing';
                         return;
                     }
                     const coord = getLayerCoord(layer, clientX, clientY);
@@ -1083,26 +1570,13 @@
                         dragLayerStartY = clientY;
                         dragLayerOrigX = layer.x;
                         dragLayerOrigY = layer.y;
-                        canvas.style.cursor = 'move';
                     } else {
                         isDraggingView = true;
                         dragStartX = clientX;
                         dragStartY = clientY;
                         dragStartOffsetX = viewTransform.offsetX;
                         dragStartOffsetY = viewTransform.offsetY;
-                        canvas.style.cursor = 'grabbing';
                     }
-                } else if (touches.length === 2) {
-                    // 双指缩放
-                    const t1 = touches[0],
-                        t2 = touches[1];
-                    const dx = t1.clientX - t2.clientX;
-                    const dy = t1.clientY - t2.clientY;
-                    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
-                    touchStartScale = viewTransform.scale;
-                    touchStartOffsetX = viewTransform.offsetX;
-                    touchStartOffsetY = viewTransform.offsetY;
-                    isPinching = true;
                 }
             }, { passive: false });
 
@@ -1110,26 +1584,7 @@
                 e.preventDefault();
                 const touches = e.touches;
 
-                // 擦除连续移动
-                if (eraseMode && isErasing && touches.length === 1) {
-                    const touch = touches[0];
-                    // 检查是否为同一个触摸点
-                    if (touch.identifier === touchIdentifier) {
-                        const layer = getSelectedLayer();
-                        if (!layer) return;
-                        const coord = getLayerCoord(layer, touch.clientX, touch.clientY);
-                        if (coord) {
-                            applyEraserAt(layer, coord.x, coord.y, brushSize);
-                            renderAll();
-                            updateLayerList();
-                            // 更新光标 (手机端不需要显示光标，但保留)
-                            updateEraseCursor(touch.clientX, touch.clientY);
-                        }
-                    }
-                    return;
-                }
-
-                // 缩放 (双指)
+                // 双指缩放
                 if (touches.length === 2 && isPinching) {
                     const t1 = touches[0],
                         t2 = touches[1];
@@ -1152,6 +1607,27 @@
                     viewTransform.offsetY = my - wy * newScale;
                     renderAll();
                     lastTouchDist = dist;
+                    return;
+                }
+
+                // 擦除连续画线 (单指)
+                if (eraseMode && isErasing && touches.length === 1) {
+                    const touch = touches[0];
+                    if (touch.identifier === touchIdentifier) {
+                        const layer = getSelectedLayer();
+                        if (!layer) return;
+                        const coord = getLayerCoord(layer, touch.clientX, touch.clientY);
+                        if (coord) {
+                            if (lastErasePoint) {
+                                eraseLine(layer, lastErasePoint.x, lastErasePoint.y, coord.x, coord.y, brushSize);
+                            } else {
+                                applyEraserAt(layer, coord.x, coord.y, brushSize);
+                            }
+                            lastErasePoint = coord;
+                            renderAll();
+                            updateLayerList();
+                        }
+                    }
                     return;
                 }
 
@@ -1192,30 +1668,25 @@
 
             canvas.addEventListener('touchend', function(e) {
                 e.preventDefault();
-                // 结束擦除
                 if (isErasing) {
                     isErasing = false;
+                    lastErasePoint = null;
                     touchIdentifier = null;
                 }
-                // 结束拖拽
                 if (isDraggingView || isDraggingLayer) {
                     isDraggingView = false;
                     isDraggingLayer = false;
                     draggedLayerId = null;
-                    canvas.style.cursor = 'default';
                 }
-                // 结束缩放
                 if (isPinching) {
                     isPinching = false;
                 }
-                // 如果触摸点全部离开，重置状态
                 if (e.touches.length === 0) {
-                    // 如果有未完成的拖拽，也重置
                     isDraggingView = false;
                     isDraggingLayer = false;
                     isErasing = false;
                     touchIdentifier = null;
-                    canvas.style.cursor = 'default';
+                    lastErasePoint = null;
                 }
             }, { passive: false });
 
@@ -1225,8 +1696,8 @@
                 isDraggingLayer = false;
                 isErasing = false;
                 touchIdentifier = null;
+                lastErasePoint = null;
                 isPinching = false;
-                canvas.style.cursor = 'default';
             }, { passive: false });
 
             // ========== 其他事件 ==========
@@ -1386,7 +1857,7 @@
             updateLayerList();
             updateControls();
 
-            console.log('🖼️ 多图层编辑器 (图层顺序修复 + 手机触摸适配)');
+            console.log('🖼️ 多图层编辑器 (手机缩放/排序/连续擦除 已修复)');
         })();
     </script>
 
