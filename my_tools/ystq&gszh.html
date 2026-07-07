@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>多图层编辑器</title>
     <style>
-        /* --- 样式保持不变，略 --- */
         * { margin:0; padding:0; box-sizing:border-box; }
         body { min-height:100vh; display:flex; justify-content:center; align-items:center; background:#f0f2f6; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding:16px; touch-action:manipulation; }
         .container { max-width:860px; width:100%; background:#ffffff; padding:20px 18px 28px; }
@@ -243,7 +242,6 @@
             let selectedLayerId = null;
             let nextId = 1;
 
-            // 视图变换 (缩放和平移)
             let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
 
             let colorPickMode = false;
@@ -251,14 +249,12 @@
             let brushSize = 20;
             let isErasing = false;
 
-            // 拖拽状态 (视图平移)
             let isDraggingView = false;
             let dragStartX = 0,
                 dragStartY = 0;
             let dragStartOffsetX = 0,
                 dragStartOffsetY = 0;
 
-            // 拖拽图层
             let isDraggingLayer = false;
             let dragLayerStartX = 0,
                 dragLayerStartY = 0;
@@ -266,7 +262,6 @@
                 dragLayerOrigY = 0;
             let draggedLayerId = null;
 
-            // 双指缩放状态 (重写)
             let isPinching = false;
             let pinchStartDist = 0;
             let pinchStartScale = 1;
@@ -275,7 +270,6 @@
             let pinchCenterX = 0,
                 pinchCenterY = 0;
 
-            // 擦除连续画线
             let lastErasePoint = null;
 
             // ========== 颜色转换 ==========
@@ -422,18 +416,22 @@
                 return layers.find(l => l.id === selectedLayerId) || null;
             }
 
-            // ===== 图层排序（重写）=====
-            function moveLayerUp(id) {
+            // ===== 图层排序（方向已修复）=====
+            // 在数组中：索引0为底层，索引 length-1 为顶层
+            // 显示时反向显示：顶层在上，底层在下
+            // ▲ 上移 → 显示中上升 → 数组索引增大 → 调用 moveDown
+            // ▼ 下移 → 显示中下降 → 数组索引减小 → 调用 moveUp
+
+            function moveUpInArray(id) {
                 const idx = layers.findIndex(l => l.id === id);
                 if (idx <= 0) return;
-                // 交换元素
                 [layers[idx], layers[idx - 1]] = [layers[idx - 1], layers[idx]];
                 renderAll();
                 updateLayerList();
-                selectLayer(id); // 保持选中
+                selectLayer(id);
             }
 
-            function moveLayerDown(id) {
+            function moveDownInArray(id) {
                 const idx = layers.findIndex(l => l.id === id);
                 if (idx === -1 || idx === layers.length - 1) return;
                 [layers[idx], layers[idx + 1]] = [layers[idx + 1], layers[idx]];
@@ -445,10 +443,10 @@
             // 图层面板渲染（反向显示，顶层在上）
             function updateLayerList() {
                 layerList.innerHTML = '';
-                // 从后往前遍历（顶层在数组末尾）
+                // 从后往前遍历（顶层在数组末尾，显示在列表顶部）
                 for (let i = layers.length - 1; i >= 0; i--) {
                     const layer = layers[i];
-                    const index = i;
+                    const index = i; // 数组中的实际索引
                     const div = document.createElement('div');
                     div.className = 'layer-item' + (layer.id === selectedLayerId ? ' selected' : '');
 
@@ -469,28 +467,27 @@
                     const actions = document.createElement('div');
                     actions.className = 'layer-actions';
 
-                    // 上移按钮 (将图层向上移动，即索引减小)
+                    // ▲ 上移：显示中上升 → 数组索引增大 → moveDownInArray
                     const upBtn = document.createElement('button');
                     upBtn.className = 'move-btn';
                     upBtn.textContent = '▲';
                     upBtn.title = '上移图层';
-                    upBtn.disabled = (index === 0); // 最底层（索引0）不能上移
-                    // 使用 click 事件，无需 touchstart（手机也支持 click）
+                    upBtn.disabled = (index === layers.length - 1); // 最顶层不能上移
                     upBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        if (!this.disabled) moveLayerUp(layer.id);
+                        if (!this.disabled) moveDownInArray(layer.id);
                     });
                     actions.appendChild(upBtn);
 
-                    // 下移按钮 (将图层向下移动，即索引增大)
+                    // ▼ 下移：显示中下降 → 数组索引减小 → moveUpInArray
                     const downBtn = document.createElement('button');
                     downBtn.className = 'move-btn';
                     downBtn.textContent = '▼';
                     downBtn.title = '下移图层';
-                    downBtn.disabled = (index === layers.length - 1); // 最顶层不能下移
+                    downBtn.disabled = (index === 0); // 最底层不能下移
                     downBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        if (!this.disabled) moveLayerDown(layer.id);
+                        if (!this.disabled) moveUpInArray(layer.id);
                     });
                     actions.appendChild(downBtn);
 
@@ -520,14 +517,12 @@
 
                     div.appendChild(actions);
 
-                    // 点击选中图层
                     div.addEventListener('click', function() {
                         selectLayer(layer.id);
                     });
 
                     layerList.appendChild(div);
                 }
-                // 更新位置等输入框
                 const sel = getSelectedLayer();
                 if (sel) {
                     layerX.value = sel.x;
@@ -588,7 +583,6 @@
                 ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
                 ctx.scale(viewTransform.scale, viewTransform.scale);
 
-                // 按数组顺序绘制（索引小的在底层，大的在顶层）
                 layers.forEach(layer => {
                     if (!layer.visible) return;
                     const lw = layer.canvas.width * layer.scale;
@@ -618,7 +612,7 @@
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
             }
 
-            // ========== 擦除功能 (保持不变) ==========
+            // ========== 擦除功能 ==========
 
             function applyEraserAt(layer, x, y, size) {
                 const lctx = layer.canvas.getContext('2d');
@@ -706,7 +700,7 @@
                 } catch (_) {}
             }
 
-            // ========== 导出 (简化，保留原有逻辑) ==========
+            // ========== 导出 ==========
 
             function exportImage(format) {
                 if (layers.length === 0) {
@@ -714,7 +708,6 @@
                     return;
                 }
 
-                // 计算所有可见图层的并集边界 (考虑缩放和旋转)
                 let globalMinX = Infinity,
                     globalMinY = Infinity;
                 let globalMaxX = -Infinity,
@@ -886,29 +879,26 @@
 
             // ========== 事件绑定 ==========
 
-            // --- 鼠标滚轮缩放 (稳定) ---
+            // --- 鼠标滚轮缩放 ---
             canvas.addEventListener('wheel', function(e) {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -1 : 1;
                 const factor = 1 + delta * 0.1;
                 const newScale = Math.min(Math.max(viewTransform.scale * factor, 0.1), 10);
-                // 以鼠标位置为缩放中心
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
                 const mx = (e.clientX - rect.left) * scaleX;
                 const my = (e.clientY - rect.top) * scaleY;
-                // 计算鼠标在世界坐标的位置
                 const wx = (mx - viewTransform.offsetX) / viewTransform.scale;
                 const wy = (my - viewTransform.offsetY) / viewTransform.scale;
-                // 更新缩放和偏移，使得鼠标位置不变
                 viewTransform.scale = newScale;
                 viewTransform.offsetX = mx - wx * newScale;
                 viewTransform.offsetY = my - wy * newScale;
                 renderAll();
             }, { passive: false });
 
-            // --- 鼠标移动 (擦除光标) ---
+            // --- 鼠标移动 ---
             canvas.addEventListener('mousemove', function(e) {
                 if (eraseMode) {
                     updateEraseCursor(e.clientX, e.clientY);
@@ -937,7 +927,7 @@
                 lastErasePoint = null;
             });
 
-            // --- 鼠标按下 (区分模式) ---
+            // --- 鼠标按下 ---
             canvas.addEventListener('mousedown', function(e) {
                 if (colorPickMode) {
                     getColorFromCanvas(e.clientX, e.clientY);
@@ -957,10 +947,8 @@
                     return;
                 }
 
-                // 选择/移动模式
                 const layer = getSelectedLayer();
                 if (!layer) {
-                    // 视图平移
                     isDraggingView = true;
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
@@ -971,7 +959,6 @@
                 }
                 const coord = getLayerCoord(layer, e.clientX, e.clientY);
                 if (coord) {
-                    // 图层拖拽
                     isDraggingLayer = true;
                     draggedLayerId = layer.id;
                     dragLayerStartX = e.clientX;
@@ -980,7 +967,6 @@
                     dragLayerOrigY = layer.y;
                     canvas.style.cursor = 'move';
                 } else {
-                    // 点击空白处，视图平移
                     isDraggingView = true;
                     dragStartX = e.clientX;
                     dragStartY = e.clientY;
@@ -990,7 +976,6 @@
                 }
             });
 
-            // --- 全局鼠标移动 (拖拽) ---
             window.addEventListener('mousemove', function(e) {
                 if (isDraggingView) {
                     const dx = e.clientX - dragStartX;
@@ -1034,7 +1019,7 @@
                 }
             });
 
-            // --- 触摸事件 (手机) 重写 ---
+            // --- 触摸事件 ---
 
             let touchId = null;
 
@@ -1042,9 +1027,7 @@
                 e.preventDefault();
                 const touches = e.touches;
 
-                // 双指缩放
                 if (touches.length === 2) {
-                    // 取消其他状态
                     isDraggingView = false;
                     isDraggingLayer = false;
                     isErasing = false;
@@ -1055,11 +1038,9 @@
                     const dx = t1.clientX - t2.clientX;
                     const dy = t1.clientY - t2.clientY;
                     pinchStartDist = Math.sqrt(dx * dx + dy * dy);
-                    // 记录当前缩放状态
                     pinchStartScale = viewTransform.scale;
                     pinchStartOffsetX = viewTransform.offsetX;
                     pinchStartOffsetY = viewTransform.offsetY;
-                    // 记录双指中心
                     pinchCenterX = (t1.clientX + t2.clientX) / 2;
                     pinchCenterY = (t1.clientY + t2.clientY) / 2;
                     isPinching = true;
@@ -1071,13 +1052,11 @@
                     const clientX = touch.clientX,
                         clientY = touch.clientY;
 
-                    // 取色模式
                     if (colorPickMode) {
                         getColorFromCanvas(clientX, clientY);
                         return;
                     }
 
-                    // 擦除模式
                     if (eraseMode) {
                         const layer = getSelectedLayer();
                         if (!layer) return;
@@ -1093,7 +1072,6 @@
                         return;
                     }
 
-                    // 选择/移动模式
                     const layer = getSelectedLayer();
                     if (!layer) {
                         isDraggingView = true;
@@ -1125,7 +1103,6 @@
                 e.preventDefault();
                 const touches = e.touches;
 
-                // 双指缩放
                 if (touches.length === 2 && isPinching) {
                     const t1 = touches[0],
                         t2 = touches[1];
@@ -1134,20 +1111,13 @@
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     const scaleFactor = dist / pinchStartDist;
                     let newScale = Math.min(Math.max(pinchStartScale * scaleFactor, 0.1), 10);
-                    // 以双指中心为缩放中心，计算新的偏移量
-                    // 使用最初的 pinchCenterX, pinchCenterY 作为固定参考点
-                    // 但在缩放过程中，中心点会变化，为了平滑，我们使用当前中心点与初始中心的偏移
-                    // 更稳定的做法：以初始中心为基准，计算缩放前后该点的世界坐标不变
                     const rect = canvas.getBoundingClientRect();
                     const scaleX = canvas.width / rect.width;
                     const scaleY = canvas.height / rect.height;
-                    // 获取初始中心在画布坐标
                     const mx = (pinchCenterX - rect.left) * scaleX;
                     const my = (pinchCenterY - rect.top) * scaleY;
-                    // 计算该点在缩放前的世界坐标
                     const wx = (mx - pinchStartOffsetX) / pinchStartScale;
                     const wy = (my - pinchStartOffsetY) / pinchStartScale;
-                    // 应用新缩放
                     viewTransform.scale = newScale;
                     viewTransform.offsetX = mx - wx * newScale;
                     viewTransform.offsetY = my - wy * newScale;
@@ -1155,7 +1125,6 @@
                     return;
                 }
 
-                // 擦除连续画线
                 if (eraseMode && isErasing && touches.length === 1) {
                     const touch = touches[0];
                     if (touch.identifier === touchId) {
@@ -1176,7 +1145,6 @@
                     return;
                 }
 
-                // 单指拖拽
                 if (touches.length === 1) {
                     const touch = touches[0];
                     const clientX = touch.clientX,
@@ -1245,7 +1213,7 @@
                 isPinching = false;
             }, { passive: false });
 
-            // ========== 其他事件绑定 ==========
+            // ========== 其他事件 ==========
 
             fileInput.addEventListener('change', function(e) {
                 const files = this.files;
@@ -1381,7 +1349,6 @@
                 updateLayerList();
             });
 
-            // ========== 导出按钮 ==========
             exportBtns.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     const format = this.getAttribute('data-format');
@@ -1412,7 +1379,7 @@
             updateLayerList();
             updateControls();
 
-            console.log('🖼️ 多图层编辑器 (排序和缩放完全重写)');
+            console.log('🖼️ 多图层编辑器 (排序方向已修复)');
         })();
     </script>
 
