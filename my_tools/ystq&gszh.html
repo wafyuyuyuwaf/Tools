@@ -335,22 +335,22 @@
         .layer-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 6px 8px;
+            gap: 8px;
+            padding: 4px 6px;
             border-radius: 10px;
             background: #fafcff;
             border: 1px solid #eef2f8;
             transition: background 0.15s, border-color 0.15s;
             user-select: none;
-            min-height: 48px;
+            min-height: 40px;
         }
         .layer-item.selected {
             border-color: #2c3e5a;
             background: #eaf1fe;
         }
         .layer-item .thumb {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 6px;
             object-fit: cover;
             background: #eef0f4;
@@ -368,24 +368,24 @@
         }
         .layer-item .layer-actions {
             display: flex;
-            gap: 2px;
+            gap: 0px;
             align-items: center;
             flex-shrink: 0;
         }
         .layer-item .layer-actions button {
             background: none;
             border: none;
-            font-size: 20px;
+            font-size: 16px;
             cursor: pointer;
-            padding: 6px 8px;
-            border-radius: 8px;
+            padding: 2px 4px;
+            border-radius: 6px;
             transition: background 0.1s;
             line-height: 1;
             color: #2c3e5a;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
-            min-width: 36px;
-            min-height: 36px;
+            min-width: 28px;
+            min-height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -394,15 +394,16 @@
             background: #d0d7e2;
         }
         .layer-item .layer-actions .vis-toggle {
-            font-size: 20px;
+            font-size: 16px;
         }
         .layer-item .layer-actions .del-btn {
             color: #b33;
+            font-size: 16px;
         }
         .layer-item .layer-actions .move-btn {
-            font-size: 18px;
+            font-size: 14px;
             color: #4a5a72;
-            padding: 6px 6px;
+            padding: 2px 3px;
         }
         .layer-item .layer-actions .move-btn:disabled {
             opacity: 0.3;
@@ -479,21 +480,28 @@
                 gap: 6px;
             }
             .layer-item {
-                padding: 4px 6px;
-                min-height: 44px;
+                padding: 3px 4px;
+                min-height: 36px;
+                gap: 6px;
             }
             .layer-item .thumb {
                 width: 28px;
                 height: 28px;
             }
             .layer-item .layer-actions button {
-                font-size: 18px;
-                padding: 4px 6px;
-                min-width: 32px;
-                min-height: 32px;
+                font-size: 14px;
+                padding: 2px 3px;
+                min-width: 24px;
+                min-height: 24px;
             }
             .layer-item .layer-actions .move-btn {
-                font-size: 16px;
+                font-size: 12px;
+            }
+            .layer-item .layer-actions .vis-toggle {
+                font-size: 14px;
+            }
+            .layer-item .layer-actions .del-btn {
+                font-size: 14px;
             }
             .erase-tool input[type="range"] {
                 width: 80px;
@@ -578,6 +586,11 @@
                         <button class="adv-btn" id="applyLayerPos">应用</button>
                         <button class="adv-btn danger" id="deleteSelectedLayer">删除</button>
                     </div>
+                    <div class="adv-row">
+                        <label>大小</label>
+                        <input type="range" id="layerScaleSlider" min="10" max="200" value="100" step="1" style="flex:1; min-width:80px;" />
+                        <span class="value-label" id="layerScaleVal">100%</span>
+                    </div>
                 </div>
             </div>
 
@@ -655,6 +668,8 @@
             const layerX = document.getElementById('layerX');
             const layerY = document.getElementById('layerY');
             const layerRotation = document.getElementById('layerRotation');
+            const layerScaleSlider = document.getElementById('layerScaleSlider');
+            const layerScaleVal = document.getElementById('layerScaleVal');
             const applyLayerPos = document.getElementById('applyLayerPos');
             const deleteSelectedBtn = document.getElementById('deleteSelectedLayer');
 
@@ -708,7 +723,7 @@
                 touchStartOffsetY = 0;
 
             // 擦除连续画线
-            let lastErasePoint = null; // {x, y} 在图层本地坐标
+            let lastErasePoint = null;
 
             // ========== 颜色转换 ==========
             function componentToHex(c) { const hex = c.toString(16); return hex.length === 1 ? '0' + hex : hex; }
@@ -800,6 +815,7 @@
                     x: cx,
                     y: cy,
                     rotation: 0,
+                    scale: 1,
                     visible: true,
                     filters: { brightness: 100, contrast: 100, saturation: 100, hue: 0 },
                     name: name || `图层 ${id}`,
@@ -833,6 +849,8 @@
                     layerX.value = layer.x;
                     layerY.value = layer.y;
                     layerRotation.value = layer.rotation;
+                    layerScaleSlider.value = Math.round(layer.scale * 100);
+                    layerScaleVal.textContent = Math.round(layer.scale * 100) + '%';
                     brightnessSlider.value = layer.filters.brightness;
                     contrastSlider.value = layer.filters.contrast;
                     saturationSlider.value = layer.filters.saturation;
@@ -880,11 +898,11 @@
 
                     const thumb = document.createElement('canvas');
                     thumb.className = 'thumb';
-                    thumb.width = 36;
-                    thumb.height = 36;
+                    thumb.width = 32;
+                    thumb.height = 32;
                     const tCtx = thumb.getContext('2d');
                     tCtx.imageSmoothingEnabled = true;
-                    tCtx.drawImage(layer.canvas, 0, 0, 36, 36);
+                    tCtx.drawImage(layer.canvas, 0, 0, 32, 32);
                     div.appendChild(thumb);
 
                     const nameSpan = document.createElement('span');
@@ -895,6 +913,7 @@
                     const actions = document.createElement('div');
                     actions.className = 'layer-actions';
 
+                    // 上移按钮
                     const upBtn = document.createElement('button');
                     upBtn.className = 'move-btn';
                     upBtn.textContent = '▲';
@@ -902,14 +921,17 @@
                     upBtn.disabled = (index === layers.length - 1);
                     upBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        moveLayerUp(layer.id);
+                        if (!this.disabled) moveLayerUp(layer.id);
                     });
-                    // 触摸友好
+                    // 同时绑定 touchstart 防止延迟
                     upBtn.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
                         e.stopPropagation();
-                    }, { passive: true });
+                        if (!this.disabled) moveLayerUp(layer.id);
+                    }, { passive: false });
                     actions.appendChild(upBtn);
 
+                    // 下移按钮
                     const downBtn = document.createElement('button');
                     downBtn.className = 'move-btn';
                     downBtn.textContent = '▼';
@@ -917,13 +939,16 @@
                     downBtn.disabled = (index === 0);
                     downBtn.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        moveLayerDown(layer.id);
+                        if (!this.disabled) moveLayerDown(layer.id);
                     });
                     downBtn.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
                         e.stopPropagation();
-                    }, { passive: true });
+                        if (!this.disabled) moveLayerDown(layer.id);
+                    }, { passive: false });
                     actions.appendChild(downBtn);
 
+                    // 可见性
                     const visBtn = document.createElement('button');
                     visBtn.className = 'vis-toggle';
                     visBtn.textContent = layer.visible ? '👁️' : '👁️‍🗨️';
@@ -939,6 +964,7 @@
                     }, { passive: true });
                     actions.appendChild(visBtn);
 
+                    // 删除
                     const delBtn = document.createElement('button');
                     delBtn.className = 'del-btn';
                     delBtn.textContent = '✕';
@@ -965,6 +991,8 @@
                     layerX.value = sel.x;
                     layerY.value = sel.y;
                     layerRotation.value = sel.rotation;
+                    layerScaleSlider.value = Math.round(sel.scale * 100);
+                    layerScaleVal.textContent = Math.round(sel.scale * 100) + '%';
                 }
             }
 
@@ -974,6 +1002,7 @@
                 layerX.disabled = !hasSel;
                 layerY.disabled = !hasSel;
                 layerRotation.disabled = !hasSel;
+                layerScaleSlider.disabled = !hasSel;
                 applyLayerPos.disabled = !hasSel;
                 deleteSelectedBtn.disabled = !hasSel;
                 brightnessSlider.disabled = !hasSel;
@@ -995,6 +1024,8 @@
                     layerX.value = '';
                     layerY.value = '';
                     layerRotation.value = '';
+                    layerScaleSlider.value = 100;
+                    layerScaleVal.textContent = '100%';
                     hintMsg.textContent = '💡 选中图层才可对图层进行操作';
                 }
             }
@@ -1015,13 +1046,12 @@
                 ctx.translate(viewTransform.offsetX, viewTransform.offsetY);
                 ctx.scale(viewTransform.scale, viewTransform.scale);
 
-                // 按数组顺序绘制 (索引从小到大，后面的覆盖前面的)
                 layers.forEach(layer => {
                     if (!layer.visible) return;
-                    const lw = layer.canvas.width;
-                    const lh = layer.canvas.height;
-                    const cx = layer.x + lw / 2;
-                    const cy = layer.y + lh / 2;
+                    const lw = layer.canvas.width * layer.scale;
+                    const lh = layer.canvas.height * layer.scale;
+                    const cx = layer.x + layer.canvas.width / 2;
+                    const cy = layer.y + layer.canvas.height / 2;
                     const angle = layer.rotation * Math.PI / 180;
                     const f = layer.filters;
                     const filterStr =
@@ -1032,7 +1062,7 @@
                     ctx.rotate(angle);
                     ctx.filter = filterStr;
                     ctx.imageSmoothingEnabled = true;
-                    ctx.drawImage(layer.canvas, -lw / 2, -lh / 2);
+                    ctx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
                     ctx.restore();
                 });
 
@@ -1058,7 +1088,6 @@
                 lctx.restore();
             }
 
-            // 在两点之间画线擦除 (连续擦除)
             function eraseLine(layer, x1, y1, x2, y2, size) {
                 const dx = x2 - x1;
                 const dy = y2 - y1;
@@ -1142,6 +1171,7 @@
                     return;
                 }
 
+                // 计算所有可见图层的并集边界 (考虑缩放和旋转)
                 let globalMinX = Infinity,
                     globalMinY = Infinity;
                 let globalMaxX = -Infinity,
@@ -1150,74 +1180,33 @@
 
                 layers.forEach(layer => {
                     if (!layer.visible) return;
-
-                    const w = layer.canvas.width;
-                    const h = layer.canvas.height;
-
-                    const imageData = layer.canvas.getContext('2d').getImageData(0, 0, w, h);
-                    const data = imageData.data;
-                    let minX = w,
-                        minY = h,
-                        maxX = -1,
-                        maxY = -1;
-
-                    for (let y = 0; y < h; y++) {
-                        for (let x = 0; x < w; x++) {
-                            const idx = (y * w + x) * 4;
-                            if (data[idx + 3] > 0) {
-                                if (x < minX) minX = x;
-                                if (x > maxX) maxX = x;
-                                if (y < minY) minY = y;
-                                if (y > maxY) maxY = y;
-                            }
-                        }
-                    }
-
-                    if (maxX < 0) return;
-
-                    const corners = [
-                        { x: minX, y: minY },
-                        { x: maxX, y: minY },
-                        { x: minX, y: maxY },
-                        { x: maxX, y: maxY }
-                    ];
-
+                    const w = layer.canvas.width * layer.scale;
+                    const h = layer.canvas.height * layer.scale;
                     const angle = layer.rotation * Math.PI / 180;
-                    const cosA = Math.cos(angle);
-                    const sinA = Math.sin(angle);
-                    const cx = layer.x + w / 2;
-                    const cy = layer.y + h / 2;
-
-                    corners.forEach(corner => {
-                        const dx = corner.x - w / 2;
-                        const dy = corner.y - h / 2;
-                        const rx = dx * cosA - dy * sinA;
-                        const ry = dx * sinA + dy * cosA;
-                        const wx = cx + rx;
-                        const wy = cy + ry;
-                        if (wx < globalMinX) globalMinX = wx;
-                        if (wy < globalMinY) globalMinY = wy;
-                        if (wx > globalMaxX) globalMaxX = wx;
-                        if (wy > globalMaxY) globalMaxY = wy;
-                    });
-
+                    const cos = Math.abs(Math.cos(angle));
+                    const sin = Math.abs(Math.sin(angle));
+                    const rotW = w * cos + h * sin;
+                    const rotH = w * sin + h * cos;
+                    const cx = layer.x + layer.canvas.width / 2;
+                    const cy = layer.y + layer.canvas.height / 2;
+                    const x1 = cx - rotW / 2;
+                    const y1 = cy - rotH / 2;
+                    const x2 = cx + rotW / 2;
+                    const y2 = cy + rotH / 2;
+                    if (x1 < globalMinX) globalMinX = x1;
+                    if (y1 < globalMinY) globalMinY = y1;
+                    if (x2 > globalMaxX) globalMaxX = x2;
+                    if (y2 > globalMaxY) globalMaxY = y2;
                     hasAnyPixel = true;
                 });
 
                 if (!hasAnyPixel || !isFinite(globalMinX)) {
-                    alert('没有可见的图层内容 (所有图层均为透明)');
+                    alert('没有可见的图层内容');
                     return;
                 }
 
-                const padding = 0;
-                globalMinX -= padding;
-                globalMinY -= padding;
-                globalMaxX += padding;
-                globalMaxY += padding;
-
                 const outW = Math.ceil(globalMaxX - globalMinX);
                 const outH = Math.ceil(globalMaxY - globalMinY);
-
                 if (outW < 1 || outH < 1) {
                     alert('导出区域太小');
                     return;
@@ -1237,13 +1226,11 @@
 
                 layers.forEach(layer => {
                     if (!layer.visible) return;
-                    const lw = layer.canvas.width;
-                    const lh = layer.canvas.height;
-                    const dx = layer.x - globalMinX;
-                    const dy = layer.y - globalMinY;
+                    const lw = layer.canvas.width * layer.scale;
+                    const lh = layer.canvas.height * layer.scale;
+                    const cx = layer.x + layer.canvas.width / 2 - globalMinX;
+                    const cy = layer.y + layer.canvas.height / 2 - globalMinY;
                     const angle = layer.rotation * Math.PI / 180;
-                    const cx = dx + lw / 2;
-                    const cy = dy + lh / 2;
 
                     const f = layer.filters;
                     const filterStr =
@@ -1254,7 +1241,7 @@
                     outCtx.rotate(angle);
                     outCtx.filter = filterStr;
                     outCtx.imageSmoothingEnabled = true;
-                    outCtx.drawImage(layer.canvas, -lw / 2, -lh / 2);
+                    outCtx.drawImage(layer.canvas, -lw / 2, -lh / 2, lw, lh);
                     outCtx.restore();
                 });
 
@@ -1497,16 +1484,15 @@
 
             // --- 触摸事件 (手机适配) ---
 
-            let activeTouchId = null;
             let touchIdentifier = null;
 
             canvas.addEventListener('touchstart', function(e) {
                 e.preventDefault();
                 const touches = e.touches;
 
-                // 双指缩放优先
+                // 双指缩放
                 if (touches.length === 2) {
-                    // 重置单指拖拽状态，避免冲突
+                    // 取消其他状态
                     isDraggingView = false;
                     isDraggingLayer = false;
                     isErasing = false;
@@ -1528,7 +1514,6 @@
                     const touch = touches[0];
                     const clientX = touch.clientX,
                         clientY = touch.clientY;
-                    activeTouchId = touch.identifier;
 
                     // 取色模式
                     if (colorPickMode) {
@@ -1593,6 +1578,7 @@
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     const scaleFactor = dist / lastTouchDist;
                     const newScale = Math.min(Math.max(touchStartScale * scaleFactor, 0.1), 10);
+                    // 以双指中心为缩放中心
                     const centerX = (t1.clientX + t2.clientX) / 2;
                     const centerY = (t1.clientY + t2.clientY) / 2;
                     const rect = canvas.getBoundingClientRect();
@@ -1610,7 +1596,7 @@
                     return;
                 }
 
-                // 擦除连续画线 (单指)
+                // 擦除连续画线
                 if (eraseMode && isErasing && touches.length === 1) {
                     const touch = touches[0];
                     if (touch.identifier === touchIdentifier) {
@@ -1742,11 +1728,23 @@
                 updateLayerList();
             });
 
+            // 实时旋转
             layerRotation.addEventListener('input', function() {
                 const layer = getSelectedLayer();
                 if (!layer) return;
                 const rot = parseFloat(this.value) || 0;
                 layer.rotation = rot;
+                renderAll();
+                updateLayerList();
+            });
+
+            // 大小滑块
+            layerScaleSlider.addEventListener('input', function() {
+                const layer = getSelectedLayer();
+                if (!layer) return;
+                const val = parseInt(this.value) / 100;
+                layer.scale = val;
+                layerScaleVal.textContent = Math.round(val * 100) + '%';
                 renderAll();
                 updateLayerList();
             });
@@ -1857,7 +1855,7 @@
             updateLayerList();
             updateControls();
 
-            console.log('🖼️ 多图层编辑器 (手机缩放/排序/连续擦除 已修复)');
+            console.log('🖼️ 多图层编辑器 (按钮触控区域优化)');
         })();
     </script>
 
