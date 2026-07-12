@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>二维码 · 中文直显（GBK硬编码）</title>
+    <title>二维码 · 中文直显</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
     <style>
         * {
@@ -287,34 +287,34 @@
 </head>
 <body>
 <div class="container">
-    <h2>✅ 二维码生成器 · 中文直显（GBK硬编码）</h2>
-    <div class="sub">针对微信/支付宝优化 · 三种编码模式 · 实时十六进制预览</div>
+    <h2> 二维码生成器 · 中文直显</h2>
+    <div class="sub">配色建议： 前景（深色模块）尽量用 深色，背景用 浅色，两者色彩跨度不宜过大，保证扫码识别率。</div>
 
     <div class="tip-box">
-        💡 <strong>推荐：</strong>默认使用 <strong>“🇨🇳 微信/支付宝直显中文 (GBK编码)”</strong>，若扫码仍乱码，请切换到 <strong>“🔒 百分号安全编码”</strong>（显示 %E4... 但绝对不乱码）。
+         <strong>推荐：</strong>默认使用 <strong>“🇨🇳 微信/支付宝直显中文 (GBK编码)”</strong>，若扫码仍乱码，请切换到 <strong>“🔒 百分号安全编码”</strong>（显示 %E4... ）。
     </div>
 
     <!-- 内容 -->
     <div class="form-group">
-        <label>📝 内容 / 链接</label>
+        <label>内容 / 链接</label>
         <input type="text" id="textInput" value="你好世界" />
     </div>
 
     <!-- 编码模式 -->
     <div class="form-group">
-        <label>🧩 扫码编码模式</label>
+        <label>扫码编码模式</label>
         <select id="encodeMode">
             <option value="gbk" selected>🇨🇳 微信/支付宝直显中文 (GBK编码) ⭐推荐</option>
-            <option value="bom">🔮 BOM 偏方（部分新版可识别）</option>
-            <option value="safe">🔒 百分号安全编码（显示 %E4... 纯英文）</option>
-            <option value="raw">📄 原始 UTF-8（大概率乱码）</option>
+            <option value="bom"> BOM 偏方（部分新版可识别）</option>
+            <option value="safe">百分号安全编码（显示 %E4... 纯英文）</option>
+            <option value="raw">原始 UTF-8（大概率乱码）</option>
         </select>
         <div class="hint">GBK模式让微信/支付宝直接用国标码解码，完美显示中文</div>
     </div>
 
     <!-- 尺寸 -->
     <div class="form-group">
-        <label>📐 尺寸 (像素)</label>
+        <label> 尺寸 (像素)</label>
         <input type="number" id="sizeInput" value="300" min="150" max="800" step="10" />
     </div>
 
