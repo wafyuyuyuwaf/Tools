@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>万形混乱二维码 · 高精度+警告</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js">
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 840px;
+            width: 100%;
+            background: #313244;
+            padding: 30px;
+            border-radius: 24px;
+            border: 1px solid #45475a;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+        h2 {
+            color: #89b4fa;
+            margin-bottom: 2px;
+        }
+        .sub {
+            color: #6c7086;
+            font-size: 14px;
+            border-left: 3px solid #89b4fa;
+            padding-left: 14px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a6adc8;
+            margin-bottom: 4px;
+        }
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px 14px;
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 10px;
+            color: #cdd6f4;
+            font-size: 14px;
+            outline: none;
+        }
+        input:focus,
+        select:focus {
+            border-color: #89b4fa;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            accent-color: #89b4fa;
+            background: #45475a;
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #89b4fa;
+            cursor: pointer;
+            border: 2px solid #1e1e2e;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #89b4fa;
+            cursor: pointer;
+            border: 2px solid #1e1e2e;
+        }
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .range-row input[type="range"] {
+            flex: 1;
+        }
+        .range-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: 700;
+            color: #89b4fa;
+            font-size: 15px;
+        }
+        .row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .row .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        .preview-box {
+            margin-top: 20px;
+            background: #1e1e2e;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #45475a;
+        }
+        #qrCanvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            background: #1e1e2e;
+        }
+        .status-badge {
+            margin-top: 12px;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            background: #45475a;
+            color: #a6adc8;
+        }
+        .status-badge.success {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+        .status-badge.error {
+            background: #f38ba8;
+            color: #1e1e2e;
+        }
+        .status-badge.warning {
+            background: #f9e2af;
+            color: #1e1e2e;
+        }
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #45475a;
+            color: #cdd6f4;
+            min-width: 80px;
+        }
+        button.primary {
+            background: #89b4fa;
+            color: #1e1e2e;
+        }
+        button.primary:hover {
+            background: #74c7ec;
+            transform: scale(1.02);
+        }
+        button.success {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+        button.success:hover {
+            background: #94d88f;
+        }
+        .tip-box {
+            background: #45475a;
+            padding: 10px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            border-left: 4px solid #f9e2af;
+        }
+        .tip-box strong {
+            color: #f9e2af;
+        }
+        .footer {
+            margin-top: 16px;
+            text-align: center;
+            color: #6c7086;
+            font-size: 13px;
+        }
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .color-picker input[type="color"] {
+            width: 50px;
+            height: 40px;
+            padding: 2px;
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+            margin-top: 4px;
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 400;
+            font-size: 13px;
+            color: #cdd6f4;
+            cursor: pointer;
+        }
+        .checkbox-group input[type="checkbox"] {
+            accent-color: #89b4fa;
+            width: 16px;
+            height: 16px;
+        }
+        .hint {
+            font-size: 12px;
+            color: #6c7086;
+            margin-top: 2px;
+        }
+        .chaos-warning {
+            font-size: 13px;
+            margin-top: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .chaos-warning.danger {
+            color: #f38ba8;
+            background: rgba(243, 139, 168, 0.15);
+            border-left: 3px solid #f38ba8;
+        }
+        .chaos-warning.normal {
+            color: #a6adc8;
+            background: transparent;
+            border-left: 3px solid transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🌀 万形混乱二维码 · 高精度版</h2>
+        <div class="sub">每个模块形状随机 + 位置偏移 · 滑块精度 0.5 · 微信/支付宝可识别</div>
+
+        <div class="tip-box">
+            💡 <strong>玩法：</strong> 勾选形状，调整混乱度和大小，点击刷新。<br>
+            定位图案（三个角）和时序条纹<strong>强制保留为方形</strong>，确保扫码器能锁定方向。
+        </div>
+
+        <div class="form-group">
+            <label>📝 内容 / 链接</label>
+            <input type="text" id="textInput" value="你好世界" />
+        </div>
+
+        <!-- 编码模式 -->
+        <div class="form-group">
+            <label>🧩 编码模式（微信/支付宝兼容）</label>
+            <select id="encodeMode">
+                <option value="gbk" selected>🇨🇳 GBK（中文直显，推荐）</option>
+                <option value="utf8">🌐 UTF-8（国际标准）</option>
+            </select>
+            <div class="hint">GBK 让微信/支付宝扫码直接显示中文，不会乱码</div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label>📐 二维码尺寸</label>
+                <input type="number" id="sizeInput" value="500" min="200" max="900" step="10" />
+            </div>
+            <div class="form-group">
+                <label>🎨 前景色</label>
+                <div class="color-picker">
+                    <input type="color" id="fgColor" value="#1a1a2e" />
+                    <span style="font-size:12px; color:#a6adc8;">深色模块</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>⬜ 背景色</label>
+                <div class="color-picker">
+                    <input type="color" id="bgColor" value="#f5f0e8" />
+                    <span style="font-size:12px; color:#a6adc8;">背景</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 高精度滑块 -->
+        <div class="row">
+            <div class="form-group">
+                <label>🎲 混乱程度（偏移量 / 格子尺寸）</label>
+                <div class="range-row">
+                    <span style="color:#6c7086; font-size:13px;">整齐</span>
+                    <input type="range" id="chaosLevel" min="0" max="50" value="22" step="0.5" />
+                    <span style="color:#6c7086; font-size:13px;">混乱</span>
+                    <span class="range-value" id="chaosValue">22.0%</span>
+                </div>
+                <!-- 动态警告信息 -->
+                <div id="chaosWarning" class="chaos-warning normal">
+                    建议混乱程度不超过25%，并使用浏览器或支付宝扫描（微信太垃圾了）
+                </div>
+                <div class="hint">推荐 15%~30%，太高可能导致解码失败</div>
+            </div>
+            <div class="form-group">
+                <label>🔲 模块大小（占格子比例）</label>
+                <div class="range-row">
+                    <span style="color:#6c7086; font-size:13px;">小</span>
+                    <input type="range" id="moduleScale" min="20" max="80" value="50" step="0.5" />
+                    <span style="color:#6c7086; font-size:13px;">大</span>
+                    <span class="range-value" id="scaleValue">50.0%</span>
+                </div>
+                <div class="hint">推荐 45%~65%，太小会降低识别率</div>
+            </div>
+        </div>
+
+        <!-- 形状选择 -->
+        <div class="form-group">
+            <label>🔷 允许的模块形状（至少勾选一项）</label>
+            <div class="checkbox-group" id="shapeCheckboxes">
+                <label><input type="checkbox" value="square" checked /> 正方形</label>
+                <label><input type="checkbox" value="circle" checked /> 圆形</label>
+                <label><input type="checkbox" value="triangle" checked /> 三角形</label>
+                <label><input type="checkbox" value="diamond" checked /> 菱形</label>
+                <label><input type="checkbox" value="star" checked /> 星形</label>
+                <label><input type="checkbox" value="rectangle" checked /> 长方形</label>
+                <label><input type="checkbox" value="hexagon" checked /> 六边形</label>
+            </div>
+            <div class="hint">勾选多个，系统会随机分配；定位图案强制为正方形</div>
+        </div>
+
+        <div class="preview-box">
+            <canvas id="qrCanvas"></canvas>
+            <div class="status-badge" id="statusBadge">⏳ 生成中...</div>
+            <div class="action-bar">
+                <button class="primary" onclick="generate()">🔄 刷新预览</button>
+                <button class="success" onclick="downloadImage()">⬇️ 下载 PNG</button>
+            </div>
+        </div>
+
+        <div class="footer" id="debugInfo"></div>
+    </div>
+
+    <script>
+        // ----- 库检查 -----
+        if (typeof qrcode === 'undefined' || typeof jsQR === 'undefined') {
+            alert('依赖库加载失败，请刷新页面或检查网络。');
+            throw new Error('Library not loaded');
+        }
+
+        // ----- DOM 引用 -----
+        const textInput = document.getElementById('textInput');
+        const sizeInput = document.getElementById('sizeInput');
+        const fgColor = document.getElementById('fgColor');
+        const bgColor = document.getElementById('bgColor');
+        const chaosLevel = document.getElementById('chaosLevel');
+        const chaosValue = document.getElementById('chaosValue');
+        const chaosWarning = document.getElementById('chaosWarning');
+        const moduleScale = document.getElementById('moduleScale');
+        const scaleValue = document.getElementById('scaleValue');
+        const encodeMode = document.getElementById('encodeMode');
+        const shapeCheckboxes = document.getElementById('shapeCheckboxes');
+        const canvas = document.getElementById('qrCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusBadge = document.getElementById('statusBadge');
+        const debugInfo = document.getElementById('debugInfo');
+
+        // ----- 滑块联动 + 警告更新 -----
+        function updateChaosWarning(value) {
+            const num = parseFloat(value);
+            if (num > 25) {
+                chaosWarning.className = 'chaos-warning danger';
+            } else {
+                chaosWarning.className = 'chaos-warning normal';
+            }
+        }
+
+        chaosLevel.addEventListener('input', function() {
+            const val = this.value;
+            chaosValue.textContent = parseFloat(val).toFixed(1) + '%';
+            updateChaosWarning(val);
+            generate();
+        });
+
+        moduleScale.addEventListener('input', function() {
+            scaleValue.textContent = parseFloat(this.value).toFixed(1) + '%';
+            generate();
+        });
+
+        // ----- 监听输入 -----
+        [textInput, sizeInput, fgColor, bgColor, encodeMode].forEach(el => {
+            el.addEventListener('input', generate);
+            el.addEventListener('change', generate);
+        });
+        shapeCheckboxes.addEventListener('change', generate);
+
+        // ----- 形状绘制函数 -----
+        function drawShape(ctx, type, cx, cy, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            const half = size / 2;
+
+            switch (type) {
+                case 'square':
+                    ctx.rect(cx - half, cy - half, size, size);
+                    break;
+                case 'circle':
+                    ctx.arc(cx, cy, half, 0, 2 * Math.PI);
+                    break;
+                case 'triangle':
+                    ctx.moveTo(cx, cy - half);
+                    ctx.lineTo(cx - half, cy + half);
+                    ctx.lineTo(cx + half, cy + half);
+                    ctx.closePath();
+                    break;
+                case 'diamond':
+                    ctx.moveTo(cx, cy - half);
+                    ctx.lineTo(cx + half, cy);
+                    ctx.lineTo(cx, cy + half);
+                    ctx.lineTo(cx - half, cy);
+                    ctx.closePath();
+                    break;
+                case 'star':
+                    const spikes = 5;
+                    const outerR = half;
+                    const innerR = half * 0.4;
+                    let rot = -Math.PI / 2;
+                    const step = Math.PI / spikes;
+                    ctx.moveTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+                    for (let i = 0; i < spikes; i++) {
+                        rot += step;
+                        ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR);
+                        rot += step;
+                        ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR);
+                    }
+                    ctx.closePath();
+                    break;
+                case 'rectangle':
+                    const ratio = 1.5 + Math.random() * 1.0;
+                    const rw = size * Math.sqrt(ratio);
+                    const rh = size / Math.sqrt(ratio);
+                    ctx.rect(cx - rw / 2, cy - rh / 2, rw, rh);
+                    break;
+                case 'hexagon':
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * 2 * Math.PI - Math.PI / 6;
+                        const x = cx + half * Math.cos(angle);
+                        const y = cy + half * Math.sin(angle);
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    break;
+                default:
+                    ctx.rect(cx - half, cy - half, size, size);
+            }
+            ctx.fill();
+        }
+
+        // ----- 获取选中的形状 -----
+        function getSelectedShapes() {
+            const checks = shapeCheckboxes.querySelectorAll('input[type="checkbox"]:checked');
+            return Array.from(checks).map(cb => cb.value);
+        }
+
+        // ----- 判断固定区域 -----
+        function isFixedArea(row, col, moduleCount) {
+            if (row < 7 && col < 7) return true;
+            if (row < 7 && col >= moduleCount - 7) return true;
+            if (row >= moduleCount - 7 && col < 7) return true;
+            if (row === 6 && col >= 7 && col < moduleCount - 7) return true;
+            if (col === 6 && row >= 7 && row < moduleCount - 7) return true;
+            return false;
+        }
+
+        // ----- 核心生成（支持 GBK）-----
+        function generate() {
+            try {
+                const rawText = textInput.value.trim() || 'Hello';
+                const size = parseInt(sizeInput.value) || 500;
+                const fg = fgColor.value;
+                const bg = bgColor.value;
+                const chaos = parseFloat(chaosLevel.value) / 100;
+                const scale = parseFloat(moduleScale.value) / 100;
+                const mode = encodeMode.value;
+                const allowedShapes = getSelectedShapes();
+
+                if (allowedShapes.length === 0) {
+                    statusBadge.textContent = '⚠️ 请至少勾选一种形状！';
+                    statusBadge.className = 'status-badge warning';
+                    return;
+                }
+
+                if (mode === 'gbk') {
+                    const blob = new Blob([rawText], { type: 'text/plain; charset=gbk' });
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        if (this.readyState !== 2) return;
+                        const bytes = new Uint8Array(e.target.result);
+                        let binary = '';
+                        for (let i = 0; i < bytes.length; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        const qr = qrcode(0, 'H');
+                        qr.addData(binary, 'Byte');
+                        qr.make();
+                        drawMatrix(qr, size, fg, bg, chaos, scale, allowedShapes);
+                    };
+                    reader.readAsArrayBuffer(blob);
+                    return;
+                } else {
+                    const qr = qrcode(0, 'H');
+                    qr.addData(rawText);
+                    qr.make();
+                    drawMatrix(qr, size, fg, bg, chaos, scale, allowedShapes);
+                }
+            } catch (err) {
+                console.error(err);
+                statusBadge.textContent = '❌ 生成失败: ' + err.message;
+                statusBadge.className = 'status-badge error';
+            }
+        }
+
+        // ----- 绘制矩阵 -----
+        function drawMatrix(qr, size, fg, bg, chaos, scale, allowedShapes) {
+            try {
+                const moduleCount = qr.getModuleCount();
+                const matrix = [];
+                for (let row = 0; row < moduleCount; row++) {
+                    matrix[row] = [];
+                    for (let col = 0; col < moduleCount; col++) {
+                        matrix[row][col] = qr.isDark(row, col);
+                    }
+                }
+
+                const margin = 4;
+                const totalModules = moduleCount + margin * 2;
+                const cellSize = Math.floor(size / totalModules);
+                const realSize = cellSize * totalModules;
+                canvas.width = realSize;
+                canvas.height = realSize;
+
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, realSize, realSize);
+
+                const halfCell = cellSize / 2;
+                const drawSize = cellSize * scale;
+
+                // 预计算偏移
+                const offsets = [];
+                for (let row = 0; row < moduleCount; row++) {
+                    offsets[row] = [];
+                    for (let col = 0; col < moduleCount; col++) {
+                        const isFixed = isFixedArea(row, col, moduleCount);
+                        let ox = 0,
+                            oy = 0;
+                        if (!isFixed && chaos > 0) {
+                            const maxOff = chaos * cellSize;
+                            ox = (Math.random() * 2 - 1) * maxOff;
+                            oy = (Math.random() * 2 - 1) * maxOff;
+                        }
+                        offsets[row][col] = { ox, oy };
+                    }
+                }
+
+                for (let row = 0; row < moduleCount; row++) {
+                    for (let col = 0; col < moduleCount; col++) {
+                        if (!matrix[row][col]) continue;
+                        const cx = (col + margin) * cellSize + halfCell;
+                        const cy = (row + margin) * cellSize + halfCell;
+                        const { ox, oy } = offsets[row][col];
+                        const isFixed = isFixedArea(row, col, moduleCount);
+
+                        let shape = 'square';
+                        if (!isFixed) {
+                            shape = allowedShapes[Math.floor(Math.random() * allowedShapes.length)];
+                        }
+
+                        const finalX = cx + ox;
+                        const finalY = cy + oy;
+                        drawShape(ctx, shape, finalX, finalY, drawSize, fg);
+                    }
+                }
+
+                verifyQR(realSize);
+
+            } catch (err) {
+                console.error(err);
+                statusBadge.textContent = '❌ 绘制失败: ' + err.message;
+                statusBadge.className = 'status-badge error';
+            }
+        }
+
+        // ----- 验证 -----
+        function verifyQR(canvasSize) {
+            try {
+                const imageData = ctx.getImageData(0, 0, canvasSize, canvasSize);
+                const code = jsQR(imageData.data, canvasSize, canvasSize, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code && code.data && code.data.length > 0) {
+                    statusBadge.textContent = '✅ 扫码验证通过！微信/支付宝可识别。';
+                    statusBadge.className = 'status-badge success';
+                    debugInfo.textContent = '🔍 解码预览: ' + code.data.substring(0, 50) + (code.data.length > 50 ? '...' :
+                    '');
+                    return;
+                }
+
+                const chaos = parseFloat(chaosLevel.value);
+                if (chaos > 35) {
+                    statusBadge.textContent = '⚠️ 过于混乱，验证失败。建议混乱度 ≤ 30%。';
+                    statusBadge.className = 'status-badge warning';
+                } else {
+                    statusBadge.textContent = '⚠️ 验证失败，可能模块太小或偏移太大。';
+                    statusBadge.className = 'status-badge error';
+                }
+                debugInfo.textContent = '❌ 当前设置无法解码，请调整参数。';
+            } catch (e) {
+                statusBadge.textContent = '⚠️ 验证异常: ' + e.message;
+                statusBadge.className = 'status-badge warning';
+            }
+        }
+
+        // ----- 下载 -----
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = `chaos_qr_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // ----- 初始化 -----
+        window.addEventListener('load', function() {
+            // 全选形状
+            document.querySelectorAll('#shapeCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = true);
+            // 显示初始值
+            chaosValue.textContent = parseFloat(chaosLevel.value).toFixed(1) + '%';
+            scaleValue.textContent = parseFloat(moduleScale.value).toFixed(1) + '%';
+            // 更新警告状态
+            updateChaosWarning(chaosLevel.value);
+            generate();
+        });
+
+        window.generate = generate;
+        window.downloadImage = downloadImage;
+    </script>
+</body>
+</html>
