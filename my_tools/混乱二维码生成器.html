@@ -635,14 +635,14 @@
                 }
 
                 const chaos = parseFloat(chaosLevel.value);
-                if (chaos > 35) {
-                    statusBadge.textContent = '⚠️ 过于混乱，验证失败。建议混乱度 ≤ 30%。';
+                if (chaos > 30) {
+                    statusBadge.textContent = '⚠️ 过于混乱，验证失败。建议混乱度 ≤ 25%。';
                     statusBadge.className = 'status-badge warning';
                 } else {
-                    statusBadge.textContent = '⚠️ 验证失败，可能模块太小或偏移太大。';
+                    statusBadge.textContent = '';
                     statusBadge.className = 'status-badge error';
                 }
-                debugInfo.textContent = '❌ 当前设置无法解码，请调整参数。';
+                debugInfo.textContent = '';
             } catch (e) {
                 statusBadge.textContent = '⚠️ 验证异常: ' + e.message;
                 statusBadge.className = 'status-badge warning';
