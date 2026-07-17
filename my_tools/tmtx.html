@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>拼豆图纸像素化工具 · MARD色号</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-        /* ========== 全局重置 & 基础样式 ========== */
+        /* ========== 样式（与之前完全一致） ========== */
         *,
         *::before,
         *::after {
@@ -13,7 +15,6 @@
             margin: 0;
             padding: 0;
         }
-
         body {
             font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
             background: #f7f5fa;
@@ -23,7 +24,6 @@
             justify-content: center;
             min-height: 100vh;
         }
-
         .app {
             max-width: 1200px;
             width: 100%;
@@ -33,8 +33,6 @@
             box-shadow: 0 20px 60px rgba(90, 60, 140, 0.12);
             transition: box-shadow 0.25s;
         }
-
-        /* ========== 标题 ========== */
         .app-header {
             display: flex;
             align-items: center;
@@ -60,8 +58,6 @@
             font-weight: 500;
             -webkit-text-fill-color: #6d28d9;
         }
-
-        /* ========== 控制区 ========== */
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -89,7 +85,14 @@
             color: #8b85a0;
             font-size: 12px;
         }
-
+        .dimension-hint {
+            font-size: 13px;
+            color: #6b6485;
+            margin: 0 0 2px 0;
+            width: 100%;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+        }
         .file-upload-wrapper {
             position: relative;
             display: inline-block;
@@ -136,7 +139,6 @@
             white-space: nowrap;
             font-weight: 400;
         }
-
         .controls input[type="number"] {
             width: 76px;
             padding: 8px 6px 8px 12px;
@@ -159,7 +161,6 @@
             border-color: #8b5cf6;
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
         }
-
         .controls select {
             padding: 8px 14px 8px 12px;
             border: 1.5px solid #e2ddf0;
@@ -177,7 +178,6 @@
             border-color: #8b5cf6;
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
         }
-
         .btn-primary {
             padding: 9px 28px;
             background: linear-gradient(135deg, #7c3aed, #8b5cf6);
@@ -206,8 +206,27 @@
             transform: none;
             box-shadow: none;
         }
-
-        /* ========== 预览区 ========== */
+        .toggle-btn {
+            padding: 9px 18px;
+            border: 2px solid #c4b5e3;
+            border-radius: 40px;
+            background: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            color: #5b21b6;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .toggle-btn.active {
+            background: #7c3aed;
+            border-color: #7c3aed;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+        .toggle-btn:hover {
+            transform: translateY(-1px);
+        }
         .preview-area {
             display: flex;
             align-items: center;
@@ -233,41 +252,123 @@
             font-size: 14px;
             color: #6b6485;
         }
-
-        /* ========== 图纸容器（滚动） ========== */
+        .grid-section {
+            margin: 8px 0 20px 0;
+        }
+        .grid-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 8px 4px 12px 4px;
+            flex-wrap: wrap;
+        }
+        .grid-controls .zoom-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4b4560;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .grid-controls .zoom-slider {
+            flex: 1;
+            min-width: 200px;
+            cursor: pointer;
+            accent-color: #8b5cf6;
+            height: 6px;
+            background: #e2ddf0;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .grid-controls .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(124, 58, 237, 0.3);
+        }
+        .grid-controls .zoom-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            cursor: pointer;
+            border: none;
+        }
+        .grid-controls .zoom-value {
+            min-width: 48px;
+            font-weight: 700;
+            font-size: 15px;
+            color: #4b4560;
+            text-align: center;
+        }
+        .grid-controls .total-beads {
+            font-size: 15px;
+            font-weight: 600;
+            color: #6d28d9;
+            background: #ede9fe;
+            padding: 4px 16px;
+            border-radius: 30px;
+            white-space: nowrap;
+        }
+        .grid-controls .total-beads span {
+            font-weight: 700;
+        }
+        .zoom-warning {
+            font-size: 13px;
+            color: #dc2626;
+            background: #fee2e2;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: none;
+            white-space: nowrap;
+            border: 1px solid #fecaca;
+        }
+        .zoom-warning.show {
+            display: inline-block;
+        }
         .grid-wrapper {
             position: relative;
             overflow: auto;
             padding: 8px 0 8px 0;
-            margin: 8px 0 20px 0;
             border-radius: 14px;
             background: #fcfafd;
             border: 1px solid #f0ebf8;
             max-height: 75vh;
         }
-
-        /* ===== 包含行号+列号的网格容器 ===== */
         .grid-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: fit-content;
+            margin: 0 auto;
+            background: #fcfafd;
+            border-left: 6px solid #8b5cf6;
+            border-right: 6px solid #8b5cf6;
+        }
+        .grid-container.grid-layout {
             display: grid;
             gap: 1px;
             background-color: #d5cee2;
             border-left: 6px solid #8b5cf6;
             border-right: 6px solid #8b5cf6;
-            width: fit-content;
-            margin: 0 auto;
-            transition: opacity 0.15s;
         }
-
-        /* 每个颜色格子 */
         .cell {
-            width: 20px;
-            height: 20px;
             flex-shrink: 0;
             background-color: #ffffff;
             transition: background-color 0.05s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 6px;
+            text-shadow: 0 0 2px #fff;
         }
-
-        /* 行号 / 列号 标签 */
         .axis-label {
             display: flex;
             align-items: center;
@@ -277,7 +378,6 @@
             color: #4b2f7a;
             background-color: #ede9fe;
             user-select: none;
-            font-size: 11px;
             transition: background-color 0.1s;
             min-width: 0;
             min-height: 0;
@@ -291,8 +391,13 @@
         .axis-label.corner {
             background-color: #f5f1fc;
         }
-
-        /* 加载占位 */
+        .canvas-grid {
+            display: block;
+            margin: 0 auto;
+            background: #fcfafd;
+            border-left: 6px solid #8b5cf6;
+            border-right: 6px solid #8b5cf6;
+        }
         .grid-placeholder {
             display: flex;
             align-items: center;
@@ -308,8 +413,6 @@
         .grid-placeholder .emoji-big {
             font-size: 42px;
         }
-
-        /* ========== 图例区 ========== */
         .legend-area {
             margin-top: 20px;
             padding: 20px 24px 24px;
@@ -317,7 +420,6 @@
             border-radius: 16px;
             border: 1px solid #ede9fe;
         }
-
         .legend-header {
             display: flex;
             justify-content: space-between;
@@ -342,7 +444,6 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-
         .legend-items {
             display: flex;
             flex-wrap: wrap;
@@ -351,7 +452,6 @@
             max-height: 260px;
             overflow-y: auto;
         }
-
         .legend-item {
             display: flex;
             align-items: center;
@@ -392,8 +492,6 @@
             content: '· ';
             color: #c8c0db;
         }
-
-        /* ========== 下载按钮 ========== */
         .btn-download {
             padding: 9px 26px;
             background: #10b981;
@@ -422,105 +520,127 @@
             transform: none;
             box-shadow: none;
         }
-
-        /* ========== 响应式 ========== */
-        @media (max-width: 700px) {
-            .app {
-                padding: 18px 14px 24px;
-            }
-            .controls {
-                padding: 16px 16px;
-                gap: 14px 16px;
-            }
-            .controls input[type="number"] {
-                width: 64px;
-                padding: 6px 4px 6px 10px;
-                font-size: 14px;
-            }
-            .controls select {
-                font-size: 13px;
-                padding: 6px 10px;
-            }
-            .file-upload-label {
-                font-size: 13px;
-                padding: 7px 14px;
-            }
-            .btn-primary {
-                padding: 7px 20px;
-                font-size: 14px;
-            }
-            .grid-wrapper {
-                max-height: 60vh;
-            }
-            .legend-items {
-                gap: 8px 12px;
-                max-height: 200px;
-            }
-            .legend-item {
-                font-size: 12px;
-                padding: 3px 10px 3px 5px;
-            }
-            .legend-item .color-swatch {
-                width: 18px;
-                height: 18px;
-            }
-            .app-header h1 {
-                font-size: 21px;
-            }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
-
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 24px;
+            padding: 32px 40px 40px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        .modal-box h2 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #2d2a3a;
+        }
+        .modal-box p {
+            font-size: 15px;
+            color: #6b6485;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .modal-box .modal-actions button {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.2s;
+            min-width: 120px;
+        }
+        .modal-box .modal-actions .btn-svg {
+            background: #8b5cf6;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+        }
+        .modal-box .modal-actions .btn-svg:hover {
+            box-shadow: 0 6px 24px rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px);
+        }
+        .modal-box .modal-actions .btn-tiles {
+            background: #f59e0b;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+        }
+        .modal-box .modal-actions .btn-tiles:hover {
+            box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+            transform: translateY(-2px);
+        }
+        .modal-box .modal-actions .btn-cancel {
+            background: #e2ddf0;
+            color: #4b4560;
+        }
+        .modal-box .modal-actions .btn-cancel:hover {
+            background: #d5cee2;
+        }
+        @media (max-width: 700px) {
+            .app { padding: 18px 14px 24px; }
+            .controls { padding: 16px 16px; gap: 14px 16px; }
+            .controls input[type="number"] { width: 64px; padding: 6px 4px 6px 10px; font-size: 14px; }
+            .controls select { font-size: 13px; padding: 6px 10px; }
+            .file-upload-label { font-size: 13px; padding: 7px 14px; }
+            .btn-primary { padding: 7px 20px; font-size: 14px; }
+            .grid-wrapper { max-height: 60vh; }
+            .legend-items { gap: 8px 12px; max-height: 200px; }
+            .legend-item { font-size: 12px; padding: 3px 10px 3px 5px; }
+            .legend-item .color-swatch { width: 18px; height: 18px; }
+            .app-header h1 { font-size: 21px; }
+            .grid-controls .zoom-slider { min-width: 100px; }
+            .modal-box { padding: 24px 20px; }
+            .zoom-warning { white-space: normal; }
+        }
         @media (max-width: 480px) {
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 12px;
-            }
-            .control-group {
-                width: 100%;
-            }
-            .controls input[type="number"] {
-                width: 100%;
-            }
-            .controls select {
-                width: 100%;
-            }
-            .file-upload-wrapper {
-                width: 100%;
-            }
-            .file-upload-label {
-                justify-content: center;
-                width: 100%;
-            }
-            .btn-primary {
-                width: 100%;
-                justify-content: center;
-            }
-            .legend-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .legend-actions {
-                width: 100%;
-            }
-            .legend-actions .btn-download {
-                flex: 1;
-                justify-content: center;
-            }
+            .controls { flex-direction: column; align-items: stretch; gap: 12px; }
+            .control-group { width: 100%; }
+            .controls input[type="number"] { width: 100%; }
+            .controls select { width: 100%; }
+            .file-upload-wrapper { width: 100%; }
+            .file-upload-label { justify-content: center; width: 100%; }
+            .btn-primary { width: 100%; justify-content: center; }
+            .legend-header { flex-direction: column; align-items: flex-start; }
+            .legend-actions { width: 100%; }
+            .legend-actions .btn-download { flex: 1; justify-content: center; }
+            .grid-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+            .grid-controls .zoom-slider { width: 100%; }
+            .grid-controls .total-beads { text-align: center; }
+            .modal-box .modal-actions button { width: 100%; }
+            .zoom-warning { text-align: center; }
         }
     </style>
 </head>
 <body>
 
     <div class="app">
-        <!-- 头部 -->
         <header class="app-header">
             <h1>🧩 拼豆图纸 · 像素化</h1>
             <span class="badge">MARD 色号</span>
         </header>
 
-        <!-- ===== 控制区 ===== -->
         <section class="controls">
-            <!-- 上传 -->
             <div class="control-group">
                 <label>📤 上传图片</label>
                 <div class="file-upload-wrapper">
@@ -532,19 +652,22 @@
                 </div>
             </div>
 
-            <!-- 行数 -->
+            <div class="dimension-hint">建议根据图片像素长宽比调整尺寸</div>
+
             <div class="control-group">
                 <label>行数 <span class="unit">(Rows)</span></label>
-                <input type="number" id="rowsInput" value="40" min="1" max="300" />
+                <input type="number" id="rowsInput" value="40" min="1" />
             </div>
 
-            <!-- 列数 -->
             <div class="control-group">
                 <label>列数 <span class="unit">(Cols)</span></label>
-                <input type="number" id="colsInput" value="30" min="1" max="300" />
+                <input type="number" id="colsInput" value="30" min="1" />
             </div>
 
-            <!-- 颜色精度 -->
+            <div class="control-group" style="justify-content: flex-end;">
+                <button class="toggle-btn" id="lockBtn">🔒 锁定比例</button>
+            </div>
+
             <div class="control-group">
                 <label>🎨 颜色精度</label>
                 <select id="precisionSelect">
@@ -555,31 +678,36 @@
                 <div style="font-size:12px;color:#aaa;margin-top:4px;font-style:italic;">颜色精度没什么用。。。</div>
             </div>
 
-            <!-- 生成按钮 -->
             <div class="control-group" style="justify-content: flex-end;">
                 <button class="btn-primary" id="generateBtn">✨ 生成图纸</button>
             </div>
         </section>
 
-        <!-- ===== 预览区 ===== -->
         <div class="preview-area" id="previewArea">
             <img class="preview-img" id="previewImg" alt="预览" />
             <span class="preview-placeholder" id="previewPlaceholder">📷 上传图片后，此处显示缩略图</span>
             <span class="info-text" id="imageInfo"></span>
         </div>
 
-        <!-- ===== 图纸渲染区（含坐标轴） ===== -->
-        <div class="grid-wrapper" id="gridWrapper">
-            <div class="grid-container" id="gridContainer">
-                <div class="grid-placeholder" id="gridPlaceholder">
-                    <span class="emoji-big">🧩</span>
-                    <span>上传图片并点击「生成图纸」</span>
-                    <span style="font-size:13px;color:#c8c0db;">网格将在此处呈现 · 左侧及底部显示坐标</span>
+        <section class="grid-section">
+            <div class="grid-controls" id="gridControls">
+                <span class="zoom-label">🔍 缩放</span>
+                <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="300" value="100" step="1" />
+                <span class="zoom-value" id="zoomValue">100%</span>
+                <span class="zoom-warning" id="zoomWarning">⚠️ 数量较多，缩放操作可能导致卡顿，请谨慎使用</span>
+                <span class="total-beads" id="totalBeadsDisplay">🧶 共 <span id="beadCount">0</span> 颗</span>
+            </div>
+            <div class="grid-wrapper" id="gridWrapper">
+                <div id="gridContainer" class="grid-container">
+                    <div class="grid-placeholder" id="gridPlaceholder">
+                        <span class="emoji-big">🧩</span>
+                        <span>上传图片并点击「生成图纸」</span>
+                        <span style="font-size:13px;color:#c8c0db;">网格将在此处呈现 · 左侧及底部显示坐标</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- ===== 图例 & 统计区 ===== -->
         <section class="legend-area" id="legendArea">
             <div class="legend-header">
                 <div class="title">
@@ -596,94 +724,253 @@
         </section>
     </div>
 
+    <!-- 导出选择模态框 -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal-box">
+            <h2>📐 图纸较大</h2>
+            <p>当前图纸共 <strong id="modalBeadCount">0</strong> 颗拼豆，超过 10,000 颗。<br>建议选择 SVG 导出（矢量无损），或分块导出高清 PNG（打包为 ZIP）。</p>
+            <div class="modal-actions">
+                <button class="btn-svg" id="modalSvgBtn">📄 推荐：导出 SVG</button>
+                <button class="btn-tiles" id="modalTilesBtn">🧩 分块导出 PNG (ZIP)</button>
+                <button class="btn-cancel" id="modalCancelBtn">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function() {
             'use strict';
 
             // ============================================================
-            //  1. MARD 221 色 完整映射表（来自 pindou.online/colors）
-            //     按色号字母顺序排列：A1 ~ A26, B1 ~ B32, ...
+            //  MARD 221 色表（完整）
             // ============================================================
             const MARD_COLORS = {
-                // A 26 Colors
-                'A1': '#FAF4C8', 'A2': '#FFFFD5', 'A3': '#FEFF8B', 'A4': '#FBED56',
-                'A5': '#F4D738', 'A6': '#FEAC4C', 'A7': '#FE8B4C', 'A8': '#FFDA45',
-                'A9': '#FF995B', 'A10': '#F77C31', 'A11': '#FFDD99', 'A12': '#FE9F72',
-                'A13': '#FFC365', 'A14': '#FD543D', 'A15': '#FFF365', 'A16': '#FFFF9F',
-                'A17': '#FFE36E', 'A18': '#FEBE7D', 'A19': '#FD7C72', 'A20': '#FFD568',
-                'A21': '#FFE395', 'A22': '#F4F57D', 'A23': '#E6C9B7', 'A24': '#F7F8A2',
-                'A25': '#FFD67D', 'A26': '#FFC830',
-                // B 32 Colors
-                'B1': '#E6EE31', 'B2': '#63F347', 'B3': '#9EF780', 'B4': '#5DE035',
-                'B5': '#35E352', 'B6': '#65E2A6', 'B7': '#3DAF80', 'B8': '#1C9C4F',
-                'B9': '#27523A', 'B10': '#95D3C2', 'B11': '#5D722A', 'B12': '#166F41',
-                'B13': '#CAEB7B', 'B14': '#ADE946', 'B15': '#2E5132', 'B16': '#C5ED9C',
-                'B17': '#9BB13A', 'B18': '#E6EE49', 'B19': '#24B88C', 'B20': '#C2F0CC',
-                'B21': '#156A6B', 'B22': '#0B3C43', 'B23': '#303A21', 'B24': '#EEFCA5',
-                'B25': '#4E846D', 'B26': '#8D7A35', 'B27': '#CCE1AF', 'B28': '#9EE5B9',
-                'B29': '#C5E254', 'B30': '#E2FCB1', 'B31': '#B0E792', 'B32': '#9CAB5A',
-                // C 29 Colors
-                'C1': '#E8FFE7', 'C2': '#A9F9FC', 'C3': '#A0E2FB', 'C4': '#41CCFF',
-                'C5': '#01ACEB', 'C6': '#50AAF0', 'C7': '#3677D2', 'C8': '#0F54C0',
-                'C9': '#324BCA', 'C10': '#3EBCE2', 'C11': '#28DDDE', 'C12': '#1C334D',
-                'C13': '#CDE8FF', 'C14': '#D5FDFF', 'C15': '#22C4C6', 'C16': '#1557A8',
-                'C17': '#04D1F6', 'C18': '#1D3344', 'C19': '#1887A2', 'C20': '#176DAF',
-                'C21': '#BEDDFF', 'C22': '#67B4BE', 'C23': '#C8E2FF', 'C24': '#7CC4FF',
-                'C25': '#A9E5E5', 'C26': '#3CAED8', 'C27': '#D3DFFA', 'C28': '#BBCFED',
+                'A1': '#FAF4C8',
+                'A2': '#FFFFD5',
+                'A3': '#FEFF8B',
+                'A4': '#FBED56',
+                'A5': '#F4D738',
+                'A6': '#FEAC4C',
+                'A7': '#FE8B4C',
+                'A8': '#FFDA45',
+                'A9': '#FF995B',
+                'A10': '#F77C31',
+                'A11': '#FFDD99',
+                'A12': '#FE9F72',
+                'A13': '#FFC365',
+                'A14': '#FD543D',
+                'A15': '#FFF365',
+                'A16': '#FFFF9F',
+                'A17': '#FFE36E',
+                'A18': '#FEBE7D',
+                'A19': '#FD7C72',
+                'A20': '#FFD568',
+                'A21': '#FFE395',
+                'A22': '#F4F57D',
+                'A23': '#E6C9B7',
+                'A24': '#F7F8A2',
+                'A25': '#FFD67D',
+                'A26': '#FFC830',
+                'B1': '#E6EE31',
+                'B2': '#63F347',
+                'B3': '#9EF780',
+                'B4': '#5DE035',
+                'B5': '#35E352',
+                'B6': '#65E2A6',
+                'B7': '#3DAF80',
+                'B8': '#1C9C4F',
+                'B9': '#27523A',
+                'B10': '#95D3C2',
+                'B11': '#5D722A',
+                'B12': '#166F41',
+                'B13': '#CAEB7B',
+                'B14': '#ADE946',
+                'B15': '#2E5132',
+                'B16': '#C5ED9C',
+                'B17': '#9BB13A',
+                'B18': '#E6EE49',
+                'B19': '#24B88C',
+                'B20': '#C2F0CC',
+                'B21': '#156A6B',
+                'B22': '#0B3C43',
+                'B23': '#303A21',
+                'B24': '#EEFCA5',
+                'B25': '#4E846D',
+                'B26': '#8D7A35',
+                'B27': '#CCE1AF',
+                'B28': '#9EE5B9',
+                'B29': '#C5E254',
+                'B30': '#E2FCB1',
+                'B31': '#B0E792',
+                'B32': '#9CAB5A',
+                'C1': '#E8FFE7',
+                'C2': '#A9F9FC',
+                'C3': '#A0E2FB',
+                'C4': '#41CCFF',
+                'C5': '#01ACEB',
+                'C6': '#50AAF0',
+                'C7': '#3677D2',
+                'C8': '#0F54C0',
+                'C9': '#324BCA',
+                'C10': '#3EBCE2',
+                'C11': '#28DDDE',
+                'C12': '#1C334D',
+                'C13': '#CDE8FF',
+                'C14': '#D5FDFF',
+                'C15': '#22C4C6',
+                'C16': '#1557A8',
+                'C17': '#04D1F6',
+                'C18': '#1D3344',
+                'C19': '#1887A2',
+                'C20': '#176DAF',
+                'C21': '#BEDDFF',
+                'C22': '#67B4BE',
+                'C23': '#C8E2FF',
+                'C24': '#7CC4FF',
+                'C25': '#A9E5E5',
+                'C26': '#3CAED8',
+                'C27': '#D3DFFA',
+                'C28': '#BBCFED',
                 'C29': '#34488E',
-                // D 26 Colors
-                'D1': '#AEB4F2', 'D2': '#858EDD', 'D3': '#2F54AF', 'D4': '#182A84',
-                'D5': '#B843C5', 'D6': '#AC7BDE', 'D7': '#8854B3', 'D8': '#E2D3FF',
-                'D9': '#D5B9F8', 'D10': '#361851', 'D11': '#B9BAE1', 'D12': '#DE9AD4',
-                'D13': '#B90095', 'D14': '#8B279B', 'D15': '#2F1F90', 'D16': '#E3E1EE',
-                'D17': '#C4D4F6', 'D18': '#A45EC7', 'D19': '#D8C3D7', 'D20': '#9C32B2',
-                'D21': '#9A009B', 'D22': '#333A95', 'D23': '#EBDAFC', 'D24': '#7786E5',
-                'D25': '#494FC7', 'D26': '#DFC2F8',
-                // E 24 Colors
-                'E1': '#FDD3CC', 'E2': '#FEC0DF', 'E3': '#FFB7E7', 'E4': '#E8649E',
-                'E5': '#F551A2', 'E6': '#F13D74', 'E7': '#C63478', 'E8': '#FFDBE9',
-                'E9': '#E970CC', 'E10': '#D33793', 'E11': '#FCDDD2', 'E12': '#F78FC3',
-                'E13': '#B5006D', 'E14': '#FFD1BA', 'E15': '#F8C7C9', 'E16': '#FFF3EB',
-                'E17': '#FFE2EA', 'E18': '#FFC7DB', 'E19': '#FEBAD5', 'E20': '#D8C7D1',
-                'E21': '#BD9DA1', 'E22': '#B785A1', 'E23': '#937A8D', 'E24': '#E1BCE8',
-                // F 25 Colors
-                'F1': '#FD957B', 'F2': '#FC3D46', 'F3': '#F74941', 'F4': '#FC283C',
-                'F5': '#E7002F', 'F6': '#943630', 'F7': '#971937', 'F8': '#BC0028',
-                'F9': '#E2677A', 'F10': '#8A4526', 'F11': '#5A2121', 'F12': '#FD4E6A',
-                'F13': '#F35744', 'F14': '#FFA9AD', 'F15': '#D30022', 'F16': '#FEC2A6',
-                'F17': '#E69C79', 'F18': '#D37C46', 'F19': '#C1444A', 'F20': '#CD9391',
-                'F21': '#F7B4C6', 'F22': '#FDC0D0', 'F23': '#F67E66', 'F24': '#E698AA',
+                'D1': '#AEB4F2',
+                'D2': '#858EDD',
+                'D3': '#2F54AF',
+                'D4': '#182A84',
+                'D5': '#B843C5',
+                'D6': '#AC7BDE',
+                'D7': '#8854B3',
+                'D8': '#E2D3FF',
+                'D9': '#D5B9F8',
+                'D10': '#361851',
+                'D11': '#B9BAE1',
+                'D12': '#DE9AD4',
+                'D13': '#B90095',
+                'D14': '#8B279B',
+                'D15': '#2F1F90',
+                'D16': '#E3E1EE',
+                'D17': '#C4D4F6',
+                'D18': '#A45EC7',
+                'D19': '#D8C3D7',
+                'D20': '#9C32B2',
+                'D21': '#9A009B',
+                'D22': '#333A95',
+                'D23': '#EBDAFC',
+                'D24': '#7786E5',
+                'D25': '#494FC7',
+                'D26': '#DFC2F8',
+                'E1': '#FDD3CC',
+                'E2': '#FEC0DF',
+                'E3': '#FFB7E7',
+                'E4': '#E8649E',
+                'E5': '#F551A2',
+                'E6': '#F13D74',
+                'E7': '#C63478',
+                'E8': '#FFDBE9',
+                'E9': '#E970CC',
+                'E10': '#D33793',
+                'E11': '#FCDDD2',
+                'E12': '#F78FC3',
+                'E13': '#B5006D',
+                'E14': '#FFD1BA',
+                'E15': '#F8C7C9',
+                'E16': '#FFF3EB',
+                'E17': '#FFE2EA',
+                'E18': '#FFC7DB',
+                'E19': '#FEBAD5',
+                'E20': '#D8C7D1',
+                'E21': '#BD9DA1',
+                'E22': '#B785A1',
+                'E23': '#937A8D',
+                'E24': '#E1BCE8',
+                'F1': '#FD957B',
+                'F2': '#FC3D46',
+                'F3': '#F74941',
+                'F4': '#FC283C',
+                'F5': '#E7002F',
+                'F6': '#943630',
+                'F7': '#971937',
+                'F8': '#BC0028',
+                'F9': '#E2677A',
+                'F10': '#8A4526',
+                'F11': '#5A2121',
+                'F12': '#FD4E6A',
+                'F13': '#F35744',
+                'F14': '#FFA9AD',
+                'F15': '#D30022',
+                'F16': '#FEC2A6',
+                'F17': '#E69C79',
+                'F18': '#D37C46',
+                'F19': '#C1444A',
+                'F20': '#CD9391',
+                'F21': '#F7B4C6',
+                'F22': '#FDC0D0',
+                'F23': '#F67E66',
+                'F24': '#E698AA',
                 'F25': '#E54B4F',
-                // G 21 Colors
-                'G1': '#FFE2CE', 'G2': '#FFC4AA', 'G3': '#F4C3A5', 'G4': '#E1B383',
-                'G5': '#EDB045', 'G6': '#E99C17', 'G7': '#9D5B3E', 'G8': '#753832',
-                'G9': '#E6B483', 'G10': '#D98C39', 'G11': '#E0C593', 'G12': '#FFC890',
-                'G13': '#B7714A', 'G14': '#8D614C', 'G15': '#FCF9E0', 'G16': '#F2D9BA',
-                'G17': '#78524B', 'G18': '#FFE4CC', 'G19': '#E07935', 'G20': '#A94023',
+                'G1': '#FFE2CE',
+                'G2': '#FFC4AA',
+                'G3': '#F4C3A5',
+                'G4': '#E1B383',
+                'G5': '#EDB045',
+                'G6': '#E99C17',
+                'G7': '#9D5B3E',
+                'G8': '#753832',
+                'G9': '#E6B483',
+                'G10': '#D98C39',
+                'G11': '#E0C593',
+                'G12': '#FFC890',
+                'G13': '#B7714A',
+                'G14': '#8D614C',
+                'G15': '#FCF9E0',
+                'G16': '#F2D9BA',
+                'G17': '#78524B',
+                'G18': '#FFE4CC',
+                'G19': '#E07935',
+                'G20': '#A94023',
                 'G21': '#B88558',
-                // H 23 Colors
-                'H1': '#FDFBFF', 'H2': '#FEFFFF', 'H3': '#B6B1BA', 'H4': '#89858C',
-                'H5': '#48464E', 'H6': '#2F2B2F', 'H7': '#000000', 'H8': '#E7D6DB',
-                'H9': '#EDEDED', 'H10': '#EEE9EA', 'H11': '#CECDD5', 'H12': '#FFF5ED',
-                'H13': '#F5ECD2', 'H14': '#CFD7D3', 'H15': '#98A6A8', 'H16': '#1D1414',
-                'H17': '#F1EDED', 'H18': '#FFFDF0', 'H19': '#F6EFE2', 'H20': '#949FA3',
-                'H21': '#FFFBE1', 'H22': '#CACAD4', 'H23': '#9A9D94',
-                // M 15 Colors
-                'M1': '#BCC6B8', 'M2': '#8AA386', 'M3': '#697D80', 'M4': '#E3D2BC',
-                'M5': '#D0CCAA', 'M6': '#B0A782', 'M7': '#B4A497', 'M8': '#B38281',
-                'M9': '#A58767', 'M10': '#C5B2BC', 'M11': '#9F7594', 'M12': '#644749',
-                'M13': '#D19066', 'M14': '#C77362', 'M15': '#757D78'
+                'H1': '#FDFBFF',
+                'H2': '#FEFFFF',
+                'H3': '#B6B1BA',
+                'H4': '#89858C',
+                'H5': '#48464E',
+                'H6': '#2F2B2F',
+                'H7': '#000000',
+                'H8': '#E7D6DB',
+                'H9': '#EDEDED',
+                'H10': '#EEE9EA',
+                'H11': '#CECDD5',
+                'H12': '#FFF5ED',
+                'H13': '#F5ECD2',
+                'H14': '#CFD7D3',
+                'H15': '#98A6A8',
+                'H16': '#1D1414',
+                'H17': '#F1EDED',
+                'H18': '#FFFDF0',
+                'H19': '#F6EFE2',
+                'H20': '#949FA3',
+                'H21': '#FFFBE1',
+                'H22': '#CACAD4',
+                'H23': '#9A9D94',
+                'M1': '#BCC6B8',
+                'M2': '#8AA386',
+                'M3': '#697D80',
+                'M4': '#E3D2BC',
+                'M5': '#D0CCAA',
+                'M6': '#B0A782',
+                'M7': '#B4A497',
+                'M8': '#B38281',
+                'M9': '#A58767',
+                'M10': '#C5B2BC',
+                'M11': '#9F7594',
+                'M12': '#644749',
+                'M13': '#D19066',
+                'M14': '#C77362',
+                'M15': '#757D78'
             };
 
-            // 构建反向映射：hex -> mardCode (用于快速查找)
-            const HEX_TO_MARD = {};
-            const MARD_CODE_LIST = Object.keys(MARD_COLORS).sort(); // 按字母顺序排好
-            for (const code of MARD_CODE_LIST) {
-                const hex = MARD_COLORS[code].toLowerCase();
-                HEX_TO_MARD[hex] = code;
-            }
-
-            // 辅助：将颜色转为小写hex进行匹配
+            // ============================================================
+            //  工具函数（不变）
+            // ============================================================
             function rgbToHex(r, g, b) {
                 const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
                 return '#' + [clamp(r), clamp(g), clamp(b)]
@@ -691,11 +978,6 @@
                     .join('');
             }
 
-            function hexToLowerCase(hex) {
-                return hex.toLowerCase();
-            }
-
-            // 查找最接近的MARD色号（基于颜色距离）
             function findClosestMard(r, g, b) {
                 let closestCode = null;
                 let closestDist = Infinity;
@@ -712,38 +994,6 @@
                 return closestCode;
             }
 
-            // ---------- DOM 引用 ----------
-            const fileInput = document.getElementById('fileInput');
-            const fileName = document.getElementById('fileName');
-            const rowsInput = document.getElementById('rowsInput');
-            const colsInput = document.getElementById('colsInput');
-            const precisionSelect = document.getElementById('precisionSelect');
-            const generateBtn = document.getElementById('generateBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const gridContainer = document.getElementById('gridContainer');
-            const gridPlaceholder = document.getElementById('gridPlaceholder');
-            const previewImg = document.getElementById('previewImg');
-            const previewPlaceholder = document.getElementById('previewPlaceholder');
-            const imageInfo = document.getElementById('imageInfo');
-            const legendItems = document.getElementById('legendItems');
-            const legendCount = document.getElementById('legendCount');
-
-            // ---------- 状态 ----------
-            let uploadedImage = null;
-            let currentGridData = null;
-            let isGenerating = false;
-
-            // ---------- 工具函数 ----------
-            function isWhite(r, g, b, threshold) {
-                threshold = threshold || 240;
-                return r >= threshold && g >= threshold && b >= threshold;
-            }
-
-            function isTransparent(a) {
-                return a < 128;
-            }
-
-            // ---------- 颜色量化 (根据精度) ----------
             function getQuantizationLevels(precision) {
                 switch (precision) {
                     case 'low':
@@ -769,7 +1019,34 @@
                 };
             }
 
-            // ---------- 从 ImageData 提取平均颜色 (含量化 + MARD映射) ----------
+            function isWhite(r, g, b, threshold) {
+                threshold = threshold || 240;
+                return r >= threshold && g >= threshold && b >= threshold;
+            }
+
+            function isTransparent(a) {
+                return a < 128;
+            }
+
+            function getContrastColor(hex) {
+                if (!hex) return '#000';
+                let r, g, b;
+                if (hex.startsWith('#')) {
+                    let h = hex.slice(1);
+                    if (h.length === 3) {
+                        h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+                    }
+                    r = parseInt(h.substr(0, 2), 16);
+                    g = parseInt(h.substr(2, 2), 16);
+                    b = parseInt(h.substr(4, 2), 16);
+                } else {
+                    return '#000';
+                }
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                return luminance > 0.5 ? '#000000' : '#ffffff';
+            }
+
+            // ---------- 颜色采样 ----------
             function getAverageColorWithMard(imageData, x, y, width, height, imgW, imgH, quantLevels) {
                 const data = imageData.data;
                 const sw = imageData.width;
@@ -789,42 +1066,36 @@
                     gTotal = 0,
                     bTotal = 0,
                     count = 0;
-                let hasTransparent = false;
+                let transparentCount = 0;
+                const totalPixels = (pxEnd - pxStart) * (pyEnd - pyStart);
 
                 for (let py = pyStart; py < pyEnd; py++) {
                     for (let px = pxStart; px < pxEnd; px++) {
                         const idx = (py * sw + px) * 4;
-                        const r = data[idx];
-                        const g = data[idx + 1];
-                        const b = data[idx + 2];
                         const a = data[idx + 3];
-
                         if (isTransparent(a)) {
-                            hasTransparent = true;
+                            transparentCount++;
                             continue;
                         }
-
-                        rTotal += r;
-                        gTotal += g;
-                        bTotal += b;
+                        rTotal += data[idx];
+                        gTotal += data[idx + 1];
+                        bTotal += data[idx + 2];
                         count++;
                     }
                 }
 
-                if (count === 0) {
-                    return { hex: '#FFFFFF', mardCode: 'H2' };
+                if (count === 0 || (transparentCount / totalPixels) > 0.8) {
+                    return { hex: null, mardCode: null, isTransparent: true };
                 }
 
                 let avgR = rTotal / count;
                 let avgG = gTotal / count;
                 let avgB = bTotal / count;
 
-                // 如果接近白色，直接返回白色
                 if (isWhite(avgR, avgG, avgB)) {
-                    return { hex: '#FFFFFF', mardCode: 'H2' };
+                    return { hex: '#FFFFFF', mardCode: 'H2', isTransparent: false };
                 }
 
-                // 应用颜色量化
                 if (quantLevels && quantLevels > 1) {
                     const q = quantizeColor(avgR, avgG, avgB, quantLevels);
                     avgR = q.r;
@@ -833,16 +1104,14 @@
                 }
 
                 const hex = rgbToHex(avgR, avgG, avgB);
-                // 查找最接近的MARD色号
                 const mardCode = findClosestMard(avgR, avgG, avgB);
-                return { hex, mardCode };
+                return { hex, mardCode, isTransparent: false };
             }
 
-            // ---------- 核心：生成网格数据 ----------
+            // ---------- 生成网格数据 ----------
             function generateGridData(image, rows, cols, quantLevels) {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-
                 const imgW = image.naturalWidth || image.width;
                 const imgH = image.naturalHeight || image.height;
                 canvas.width = imgW;
@@ -853,14 +1122,16 @@
                 try {
                     imageData = ctx.getImageData(0, 0, imgW, imgH);
                 } catch (err) {
-                    console.error('读取图片像素失败:', err);
                     throw new Error('无法读取图片像素数据，请确保图片格式正确且未受跨域限制。');
                 }
 
                 const total = rows * cols;
                 const hexColors = new Array(total);
                 const mardColors = new Array(total);
-                const colorMap = new Map(); // key: mardCode, value: count
+                const isTransparentArr = new Array(total);
+                const colorMap = new Map();
+
+                let transparentCount = 0;
 
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
@@ -869,153 +1140,278 @@
                             imageData, c, r, cols, rows, imgW, imgH,
                             quantLevels
                         );
-                        hexColors[idx] = result.hex;
-                        mardColors[idx] = result.mardCode;
-                        colorMap.set(result.mardCode, (colorMap.get(result.mardCode) || 0) + 1);
+                        if (result.isTransparent) {
+                            hexColors[idx] = null;
+                            mardColors[idx] = null;
+                            isTransparentArr[idx] = true;
+                            transparentCount++;
+                        } else {
+                            hexColors[idx] = result.hex;
+                            mardColors[idx] = result.mardCode;
+                            isTransparentArr[idx] = false;
+                            colorMap.set(result.mardCode, (colorMap.get(result.mardCode) || 0) + 1);
+                        }
                     }
                 }
+
+                const totalBeads = rows * cols - transparentCount;
 
                 return {
                     hexColors,
                     mardColors,
+                    isTransparentArr,
                     rows,
                     cols,
                     colorMap,
-                    // 兼容旧版
-                    colors: hexColors
+                    transparentCount,
+                    totalBeads
                 };
             }
 
-            // ---------- 渲染网格 + 坐标轴 ----------
-            function renderGrid(gridData) {
-                const { hexColors, mardColors, rows, cols } = gridData;
+            // ---------- DOM 引用 ----------
+            const fileInput = document.getElementById('fileInput');
+            const fileName = document.getElementById('fileName');
+            const rowsInput = document.getElementById('rowsInput');
+            const colsInput = document.getElementById('colsInput');
+            const precisionSelect = document.getElementById('precisionSelect');
+            const generateBtn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const gridContainer = document.getElementById('gridContainer');
+            const gridPlaceholder = document.getElementById('gridPlaceholder');
+            const previewImg = document.getElementById('previewImg');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+            const imageInfo = document.getElementById('imageInfo');
+            const legendItems = document.getElementById('legendItems');
+            const legendCount = document.getElementById('legendCount');
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValue = document.getElementById('zoomValue');
+            const beadCountSpan = document.getElementById('beadCount');
+            const lockBtn = document.getElementById('lockBtn');
+            const exportModal = document.getElementById('exportModal');
+            const modalBeadCount = document.getElementById('modalBeadCount');
+            const modalSvgBtn = document.getElementById('modalSvgBtn');
+            const modalTilesBtn = document.getElementById('modalTilesBtn');
+            const modalCancelBtn = document.getElementById('modalCancelBtn');
+            const zoomWarning = document.getElementById('zoomWarning');
 
-                gridPlaceholder.style.display = 'none';
+            // ---------- 状态 ----------
+            let uploadedImage = null;
+            let currentGridData = null;
+            let isGenerating = false;
+            let currentZoom = 100;
+            let isLocked = false;
+            let imageAspectRatio = 1;
+
+            // ---------- 渲染函数（与之前相同） ----------
+            function renderGrid(gridData, zoomPercent) {
+                const { hexColors, mardColors, isTransparentArr, rows, cols, colorMap, transparentCount, totalBeads } = gridData;
+                beadCountSpan.textContent = totalBeads;
+
+                const totalCells = rows * cols;
+                if (totalCells > 15000) {
+                    zoomWarning.classList.add('show');
+                } else {
+                    zoomWarning.classList.remove('show');
+                }
+
+                const useCanvas = totalCells > 5000;
 
                 gridContainer.innerHTML = '';
-                const placeholderClone = gridPlaceholder.cloneNode(true);
-                placeholderClone.style.display = 'none';
-                gridContainer.appendChild(placeholderClone);
 
-                const colTemplate = `30px repeat(${cols}, 20px)`;
-                const rowTemplate = `repeat(${rows}, 20px) 30px`;
-                gridContainer.style.gridTemplateColumns = colTemplate;
-                gridContainer.style.gridTemplateRows = rowTemplate;
-                gridContainer.style.gap = '1px';
-                gridContainer.style.backgroundColor = '#d5cee2';
+                if (useCanvas) {
+                    const canvas = document.createElement('canvas');
+                    canvas.className = 'canvas-grid';
+                    gridContainer.appendChild(canvas);
+                    gridContainer.style.display = 'flex';
+                    gridContainer.style.borderLeft = '6px solid #8b5cf6';
+                    gridContainer.style.borderRight = '6px solid #8b5cf6';
+                    const ctx = canvas.getContext('2d');
 
-                const fragment = document.createDocumentFragment();
+                    const BASE_CELL = 20,
+                        BASE_GAP = 1,
+                        BASE_AXIS = 30,
+                        BASE_BORDER = 6;
+                    const scale = zoomPercent / 100;
+                    const cellSize = Math.max(2, BASE_CELL * scale);
+                    const gap = Math.max(0.5, BASE_GAP * scale);
+                    const axisSize = Math.max(14, BASE_AXIS * scale);
+                    const borderWidth = Math.max(2, BASE_BORDER * scale);
 
-                function createLabel(text, type, row, col) {
-                    const el = document.createElement('div');
-                    el.className = `axis-label ${type}`;
-                    el.textContent = text;
-                    el.style.gridRow = row;
-                    el.style.gridColumn = col;
-                    let fontSize = 11;
-                    if (rows > 80 || cols > 80) fontSize = 9;
-                    if (rows > 150 || cols > 150) fontSize = 8;
-                    if (rows > 250 || cols > 250) fontSize = 7;
-                    el.style.fontSize = fontSize + 'px';
-                    el.style.letterSpacing = '0.3px';
-                    return el;
-                }
+                    const gridW = cols * cellSize + (cols - 1) * gap;
+                    const gridH = rows * cellSize + (rows - 1) * gap;
+                    const totalW = axisSize + gridW + borderWidth * 2;
+                    const totalH = gridH + axisSize;
 
-                // 左上角
-                const corner = document.createElement('div');
-                corner.className = 'axis-label corner';
-                corner.style.gridRow = '1';
-                corner.style.gridColumn = '1';
-                corner.style.backgroundColor = '#f5f1fc';
-                corner.textContent = '';
-                fragment.appendChild(corner);
+                    canvas.width = totalW;
+                    canvas.height = totalH;
+                    canvas.style.width = totalW + 'px';
+                    canvas.style.height = totalH + 'px';
 
-                // 行号
-                for (let r = 0; r < rows; r++) {
-                    const label = createLabel(String(r + 1), 'row-label', r + 2, 1);
-                    label.style.backgroundColor = '#e8e0f7';
-                    fragment.appendChild(label);
-                }
+                    ctx.fillStyle = '#d5cee2';
+                    ctx.fillRect(axisSize + borderWidth, 0, gridW, gridH);
 
-                // 列号
-                for (let c = 0; c < cols; c++) {
-                    const label = createLabel(String(c + 1), 'col-label', rows + 1, c + 2);
-                    label.style.backgroundColor = '#e8e0f7';
-                    fragment.appendChild(label);
-                }
+                    const gridOffsetX = axisSize + borderWidth;
+                    const gridOffsetY = 0;
+                    const fontSize = Math.max(4, Math.round(cellSize * 0.3));
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
 
-                // 颜色网格
-                for (let r = 0; r < rows; r++) {
-                    for (let c = 0; c < cols; c++) {
-                        const idx = r * cols + c;
-                        const div = document.createElement('div');
-                        div.className = 'cell';
-                        div.style.backgroundColor = hexColors[idx];
-                        // 在格子中显示MARD色号（小字）
-                        div.style.display = 'flex';
-                        div.style.alignItems = 'center';
-                        div.style.justifyContent = 'center';
-                        div.style.fontSize = '6px';
-                        div.style.fontWeight = '700';
-                        div.style.color = '#333';
-                        div.style.textShadow = '0 0 2px #fff';
-                        div.textContent = mardColors[idx] || '';
-                        div.style.gridRow = r + 2;
-                        div.style.gridColumn = c + 2;
-                        fragment.appendChild(div);
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const idx = r * cols + c;
+                            if (isTransparentArr[idx]) continue;
+                            const x = gridOffsetX + c * (cellSize + gap);
+                            const y = gridOffsetY + r * (cellSize + gap);
+                            const hex = hexColors[idx];
+                            ctx.fillStyle = hex;
+                            ctx.fillRect(x, y, cellSize, cellSize);
+                            const mard = mardColors[idx] || '';
+                            ctx.fillStyle = getContrastColor(hex);
+                            ctx.font = `${fontSize}px "SF Mono", monospace`;
+                            ctx.fillText(mard, x + cellSize / 2, y + cellSize / 2);
+                        }
                     }
+
+                    ctx.fillStyle = '#8b5cf6';
+                    ctx.fillRect(axisSize, 0, borderWidth, gridH);
+                    ctx.fillRect(axisSize + borderWidth + gridW, 0, borderWidth, gridH);
+
+                    let axisFontSize = Math.max(7, Math.round(axisSize * 0.35));
+                    ctx.font = `600 ${axisFontSize}px "SF Mono", "Menlo", monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#4b2f7a';
+                    for (let r = 0; r < rows; r++) {
+                        const y = r * (cellSize + gap) + cellSize / 2;
+                        ctx.fillText(String(r + 1), axisSize / 2, y);
+                    }
+                    for (let c = 0; c < cols; c++) {
+                        const x = gridOffsetX + c * (cellSize + gap) + cellSize / 2;
+                        const y = gridH + axisSize / 2;
+                        ctx.fillText(String(c + 1), x, y);
+                    }
+                } else {
+                    // DOM 渲染
+                    gridContainer.style.display = 'grid';
+                    gridContainer.style.borderLeft = '6px solid #8b5cf6';
+                    gridContainer.style.borderRight = '6px solid #8b5cf6';
+                    const BASE_CELL = 20,
+                        BASE_GAP = 1,
+                        BASE_AXIS = 30,
+                        BASE_BORDER = 6;
+                    const scale = zoomPercent / 100;
+                    const cellSize = Math.max(2, BASE_CELL * scale);
+                    const gap = Math.max(0.5, BASE_GAP * scale);
+                    const axisSize = Math.max(14, BASE_AXIS * scale);
+                    const borderWidth = Math.max(2, BASE_BORDER * scale);
+
+                    gridPlaceholder.style.display = 'none';
+
+                    const colTemplate = `${axisSize}px repeat(${cols}, ${cellSize}px)`;
+                    const rowTemplate = `repeat(${rows}, ${cellSize}px) ${axisSize}px`;
+                    gridContainer.style.gridTemplateColumns = colTemplate;
+                    gridContainer.style.gridTemplateRows = rowTemplate;
+                    gridContainer.style.gap = `${gap}px`;
+                    gridContainer.style.backgroundColor = '#d5cee2';
+
+                    const fragment = document.createDocumentFragment();
+
+                    function createLabel(text, type, row, col) {
+                        const el = document.createElement('div');
+                        el.className = `axis-label ${type}`;
+                        el.textContent = text;
+                        el.style.gridRow = row;
+                        el.style.gridColumn = col;
+                        let fontSize = Math.max(6, 11 * scale);
+                        if (fontSize < 7) fontSize = 7;
+                        el.style.fontSize = fontSize + 'px';
+                        el.style.letterSpacing = '0.3px';
+                        el.style.backgroundColor = type === 'row-label' ? '#e8e0f7' :
+                            (type === 'col-label' ? '#e8e0f7' : '#f5f1fc');
+                        return el;
+                    }
+
+                    const corner = document.createElement('div');
+                    corner.className = 'axis-label corner';
+                    corner.style.gridRow = '1';
+                    corner.style.gridColumn = '1';
+                    corner.style.backgroundColor = '#f5f1fc';
+                    corner.textContent = '';
+                    fragment.appendChild(corner);
+
+                    for (let r = 0; r < rows; r++) {
+                        const label = createLabel(String(r + 1), 'row-label', r + 2, 1);
+                        fragment.appendChild(label);
+                    }
+                    for (let c = 0; c < cols; c++) {
+                        const label = createLabel(String(c + 1), 'col-label', rows + 1, c + 2);
+                        fragment.appendChild(label);
+                    }
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const idx = r * cols + c;
+                            const div = document.createElement('div');
+                            div.className = 'cell';
+                            if (isTransparentArr[idx]) {
+                                div.style.backgroundColor = 'transparent';
+                                div.style.border = '1px dashed #ccc';
+                                div.textContent = '';
+                            } else {
+                                const hex = hexColors[idx];
+                                div.style.backgroundColor = hex;
+                                div.style.border = 'none';
+                                div.style.display = 'flex';
+                                div.style.alignItems = 'center';
+                                div.style.justifyContent = 'center';
+                                const fontSize = Math.max(4, 6 * scale);
+                                div.style.fontSize = fontSize + 'px';
+                                div.style.fontWeight = '700';
+                                div.style.color = getContrastColor(hex);
+                                div.style.textShadow = 'none';
+                                div.textContent = mardColors[idx] || '';
+                            }
+                            div.style.gridRow = r + 2;
+                            div.style.gridColumn = c + 2;
+                            fragment.appendChild(div);
+                        }
+                    }
+                    gridContainer.appendChild(fragment);
                 }
 
-                gridContainer.appendChild(fragment);
-
-                // 更新图例（按字母顺序）
-                renderLegend(gridData.colorMap);
+                renderLegend(colorMap);
                 isGenerating = false;
                 generateBtn.disabled = false;
                 generateBtn.textContent = '✨ 生成图纸';
                 downloadBtn.disabled = false;
             }
 
-            // ---------- 渲染图例（按字母顺序排列） ----------
+            // ---------- 界面图例（保持原样，横向排列） ----------
             function renderLegend(colorMap) {
                 legendItems.innerHTML = '';
-
                 if (!colorMap || colorMap.size === 0) {
-                    legendItems.innerHTML =
-                        '<span style="color:#b8add6;font-size:14px;padding:6px 0;">暂无颜色数据</span>';
+                    legendItems.innerHTML = '<span style="color:#b8add6;font-size:14px;padding:6px 0;">暂无颜色数据</span>';
                     legendCount.textContent = '(0 种颜色)';
                     return;
                 }
-
-                // 按色号字母顺序排序
-                const sortedEntries = Array.from(colorMap.entries())
-                    .sort((a, b) => a[0].localeCompare(b[0]));
-
-                const totalColors = sortedEntries.length;
-                legendCount.textContent = `(${totalColors} 种颜色)`;
-
+                const sortedEntries = Array.from(colorMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                legendCount.textContent = `(${sortedEntries.length} 种颜色)`;
                 for (const [mardCode, count] of sortedEntries) {
                     const hex = MARD_COLORS[mardCode] || '#CCCCCC';
                     const item = document.createElement('div');
                     item.className = 'legend-item';
-
                     const swatch = document.createElement('span');
                     swatch.className = 'color-swatch';
                     swatch.style.backgroundColor = hex;
-
                     const codeSpan = document.createElement('span');
                     codeSpan.className = 'color-hex';
                     codeSpan.textContent = mardCode;
-
                     const hexSpan = document.createElement('span');
                     hexSpan.style.fontSize = '11px';
                     hexSpan.style.color = '#aaa';
                     hexSpan.textContent = hex;
-
                     const countSpan = document.createElement('span');
                     countSpan.className = 'color-count';
                     countSpan.textContent = `${count} 个`;
-
                     item.appendChild(swatch);
                     item.appendChild(codeSpan);
                     item.appendChild(hexSpan);
@@ -1024,44 +1420,23 @@
                 }
             }
 
-            // ---------- 下载图纸 (PNG) ----------
-            function downloadGridAsPNG(gridData) {
-                if (!gridData) {
-                    alert('请先生成图纸！');
-                    return;
-                }
+            // ============================================================
+            //  导出功能（图例改为 竖向排列 · 列优先）
+            // ============================================================
 
-                const { hexColors, mardColors, rows, cols, colorMap } = gridData;
-                const CELL_SIZE = 20;
-                const GAP = 1;
-                const BORDER_WIDTH = 6;
-                const AXIS_SIZE = 30;
-                const LEGEND_ITEM_HEIGHT = 32;
-                const LEGEND_PADDING = 20;
-                const LEGEND_COLS = 6;
-
+            // ---------- 辅助：绘制网格到 Canvas（不变） ----------
+            function drawGridOnCanvas(gridData, CELL_SIZE, GAP, BORDER_WIDTH, AXIS_SIZE) {
+                const { hexColors, mardColors, isTransparentArr, rows, cols } = gridData;
                 const gridW = cols * CELL_SIZE + (cols - 1) * GAP;
                 const gridH = rows * CELL_SIZE + (rows - 1) * GAP;
-
                 const totalW = AXIS_SIZE + gridW + BORDER_WIDTH * 2;
                 const totalH = gridH + AXIS_SIZE;
 
-                const sortedEntries = Array.from(colorMap.entries())
-                    .sort((a, b) => a[0].localeCompare(b[0]));
-                const legendCountTotal = sortedEntries.length;
-                const legendRows = Math.ceil(legendCountTotal / LEGEND_COLS);
-                const legendH = legendRows * LEGEND_ITEM_HEIGHT + LEGEND_PADDING * 2;
-
-                const canvasW = Math.max(totalW, 420);
-                const canvasH = totalH + legendH + 30;
-
                 const canvas = document.createElement('canvas');
-                canvas.width = canvasW;
-                canvas.height = canvasH;
+                canvas.width = totalW;
+                canvas.height = totalH;
                 const ctx = canvas.getContext('2d');
-
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvasW, canvasH);
+                ctx.clearRect(0, 0, totalW, totalH);
 
                 const gridOffsetX = AXIS_SIZE + BORDER_WIDTH;
                 const gridOffsetY = 0;
@@ -1069,110 +1444,160 @@
                 ctx.fillStyle = '#d5cee2';
                 ctx.fillRect(gridOffsetX, gridOffsetY, gridW, gridH);
 
-                // 绘制每个颜色格子（并显示MARD色号）
+                const fontSize = Math.round(CELL_SIZE * 0.25);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const idx = r * cols + c;
-                        const hex = hexColors[idx];
-                        const mard = mardColors[idx] || '';
+                        if (isTransparentArr[idx]) continue;
                         const x = gridOffsetX + c * (CELL_SIZE + GAP);
                         const y = gridOffsetY + r * (CELL_SIZE + GAP);
+                        const hex = hexColors[idx];
                         ctx.fillStyle = hex;
                         ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
-                        // 在格子中显示色号（小字）
-                        ctx.fillStyle = '#333';
-                        ctx.font = '5px "SF Mono", monospace';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
+                        const mard = mardColors[idx] || '';
+                        ctx.fillStyle = getContrastColor(hex);
+                        ctx.font = `${fontSize}px "SF Mono", monospace`;
                         ctx.fillText(mard, x + CELL_SIZE / 2, y + CELL_SIZE / 2);
                     }
                 }
 
-                // 紫色边框
                 ctx.fillStyle = '#8b5cf6';
                 ctx.fillRect(AXIS_SIZE, 0, BORDER_WIDTH, gridH);
                 ctx.fillRect(AXIS_SIZE + BORDER_WIDTH + gridW, 0, BORDER_WIDTH, gridH);
 
-                // 行号
-                let axisFontSize = 11;
-                if (rows > 80) axisFontSize = 9;
-                if (rows > 150) axisFontSize = 8;
-                if (rows > 250) axisFontSize = 7;
+                let axisFontSize = Math.round(CELL_SIZE * 0.35);
+                if (axisFontSize < 8) axisFontSize = 8;
+                if (axisFontSize > 16) axisFontSize = 16;
                 ctx.font = `600 ${axisFontSize}px "SF Mono", "Menlo", monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#4b2f7a';
                 for (let r = 0; r < rows; r++) {
                     const y = r * (CELL_SIZE + GAP) + CELL_SIZE / 2;
-                    ctx.fillStyle = '#4b2f7a';
                     ctx.fillText(String(r + 1), AXIS_SIZE / 2, y);
                 }
-
-                // 列号
-                ctx.font = `600 ${axisFontSize}px "SF Mono", "Menlo", monospace`;
                 for (let c = 0; c < cols; c++) {
                     const x = gridOffsetX + c * (CELL_SIZE + GAP) + CELL_SIZE / 2;
                     const y = gridH + AXIS_SIZE / 2;
-                    ctx.fillStyle = '#4b2f7a';
                     ctx.fillText(String(c + 1), x, y);
                 }
 
-                // 图例
+                return canvas;
+            }
+
+            // ---------- 1. 高清 PNG（图例竖向排列 · 列优先） ----------
+            function downloadHighResPNG(gridData) {
+                const CELL_SIZE = 40,
+                    GAP = 2,
+                    BORDER_WIDTH = 12,
+                    AXIS_SIZE = 60;
+                const ITEMS_PER_COL = 12; // 每列显示 12 个颜色
+                const LEGEND_ITEM_HEIGHT = 44,
+                    LEGEND_PADDING = 30,
+                    LEGEND_ITEM_SPACING = 14;
+
+                const { rows, cols, colorMap, totalBeads, transparentCount } = gridData;
+                const gridW = cols * CELL_SIZE + (cols - 1) * GAP;
+                const gridH = rows * CELL_SIZE + (rows - 1) * GAP;
+                const totalW = AXIS_SIZE + gridW + BORDER_WIDTH * 2;
+                const totalH = gridH + AXIS_SIZE;
+
+                const sortedEntries = Array.from(colorMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                const totalColors = sortedEntries.length;
+                const colsCount = Math.ceil(totalColors / ITEMS_PER_COL);
+                const rowsCount = Math.min(totalColors, ITEMS_PER_COL);
+
+                // 计算每个图例项的宽度（根据内容自适应）
+                const ctx = document.createElement('canvas').getContext('2d');
+                ctx.font = '600 14px "SF Mono", "Menlo", monospace';
+                let maxCodeWidth = 0;
+                for (const [code] of sortedEntries) {
+                    const m = ctx.measureText(code);
+                    if (m.width > maxCodeWidth) maxCodeWidth = m.width;
+                }
+                const itemWidth = 28 + 6 + maxCodeWidth + 8 + 60 + 12;
+                const legendItemWidth = itemWidth;
+                const legendTotalWidth = Math.max(totalW, colsCount * (legendItemWidth + LEGEND_ITEM_SPACING) + 20);
+                const legendTotalHeight = LEGEND_PADDING * 2 + 48 + rowsCount * LEGEND_ITEM_HEIGHT;
+                const BEAD_LABEL_HEIGHT = 50;
+
+                const canvasW = Math.max(legendTotalWidth, totalW, 500);
+                const canvasH = totalH + legendTotalHeight + 40 + BEAD_LABEL_HEIGHT;
+                const canvas = document.createElement('canvas');
+                canvas.width = canvasW;
+                canvas.height = canvasH;
+                const cctx = canvas.getContext('2d');
+                cctx.clearRect(0, 0, canvasW, canvasH);
+
+                const gridCanvas = drawGridOnCanvas(gridData, CELL_SIZE, GAP, BORDER_WIDTH, AXIS_SIZE);
+                cctx.drawImage(gridCanvas, 0, 0);
+
+                // ---- 图例（竖向排列 · 列优先） ----
                 const legendY = totalH + 20;
-                ctx.fillStyle = '#faf8fc';
-                ctx.shadowColor = 'rgba(0,0,0,0.04)';
-                ctx.shadowBlur = 8;
-                ctx.shadowOffsetY = 2;
-                ctx.beginPath();
-                ctx.roundRect(10, legendY, canvasW - 20, legendH, 12);
-                ctx.fill();
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
+                cctx.fillStyle = '#faf8fc';
+                cctx.shadowColor = 'rgba(0,0,0,0.04)';
+                cctx.shadowBlur = 8;
+                cctx.shadowOffsetY = 2;
+                cctx.beginPath();
+                cctx.roundRect(10, legendY, canvasW - 20, legendTotalHeight, 12);
+                cctx.fill();
+                cctx.shadowColor = 'transparent';
+                cctx.shadowBlur = 0;
 
-                ctx.fillStyle = '#2d2a3a';
-                ctx.font = 'bold 16px "Segoe UI", "PingFang SC", sans-serif';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.fillText('🎨 颜色图例 (MARD色号)', 24, legendY + 10);
+                cctx.fillStyle = '#2d2a3a';
+                cctx.font = 'bold 18px "Segoe UI", "PingFang SC", sans-serif';
+                cctx.textAlign = 'left';
+                cctx.textBaseline = 'top';
+                cctx.fillText('🎨 颜色图例 (MARD色号)', 24, legendY + 12);
 
-                const itemWidth = (canvasW - 40 - (LEGEND_COLS - 1) * 12) / LEGEND_COLS;
                 const startX = 24;
-                const startY = legendY + 40;
-
+                const startY = legendY + 48;
                 for (let i = 0; i < sortedEntries.length; i++) {
                     const [mardCode, count] = sortedEntries[i];
                     const hex = MARD_COLORS[mardCode] || '#CCCCCC';
-                    const col = i % LEGEND_COLS;
-                    const row = Math.floor(i / LEGEND_COLS);
-                    const x = startX + col * (itemWidth + 12);
+                    // 列优先：先按列填充
+                    const col = Math.floor(i / ITEMS_PER_COL);
+                    const row = i % ITEMS_PER_COL;
+                    const x = startX + col * (legendItemWidth + LEGEND_ITEM_SPACING);
                     const y = startY + row * LEGEND_ITEM_HEIGHT;
 
-                    ctx.fillStyle = hex;
-                    ctx.shadowColor = 'rgba(0,0,0,0.06)';
-                    ctx.shadowBlur = 4;
-                    ctx.shadowOffsetY = 1;
-                    ctx.beginPath();
-                    ctx.roundRect(x, y, 22, 22, 4);
-                    ctx.fill();
-                    ctx.shadowColor = 'transparent';
-                    ctx.shadowBlur = 0;
-                    ctx.strokeStyle = '#e9e4f2';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.roundRect(x, y, 22, 22, 4);
-                    ctx.stroke();
+                    cctx.fillStyle = hex;
+                    cctx.shadowColor = 'rgba(0,0,0,0.06)';
+                    cctx.shadowBlur = 4;
+                    cctx.shadowOffsetY = 1;
+                    cctx.beginPath();
+                    cctx.roundRect(x, y, 28, 28, 6);
+                    cctx.fill();
+                    cctx.shadowColor = 'transparent';
+                    cctx.shadowBlur = 0;
+                    cctx.strokeStyle = '#e9e4f2';
+                    cctx.lineWidth = 1;
+                    cctx.beginPath();
+                    cctx.roundRect(x, y, 28, 28, 6);
+                    cctx.stroke();
 
-                    ctx.fillStyle = '#4b4560';
-                    ctx.font = '600 12px "SF Mono", "Menlo", monospace';
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(mardCode, x + 28, y + 11);
+                    cctx.fillStyle = '#4b4560';
+                    cctx.font = '600 14px "SF Mono", "Menlo", monospace';
+                    cctx.textAlign = 'left';
+                    cctx.textBaseline = 'middle';
+                    cctx.fillText(mardCode, x + 34, y + 14);
 
-                    ctx.fillStyle = '#8b85a0';
-                    ctx.font = '12px "Segoe UI", "PingFang SC", sans-serif';
+                    cctx.fillStyle = '#8b85a0';
+                    cctx.font = '13px "Segoe UI", "PingFang SC", sans-serif';
                     const countText = `· ${count} 个`;
-                    const codeWidth = ctx.measureText(mardCode).width;
-                    ctx.fillText(countText, x + 28 + codeWidth + 6, y + 11);
+                    const codeWidth = cctx.measureText(mardCode).width;
+                    cctx.fillText(countText, x + 34 + codeWidth + 8, y + 14);
                 }
+
+                const beadY = legendY + legendTotalHeight + 16;
+                cctx.fillStyle = '#6d28d9';
+                cctx.font = 'bold 17px "Segoe UI", "PingFang SC", sans-serif';
+                cctx.textAlign = 'center';
+                cctx.textBaseline = 'top';
+                cctx.fillText(`🧶 共 ${totalBeads} 颗拼豆（透明区域 ${transparentCount} 颗未计入）`, canvasW / 2, beadY);
 
                 try {
                     const link = document.createElement('a');
@@ -1180,33 +1605,348 @@
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 } catch (err) {
-                    console.error('导出图片失败:', err);
-                    alert('导出图片失败，请重试或使用其他浏览器。');
+                    alert('导出 PNG 失败，请尝试 SVG 或分块导出。');
                 }
             }
 
-            // roundRect polyfill
-            if (!CanvasRenderingContext2D.prototype.roundRect) {
-                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
-                    const r = typeof radii === 'number' ? radii : (radii || 0);
-                    this.moveTo(x + r, y);
-                    this.lineTo(x + w - r, y);
-                    this.quadraticCurveTo(x + w, y, x + w, y + r);
-                    this.lineTo(x + w, y + h - r);
-                    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                    this.lineTo(x + r, y + h);
-                    this.quadraticCurveTo(x, y + h, x, y + h - r);
-                    this.lineTo(x, y + r);
-                    this.quadraticCurveTo(x, y, x + r, y);
-                    this.closePath();
-                    return this;
-                };
+            // ---------- 2. SVG 导出（图例竖向排列 · 列优先） ----------
+            function downloadSVG(gridData) {
+                const { hexColors, mardColors, isTransparentArr, rows, cols, colorMap, totalBeads, transparentCount } = gridData;
+                const CELL_SIZE = 20,
+                    GAP = 1,
+                    BORDER_WIDTH = 6,
+                    AXIS_SIZE = 30;
+                const gridW = cols * CELL_SIZE + (cols - 1) * GAP;
+                const gridH = rows * CELL_SIZE + (rows - 1) * GAP;
+                const totalW = AXIS_SIZE + gridW + BORDER_WIDTH * 2;
+                const totalH = gridH + AXIS_SIZE;
+
+                const sortedEntries = Array.from(colorMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                const ITEMS_PER_COL = 12;
+                const totalColors = sortedEntries.length;
+                const colsCount = Math.ceil(totalColors / ITEMS_PER_COL);
+                const rowsCount = Math.min(totalColors, ITEMS_PER_COL);
+                const legendItemHeight = 32;
+                const legendPadding = 30;
+                const legendTitleHeight = 40;
+                const legendTotalHeight = legendPadding * 2 + legendTitleHeight + rowsCount * legendItemHeight;
+
+                const perItemWidth = 120;
+                const legendTotalWidth = Math.max(totalW, colsCount * (perItemWidth + 14) + 20);
+
+                const beadLabelHeight = 40;
+                const svgHeight = totalH + legendTotalHeight + beadLabelHeight + 20;
+
+                let svg =
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="${legendTotalWidth}" height="${svgHeight}" viewBox="0 0 ${legendTotalWidth} ${svgHeight}">`;
+                svg += `<rect width="100%" height="100%" fill="white"/>`;
+
+                const gridOffsetX = (legendTotalWidth - totalW) / 2;
+                svg +=
+                `<rect x="${gridOffsetX + AXIS_SIZE + BORDER_WIDTH}" y="0" width="${gridW}" height="${gridH}" fill="#d5cee2"/>`;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c;
+                        if (isTransparentArr[idx]) continue;
+                        const x = gridOffsetX + AXIS_SIZE + BORDER_WIDTH + c * (CELL_SIZE + GAP);
+                        const y = r * (CELL_SIZE + GAP);
+                        const hex = hexColors[idx];
+                        svg +=
+                            `<rect x="${x}" y="${y}" width="${CELL_SIZE}" height="${CELL_SIZE}" fill="${hex}" stroke="#ccc" stroke-width="0.5"/>`;
+                        const mard = mardColors[idx] || '';
+                        const textColor = getContrastColor(hex);
+                        svg +=
+                            `<text x="${x + CELL_SIZE/2}" y="${y + CELL_SIZE/2}" font-size="5" font-weight="bold" fill="${textColor}" text-anchor="middle" dominant-baseline="central">${mard}</text>`;
+                    }
+                }
+
+                svg +=
+                    `<rect x="${gridOffsetX + AXIS_SIZE}" y="0" width="${BORDER_WIDTH}" height="${gridH}" fill="#8b5cf6"/>`;
+                svg +=
+                    `<rect x="${gridOffsetX + AXIS_SIZE + BORDER_WIDTH + gridW}" y="0" width="${BORDER_WIDTH}" height="${gridH}" fill="#8b5cf6"/>`;
+
+                let axisFontSize = 11;
+                if (rows > 80) axisFontSize = 9;
+                if (rows > 150) axisFontSize = 8;
+                if (rows > 250) axisFontSize = 7;
+                for (let r = 0; r < rows; r++) {
+                    const y = r * (CELL_SIZE + GAP) + CELL_SIZE / 2;
+                    svg +=
+                        `<text x="${gridOffsetX + AXIS_SIZE/2}" y="${y}" font-size="${axisFontSize}" font-weight="600" fill="#4b2f7a" text-anchor="middle" dominant-baseline="central">${r+1}</text>`;
+                }
+                for (let c = 0; c < cols; c++) {
+                    const x = gridOffsetX + AXIS_SIZE + BORDER_WIDTH + c * (CELL_SIZE + GAP) + CELL_SIZE / 2;
+                    const y = gridH + AXIS_SIZE / 2;
+                    svg +=
+                        `<text x="${x}" y="${y}" font-size="${axisFontSize}" font-weight="600" fill="#4b2f7a" text-anchor="middle" dominant-baseline="central">${c+1}</text>`;
+                }
+
+                // ---- 图例（竖向排列 · 列优先） ----
+                const legendY = totalH + 10;
+                svg +=
+                    `<rect x="10" y="${legendY}" width="${legendTotalWidth - 20}" height="${legendTotalHeight}" rx="12" fill="#faf8fc" stroke="#ede9fe" stroke-width="1"/>`;
+                svg +=
+                    `<text x="24" y="${legendY + 20}" font-size="16" font-weight="bold" fill="#2d2a3a">🎨 颜色图例 (MARD色号)</text>`;
+
+                const startX = 24;
+                const startY = legendY + 40;
+                const colWidth = (legendTotalWidth - 40 - (colsCount - 1) * 14) / colsCount;
+
+                for (let i = 0; i < sortedEntries.length; i++) {
+                    const [mardCode, count] = sortedEntries[i];
+                    const hex = MARD_COLORS[mardCode] || '#CCCCCC';
+                    const col = Math.floor(i / ITEMS_PER_COL);
+                    const row = i % ITEMS_PER_COL;
+                    const x = startX + col * (colWidth + 14);
+                    const y = startY + row * legendItemHeight;
+
+                    svg +=
+                        `<rect x="${x}" y="${y}" width="22" height="22" rx="4" fill="${hex}" stroke="#e9e4f2" stroke-width="1"/>`;
+                    svg +=
+                        `<text x="${x + 28}" y="${y + 11}" font-size="12" font-weight="600" fill="#4b4560" dominant-baseline="central">${mardCode}</text>`;
+                    const countText = `· ${count} 个`;
+                    const codeWidth = mardCode.length * 7;
+                    svg +=
+                        `<text x="${x + 28 + codeWidth + 8}" y="${y + 11}" font-size="12" fill="#8b85a0" dominant-baseline="central">${countText}</text>`;
+                }
+
+                const beadY = legendY + legendTotalHeight + 10;
+                svg +=
+                    `<text x="${legendTotalWidth/2}" y="${beadY}" font-size="15" font-weight="bold" fill="#6d28d9" text-anchor="middle">🧶 共 ${totalBeads} 颗拼豆（透明区域 ${transparentCount} 颗未计入）</text>`;
+
+                svg += '</svg>';
+
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = `拼豆图纸_MARD_${rows}x${cols}_${Date.now()}.svg`;
+                link.href = url;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // ---------- 3. 分块导出 PNG（图例竖向排列 · 列优先） ----------
+            function downloadTiles(gridData) {
+                const { rows, cols } = gridData;
+                const MAX_TILE_SIZE = 200;
+                const tileRows = Math.ceil(rows / MAX_TILE_SIZE);
+                const tileCols = Math.ceil(cols / MAX_TILE_SIZE);
+                const totalTiles = tileRows * tileCols;
+
+                if (totalTiles === 1) {
+                    downloadHighResPNG(gridData);
+                    return;
+                }
+
+                const zip = new JSZip();
+
+                function getTileData(rowStart, rowEnd, colStart, colEnd) {
+                    const tRows = rowEnd - rowStart;
+                    const tCols = colEnd - colStart;
+                    const tHex = [];
+                    const tMard = [];
+                    const tTrans = [];
+                    const tColorMap = new Map();
+                    let tTransCount = 0;
+                    for (let r = rowStart; r < rowEnd; r++) {
+                        for (let c = colStart; c < colEnd; c++) {
+                            const idx = r * cols + c;
+                            const isTrans = gridData.isTransparentArr[idx];
+                            tHex.push(isTrans ? null : gridData.hexColors[idx]);
+                            tMard.push(isTrans ? null : gridData.mardColors[idx]);
+                            tTrans.push(isTrans);
+                            if (isTrans) tTransCount++;
+                            else {
+                                const code = gridData.mardColors[idx];
+                                tColorMap.set(code, (tColorMap.get(code) || 0) + 1);
+                            }
+                        }
+                    }
+                    const tTotal = tRows * tCols - tTransCount;
+                    return {
+                        hexColors: tHex,
+                        mardColors: tMard,
+                        isTransparentArr: tTrans,
+                        rows: tRows,
+                        cols: tCols,
+                        colorMap: tColorMap,
+                        transparentCount: tTransCount,
+                        totalBeads: tTotal
+                    };
+                }
+
+                function renderTileToCanvas(tileData) {
+                    const CELL_SIZE = 40,
+                        GAP = 2,
+                        BORDER_WIDTH = 12,
+                        AXIS_SIZE = 60;
+                    const ITEMS_PER_COL = 10;
+                    const LEGEND_ITEM_HEIGHT = 44,
+                        LEGEND_PADDING = 30,
+                        LEGEND_ITEM_SPACING = 14;
+
+                    const { rows: tRows, cols: tCols, colorMap: tMap, totalBeads: tTotal, transparentCount: tTransCnt } =
+                        tileData;
+                    const gridW = tCols * CELL_SIZE + (tCols - 1) * GAP;
+                    const gridH = tRows * CELL_SIZE + (tRows - 1) * GAP;
+                    const totalW = AXIS_SIZE + gridW + BORDER_WIDTH * 2;
+                    const totalH = gridH + AXIS_SIZE;
+
+                    const sortedEntries = Array.from(tMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                    const totalColors = sortedEntries.length;
+                    const colsCount = Math.ceil(totalColors / ITEMS_PER_COL);
+                    const rowsCount = Math.min(totalColors, ITEMS_PER_COL);
+
+                    const ctx = document.createElement('canvas').getContext('2d');
+                    ctx.font = '600 14px "SF Mono", "Menlo", monospace';
+                    let maxCodeWidth = 0;
+                    for (const [code] of sortedEntries) {
+                        const m = ctx.measureText(code);
+                        if (m.width > maxCodeWidth) maxCodeWidth = m.width;
+                    }
+                    const itemWidth = 28 + 6 + maxCodeWidth + 8 + 60 + 12;
+                    const legendItemWidth = itemWidth;
+                    const legendTotalWidth = Math.max(totalW, colsCount * (legendItemWidth + LEGEND_ITEM_SPACING) + 20);
+                    const legendTotalHeight = LEGEND_PADDING * 2 + 48 + rowsCount * LEGEND_ITEM_HEIGHT;
+                    const BEAD_LABEL_HEIGHT = 50;
+
+                    const canvasW = Math.max(legendTotalWidth, totalW, 500);
+                    const canvasH = totalH + legendTotalHeight + 40 + BEAD_LABEL_HEIGHT;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = canvasW;
+                    canvas.height = canvasH;
+                    const cctx = canvas.getContext('2d');
+                    cctx.clearRect(0, 0, canvasW, canvasH);
+
+                    const gridCanvas = drawGridOnCanvas(tileData, CELL_SIZE, GAP, BORDER_WIDTH, AXIS_SIZE);
+                    cctx.drawImage(gridCanvas, 0, 0);
+
+                    const legendY = totalH + 20;
+                    cctx.fillStyle = '#faf8fc';
+                    cctx.shadowColor = 'rgba(0,0,0,0.04)';
+                    cctx.shadowBlur = 8;
+                    cctx.shadowOffsetY = 2;
+                    cctx.beginPath();
+                    cctx.roundRect(10, legendY, canvasW - 20, legendTotalHeight, 12);
+                    cctx.fill();
+                    cctx.shadowColor = 'transparent';
+                    cctx.shadowBlur = 0;
+
+                    cctx.fillStyle = '#2d2a3a';
+                    cctx.font = 'bold 18px "Segoe UI", "PingFang SC", sans-serif';
+                    cctx.textAlign = 'left';
+                    cctx.textBaseline = 'top';
+                    cctx.fillText('🎨 颜色图例 (MARD色号)', 24, legendY + 12);
+
+                    const startX = 24;
+                    const startY = legendY + 48;
+                    for (let i = 0; i < sortedEntries.length; i++) {
+                        const [mardCode, count] = sortedEntries[i];
+                        const hex = MARD_COLORS[mardCode] || '#CCCCCC';
+                        const col = Math.floor(i / ITEMS_PER_COL);
+                        const row = i % ITEMS_PER_COL;
+                        const x = startX + col * (legendItemWidth + LEGEND_ITEM_SPACING);
+                        const y = startY + row * LEGEND_ITEM_HEIGHT;
+
+                        cctx.fillStyle = hex;
+                        cctx.shadowColor = 'rgba(0,0,0,0.06)';
+                        cctx.shadowBlur = 4;
+                        cctx.shadowOffsetY = 1;
+                        cctx.beginPath();
+                        cctx.roundRect(x, y, 28, 28, 6);
+                        cctx.fill();
+                        cctx.shadowColor = 'transparent';
+                        cctx.shadowBlur = 0;
+                        cctx.strokeStyle = '#e9e4f2';
+                        cctx.lineWidth = 1;
+                        cctx.beginPath();
+                        cctx.roundRect(x, y, 28, 28, 6);
+                        cctx.stroke();
+
+                        cctx.fillStyle = '#4b4560';
+                        cctx.font = '600 14px "SF Mono", "Menlo", monospace';
+                        cctx.textAlign = 'left';
+                        cctx.textBaseline = 'middle';
+                        cctx.fillText(mardCode, x + 34, y + 14);
+
+                        cctx.fillStyle = '#8b85a0';
+                        cctx.font = '13px "Segoe UI", "PingFang SC", sans-serif';
+                        const countText = `· ${count} 个`;
+                        const codeWidth = cctx.measureText(mardCode).width;
+                        cctx.fillText(countText, x + 34 + codeWidth + 8, y + 14);
+                    }
+
+                    const beadY = legendY + legendTotalHeight + 16;
+                    cctx.fillStyle = '#6d28d9';
+                    cctx.font = 'bold 17px "Segoe UI", "PingFang SC", sans-serif';
+                    cctx.textAlign = 'center';
+                    cctx.textBaseline = 'top';
+                    cctx.fillText(`🧶 共 ${tTotal} 颗拼豆（透明区域 ${tTransCnt} 颗未计入）`, canvasW / 2, beadY);
+
+                    return canvas;
+                }
+
+                let tileIndex = 0;
+                for (let tr = 0; tr < tileRows; tr++) {
+                    for (let tc = 0; tc < tileCols; tc++) {
+                        const rowStart = tr * MAX_TILE_SIZE;
+                        const rowEnd = Math.min(rows, rowStart + MAX_TILE_SIZE);
+                        const colStart = tc * MAX_TILE_SIZE;
+                        const colEnd = Math.min(cols, colStart + MAX_TILE_SIZE);
+                        const tileData = getTileData(rowStart, rowEnd, colStart, colEnd);
+                        const canvas = renderTileToCanvas(tileData);
+                        const dataURL = canvas.toDataURL('image/png');
+                        const byteString = atob(dataURL.split(',')[1]);
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                        }
+                        const blob = new Blob([ab], { type: 'image/png' });
+                        const name =
+                            `拼豆图纸_分块${tileIndex+1}_行${rowStart+1}-${rowEnd}_列${colStart+1}-${colEnd}.png`;
+                        zip.file(name, blob);
+                        tileIndex++;
+                    }
+                }
+
+                zip.generateAsync({ type: 'blob' })
+                    .then(function(content) {
+                        saveAs(content, `拼豆图纸_分块_${rows}x${cols}_${Date.now()}.zip`);
+                    })
+                    .catch(function(err) {
+                        alert('打包 ZIP 失败：' + err.message);
+                    });
+            }
+
+            // ============================================================
+            //  智能导出入口
+            // ============================================================
+            function handleExport() {
+                if (!currentGridData) {
+                    alert('请先生成图纸！');
+                    return;
+                }
+                const total = currentGridData.totalBeads;
+
+                if (total > 250000) {
+                    alert('图纸数量超过 250,000，已自动切换为 SVG 导出。');
+                    downloadSVG(currentGridData);
+                    return;
+                }
+
+                if (total <= 10000) {
+                    downloadHighResPNG(currentGridData);
+                } else {
+                    modalBeadCount.textContent = total;
+                    exportModal.classList.add('show');
+                }
             }
 
             // ---------- 主流程 ----------
             function handleGenerate() {
                 if (isGenerating) return;
-
                 if (!uploadedImage) {
                     alert('请先上传一张图片！');
                     return;
@@ -1214,14 +1954,19 @@
 
                 const rows = parseInt(rowsInput.value, 10);
                 const cols = parseInt(colsInput.value, 10);
-
                 if (isNaN(rows) || rows < 1 || isNaN(cols) || cols < 1) {
                     alert('行数和列数必须为正整数！');
                     return;
                 }
 
-                if (rows > 300 || cols > 300) {
-                    if (!confirm(`您设置的网格为 ${rows}×${cols} (共 ${rows * cols} 个格子)，数量较大可能影响性能，确定继续吗？`)) {
+                const total = rows * cols;
+
+                if (total > 25000) {
+                    alert('当前数量超过 250,00，生成后将只能导出 SVG 格式。');
+                }
+
+                if (total > 90000) {
+                    if (!confirm(`您设置的网格为 ${rows}×${cols} (共 ${total} 个格子)，数量极大，可能影响性能，确定继续吗？`)) {
                         return;
                     }
                 }
@@ -1231,30 +1976,35 @@
 
                 isGenerating = true;
                 generateBtn.disabled = true;
-                generateBtn.textContent = '⏳ 生成中...';
+                generateBtn.textContent = '生成中...';
                 downloadBtn.disabled = true;
 
                 setTimeout(() => {
                     try {
                         const gridData = generateGridData(uploadedImage, rows, cols, quantLevels);
                         currentGridData = gridData;
-                        renderGrid(gridData);
+                        renderGrid(gridData, currentZoom);
+                        applyZoom(currentZoom);
                     } catch (err) {
                         console.error(err);
                         alert('生成图纸失败：' + err.message);
                         isGenerating = false;
                         generateBtn.disabled = false;
-                        generateBtn.textContent = '✨ 生成图纸';
+                        generateBtn.textContent = '生成图纸';
                         downloadBtn.disabled = false;
                     }
                 }, 50);
+            }
+
+            function applyZoom(zoomPercent) {
+                if (!currentGridData) return;
+                renderGrid(currentGridData, zoomPercent);
             }
 
             // ---------- 图片上传 ----------
             function handleFileUpload(e) {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 if (!file.type.startsWith('image/')) {
                     alert('请上传图片文件！');
                     fileInput.value = '';
@@ -1268,6 +2018,7 @@
                     const img = new Image();
                     img.onload = function() {
                         uploadedImage = img;
+                        imageAspectRatio = (img.naturalWidth || img.width) / (img.naturalHeight || img.height);
                         previewImg.src = ev.target.result;
                         previewImg.style.display = 'block';
                         previewPlaceholder.style.display = 'none';
@@ -1290,7 +2041,6 @@
                 reader.readAsDataURL(file);
             }
 
-            // ---------- 清空 ----------
             function clearGrid() {
                 gridContainer.innerHTML = '';
                 const clone = gridPlaceholder.cloneNode(true);
@@ -1300,31 +2050,93 @@
                 legendCount.textContent = '(0 种颜色)';
                 currentGridData = null;
                 downloadBtn.disabled = true;
+                beadCountSpan.textContent = '0';
+                zoomWarning.classList.remove('show');
             }
+
+            // ---------- 锁定比例 ----------
+            function updateDimension(trigger) {
+                if (!isLocked || !uploadedImage) return;
+                const rowsVal = parseInt(rowsInput.value, 10);
+                const colsVal = parseInt(colsInput.value, 10);
+                if (isNaN(rowsVal) || rowsVal < 1 || isNaN(colsVal) || colsVal < 1) return;
+                if (trigger === 'rows') {
+                    let newCols = Math.round(rowsVal * imageAspectRatio);
+                    if (newCols < 1) newCols = 1;
+                    colsInput.value = newCols;
+                } else if (trigger === 'cols') {
+                    let newRows = Math.round(colsVal / imageAspectRatio);
+                    if (newRows < 1) newRows = 1;
+                    rowsInput.value = newRows;
+                }
+            }
+
+            rowsInput.addEventListener('input', function() { updateDimension('rows'); });
+            colsInput.addEventListener('input', function() { updateDimension('cols'); });
+
+            lockBtn.addEventListener('click', function() {
+                isLocked = !isLocked;
+                this.textContent = isLocked ? '比例已锁定' : '>锁定比例';
+                this.classList.toggle('active', isLocked);
+                if (isLocked && uploadedImage) {
+                    updateDimension('rows');
+                }
+            });
+
+            // ---------- 缩放滑块 ----------
+            zoomSlider.addEventListener('input', function() {
+                const val = parseInt(this.value, 10);
+                zoomValue.textContent = val + '%';
+                currentZoom = val;
+                if (currentGridData) applyZoom(val);
+            });
 
             // ---------- 事件绑定 ----------
             fileInput.addEventListener('change', handleFileUpload);
             generateBtn.addEventListener('click', handleGenerate);
-
-            downloadBtn.addEventListener('click', function() {
-                if (currentGridData) {
-                    downloadGridAsPNG(currentGridData);
-                } else {
-                    alert('请先生成图纸！');
-                }
-            });
+            downloadBtn.addEventListener('click', handleExport);
 
             rowsInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGenerate(); });
             colsInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGenerate(); });
             precisionSelect.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleGenerate(); });
 
+            modalSvgBtn.addEventListener('click', function() {
+                exportModal.classList.remove('show');
+                if (currentGridData) downloadSVG(currentGridData);
+            });
+            modalTilesBtn.addEventListener('click', function() {
+                exportModal.classList.remove('show');
+                if (currentGridData) downloadTiles(currentGridData);
+            });
+            modalCancelBtn.addEventListener('click', function() {
+                exportModal.classList.remove('show');
+            });
+            exportModal.addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('show');
+            });
+
             downloadBtn.disabled = true;
 
-            console.log('🧩 拼豆图纸工具已加载 · MARD 221色支持');
-            console.log('📐 共 ' + Object.keys(MARD_COLORS).length + ' 个色号');
+            // roundRect polyfill
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+                    const r = typeof radii === 'number' ? radii : (radii || 0);
+                    this.moveTo(x + r, y);
+                    this.lineTo(x + w - r, y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r);
+                    this.lineTo(x + w, y + h - r);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    this.lineTo(x + r, y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r);
+                    this.lineTo(x, y + r);
+                    this.quadraticCurveTo(x, y, x + r, y);
+                    this.closePath();
+                    return this;
+                };
+            }
 
+            console.log('拼豆图纸工具已加载 · MARD 221色支持 ');
         })();
     </script>
-
 </body>
 </html>
