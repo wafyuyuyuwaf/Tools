@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF转换工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a1a; padding: 24px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .title { font-size: 22px; font-weight: 500; margin-bottom: 16px; }
+        .upload-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .upload-btn { background: #e8e8e8; border: none; padding: 6px 18px; font-size: 14px; cursor: pointer; border-radius: 4px; }
+        .upload-btn:hover { background: #d0d0d0; }
+        .upload-btn input { display: none; }
+        .file-count { font-size: 13px; color: #555; }
+        .file-list { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 16px; }
+        .file-tag { font-size: 13px; color: #222; background: #f0f0f0; padding: 2px 10px; border-radius: 3px; display: inline-flex; align-items: center; gap: 6px; }
+        .file-tag .del { color: #b91c1c; cursor: pointer; font-weight: 600; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .btn { background: #e8e8e8; border: none; padding: 5px 16px; font-size: 13px; cursor: pointer; border-radius: 4px; }
+        .btn:hover { background: #d0d0d0; }
+        .btn:disabled { opacity: 0.4; cursor: default; }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .status { font-size: 13px; color: #555; min-height: 20px; margin-bottom: 12px; }
+        .status.error { color: #b91c1c; }
+        .extra-panel { display: none; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .extra-panel.show { display: flex; }
+        .extra-panel input, .extra-panel select { padding: 4px 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; background: #fff; min-width: 150px; }
+        .extra-panel .btn { background: #e8e8e8; }
+        #output { margin-top: 16px; border-top: 1px solid #eee; padding-top: 16px; min-height: 40px; }
+        .text-box { background: #f8f8f8; padding: 14px; font-size: 13px; line-height: 1.6; max-height: 360px; overflow-y: auto; white-space: pre-wrap; border-radius: 4px; }
+        .img-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+        .img-card { background: #f8f8f8; padding: 10px; border-radius: 4px; text-align: center; width: 130px; }
+        .img-card img { width: 100%; height: auto; border-radius: 3px; display: block; }
+        .img-card .pnum { font-size: 12px; color: #555; margin: 4px 0; }
+        .footer { margin-top: 28px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 14px; }
+        .lib-status { font-size: 12px; color: #666; margin-bottom: 8px; }
+        .lib-status.ok { color: #0a6b3f; }
+        .lib-status.loading { color: #b45309; }
+        .save-btn { background: #2563eb; color: white; border: none; padding: 5px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .save-btn:hover { background: #1d4ed8; }
+        .save-btn:disabled { opacity: 0.5; cursor: default; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="title">PDF转换工具</div>
+
+    <div class="lib-status" id="libStatus">加载依赖库...</div>
+
+    <!-- 上传 -->
+    <div class="upload-row">
+        <label class="upload-btn">
+            添加文档
+            <input type="file" id="fileInput" multiple accept=".pdf,image/*">
+        </label>
+        <span class="file-count" id="fileCount">未选择文件</span>
+    </div>
+
+    <!-- 文件列表 -->
+    <div class="file-list" id="fileList"></div>
+
+    <!-- 功能按钮 -->
+    <div class="btn-group">
+        <button class="btn" id="btnText">转文本</button>
+        <button class="btn" id="btnImages">转图片</button>
+        <button class="btn" id="btnMerge">合并PDF</button>
+        <button class="btn" id="btnSplit">拆分</button>
+        <button class="btn" id="btnRotate">旋转</button>
+        <button class="btn" id="btnImg2Pdf">图片→PDF</button>
+        <button class="btn" id="btnClear">清空结果</button>
+        <button class="btn btn-primary" id="btnSave" disabled>保存文档</button>
+    </div>
+
+    <!-- 额外参数区 -->
+    <div class="extra-panel" id="extraPanel">
+        <span id="extraLabel">参数</span>
+        <div id="extraControl" style="display:inline-block;"></div>
+        <button class="btn" id="extraAction">执行</button>
+        <button class="btn" id="extraCancel">取消</button>
+    </div>
+
+    <div class="status" id="status">请添加文件</div>
+    <div id="output"></div>
+    <div class="footer">基于 pdf.js · pdf-lib · JSZip</div>
+</div>
+
+<script>
+    (function() {
+        // ---- 库加载 ----
+        let libs = { pdfjs: false, pdfLib: false, jszip: false };
+        const libStatus = document.getElementById('libStatus');
+
+        function updateLibStatus() {
+            const all = libs.pdfjs && libs.pdfLib && libs.jszip;
+            if (all) {
+                libStatus.textContent = '所有库已就绪';
+                libStatus.className = 'lib-status ok';
+            } else {
+                const m = [];
+                if (!libs.pdfjs) m.push('pdf.js');
+                if (!libs.pdfLib) m.push('pdf-lib');
+                if (!libs.jszip) m.push('JSZip');
+                libStatus.textContent = '加载: ' + m.join(', ');
+                libStatus.className = 'lib-status loading';
+            }
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+
+        async function loadAll() {
+            if (typeof pdfjsLib !== 'undefined') libs.pdfjs = true;
+            if (typeof PDFLib !== 'undefined') libs.pdfLib = true;
+            if (typeof JSZip !== 'undefined') libs.jszip = true;
+
+            if (!libs.pdfjs) {
+                try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'); libs.pdfjs = true; } catch(e) {}
+            }
+            if (!libs.pdfLib) {
+                try { await loadScript('https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js'); libs.pdfLib = true; } catch(e) {}
+            }
+            if (!libs.jszip) {
+                try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); libs.jszip = true; } catch(e) {}
+            }
+            updateLibStatus();
+        }
+        loadAll();
+
+        // ---- 文件管理 ----
+        let files = [];
+        const fileInput = document.getElementById('fileInput');
+        const fileListEl = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+
+        function renderFiles() {
+            fileListEl.innerHTML = '';
+            if (files.length === 0) { fileCount.textContent = '未选择文件'; return; }
+            fileCount.textContent = files.length + ' 个文件';
+            files.forEach((item, idx) => {
+                const tag = document.createElement('span');
+                tag.className = 'file-tag';
+                const icon = item.type.startsWith('image/') ? '🖼' : 'PDF';
+                tag.innerHTML = icon + ' ' + item.name + ' (' + (item.size/1024).toFixed(0) + 'KB) <span class="del" data-idx="' + idx + '">×</span>';
+                tag.querySelector('.del').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    files.splice(idx, 1);
+                    renderFiles();
+                });
+                fileListEl.appendChild(tag);
+            });
+        }
+
+        async function addFiles(fileList) {
+            const arr = Array.from(fileList);
+            for (const file of arr) {
+                if (file.size > 100 * 1024 * 1024) { alert(file.name + ' 超过100MB'); continue; }
+                const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+                const isImg = file.type.startsWith('image/');
+                if (!isPdf && !isImg) { alert(file.name + ' 不是PDF或图片'); continue; }
+                const buf = await file.arrayBuffer();
+                files.push({ name: file.name, size: file.size, type: file.type, data: new Uint8Array(buf) });
+            }
+            renderFiles();
+            fileInput.value = '';
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) addFiles(e.target.files);
+        });
+
+        // ---- 状态和结果存储 ----
+        let resultBlob = null;
+        let resultFileName = '';
+        const outputEl = document.getElementById('output');
+        const statusEl = document.getElementById('status');
+        const saveBtn = document.getElementById('btnSave');
+
+        function setStatus(msg, isErr) {
+            statusEl.textContent = msg;
+            statusEl.className = 'status' + (isErr ? ' error' : '');
+        }
+
+        function setResult(blob, fileName) {
+            resultBlob = blob;
+            resultFileName = fileName;
+            saveBtn.disabled = false;
+            setStatus('处理完成，点击“保存文档”下载');
+        }
+
+        function clearResult() {
+            resultBlob = null;
+            resultFileName = '';
+            saveBtn.disabled = true;
+            outputEl.innerHTML = '';
+            setStatus('已清空');
+        }
+
+        function getFirstPdf() {
+            return files.find(f => f.name.endsWith('.pdf') || f.type === 'application/pdf') || null;
+        }
+        function getAllPdfs() {
+            return files.filter(f => f.name.endsWith('.pdf') || f.type === 'application/pdf');
+        }
+        function getAllImages() {
+            return files.filter(f => f.type.startsWith('image/'));
+        }
+
+        // ---- 额外参数面板 ----
+        const extraPanel = document.getElementById('extraPanel');
+        const extraLabel = document.getElementById('extraLabel');
+        const extraControl = document.getElementById('extraControl');
+        const extraAction = document.getElementById('extraAction');
+        const extraCancel = document.getElementById('extraCancel');
+
+        function resetExtraPanel() {
+            extraPanel.className = 'extra-panel';
+            extraControl.innerHTML = '';
+            extraAction.onclick = null;
+            extraCancel.onclick = () => { resetExtraPanel(); setStatus('已取消'); };
+        }
+
+        function showExtra(label, type, placeholderOrOptions, onExecute) {
+            resetExtraPanel();
+            extraPanel.className = 'extra-panel show';
+            extraLabel.textContent = label;
+
+            extraControl.innerHTML = '';
+            let input = null;
+            if (type === 'select') {
+                const select = document.createElement('select');
+                const opts = placeholderOrOptions;
+                opts.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    select.appendChild(option);
+                });
+                extraControl.appendChild(select);
+                input = select;
+            } else {
+                const inp = document.createElement('input');
+                inp.type = type;
+                inp.placeholder = placeholderOrOptions || '';
+                inp.value = '';
+                extraControl.appendChild(inp);
+                input = inp;
+            }
+
+            extraAction.onclick = () => {
+                let val = input.value;
+                if (type === 'select') val = input.value;
+                if (onExecute) onExecute(val);
+            };
+            extraCancel.onclick = () => { resetExtraPanel(); setStatus('已取消'); };
+            setTimeout(() => { if (input && input.focus) input.focus(); }, 100);
+        }
+
+        // ---- “保存文档”按钮 ----
+        saveBtn.addEventListener('click', () => {
+            if (!resultBlob) {
+                setStatus('没有可保存的内容', true);
+                return;
+            }
+            const url = URL.createObjectURL(resultBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = resultFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            setStatus('已下载: ' + resultFileName);
+        });
+
+        // ---- 功能实现（不再直接下载，改为存储结果） ----
+
+        // 转文本
+        document.getElementById('btnText').addEventListener('click', async () => {
+            const pdf = getFirstPdf();
+            if (!pdf) { setStatus('请先添加PDF', true); return; }
+            try {
+                setStatus('提取文本...');
+                const doc = await pdfjsLib.getDocument({ data: pdf.data.slice() }).promise;
+                let text = pdf.name + '\n' + '='.repeat(40) + '\n\n';
+                for (let i = 1; i <= doc.numPages; i++) {
+                    const page = await doc.getPage(i);
+                    const c = await page.getTextContent();
+                    text += '--- 第' + i + '页 ---\n' + c.items.map(o => o.str).join(' ') + '\n\n';
+                }
+                // 显示预览
+                outputEl.innerHTML = '<div class="text-box">' + text + '</div>';
+                // 存储结果
+                const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+                setResult(blob, pdf.name.replace(/\.pdf$/i, '') + '.txt');
+            } catch (e) { setStatus('错误: ' + e.message, true); }
+        });
+
+        // 转图片 -> 打包为ZIP
+        document.getElementById('btnImages').addEventListener('click', async () => {
+            const pdf = getFirstPdf();
+            if (!pdf) { setStatus('请先添加PDF', true); return; }
+            try {
+                setStatus('渲染图片...');
+                const doc = await pdfjsLib.getDocument({ data: pdf.data.slice() }).promise;
+                const scale = (doc.numPages > 50 || pdf.size > 50*1024*1024) ? 1.0 : 1.5;
+                const imgs = [];
+                for (let i = 1; i <= doc.numPages; i++) {
+                    const page = await doc.getPage(i);
+                    const vp = page.getViewport({ scale });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = vp.width; canvas.height = vp.height;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                    imgs.push(canvas.toDataURL('image/png'));
+                    if (i % 10 === 0) setStatus(i + '/' + doc.numPages);
+                }
+                // 显示缩略图预览（仅显示前10张）
+                let previewHtml = '<div style="font-size:13px;margin-bottom:8px;">共 ' + imgs.length + ' 页图片</div><div class="img-grid">';
+                const showCount = Math.min(imgs.length, 10);
+                for (let i = 0; i < showCount; i++) {
+                    previewHtml += '<div class="img-card"><img src="' + imgs[i] + '"/><div class="pnum">第' + (i+1) + '页</div></div>';
+                }
+                if (imgs.length > 10) previewHtml += '<div style="font-size:13px;color:#999;padding:10px;">... 等' + imgs.length + '页</div>';
+                previewHtml += '</div>';
+                outputEl.innerHTML = previewHtml;
+
+                // 打包为ZIP
+                if (typeof JSZip === 'undefined') throw new Error('JSZip未加载');
+                const zip = new JSZip();
+                const baseName = pdf.name.replace(/\.pdf$/i, '');
+                imgs.forEach((dataUrl, i) => {
+                    const bs = atob(dataUrl.split(',')[1]);
+                    const ab = new ArrayBuffer(bs.length);
+                    const ia = new Uint8Array(ab);
+                    for (let j = 0; j < bs.length; j++) ia[j] = bs.charCodeAt(j);
+                    zip.file(baseName + '_' + (i+1) + '.png', new Blob([ab], {type: 'image/png'}));
+                });
+                const zipBlob = await zip.generateAsync({type: 'blob'});
+                setResult(zipBlob, baseName + '_图片.zip');
+            } catch (e) { setStatus('错误: ' + e.message, true); }
+        });
+
+        // 合并PDF
+        document.getElementById('btnMerge').addEventListener('click', async () => {
+            const pdfs = getAllPdfs();
+            if (pdfs.length < 2) { setStatus('至少需要2个PDF', true); return; }
+            try {
+                setStatus('合并中...');
+                if (typeof PDFLib === 'undefined') throw new Error('pdf-lib未加载');
+                const merged = await PDFLib.PDFDocument.create();
+                for (const item of pdfs) {
+                    const src = await PDFLib.PDFDocument.load(item.data.slice());
+                    const copied = await merged.copyPages(src, src.getPageIndices());
+                    copied.forEach(p => merged.addPage(p));
+                }
+                const bytes = await merged.save();
+                const blob = new Blob([bytes], {type: 'application/pdf'});
+                outputEl.innerHTML = '<div style="font-size:13px;">合并完成，共 ' + merged.getPageCount() + ' 页</div>';
+                setResult(blob, '合并.pdf');
+            } catch (e) { setStatus('错误: ' + e.message, true); }
+        });
+
+        // 拆分
+        document.getElementById('btnSplit').addEventListener('click', () => {
+            const pdf = getFirstPdf();
+            if (!pdf) { setStatus('请先添加PDF', true); return; }
+            showExtra('页码范围 (如 1-3,5,7-9)', 'text', '1-3,5,7-9', async (val) => {
+                try {
+                    if (!val.trim()) throw new Error('请输入页码范围');
+                    const pages = new Set();
+                    val.split(',').forEach(p => {
+                        p = p.trim();
+                        if (p.includes('-')) {
+                            const [s, e] = p.split('-').map(Number);
+                            for (let i = s; i <= e; i++) pages.add(i);
+                        } else pages.add(Number(p));
+                    });
+                    const src = await PDFLib.PDFDocument.load(pdf.data.slice());
+                    const total = src.getPageCount();
+                    const indices = Array.from(pages).filter(n => n >= 1 && n <= total).map(n => n - 1);
+                    if (indices.length === 0) throw new Error('没有有效页码');
+                    const nd = await PDFLib.PDFDocument.create();
+                    const copied = await nd.copyPages(src, indices);
+                    copied.forEach(p => nd.addPage(p));
+                    const bytes = await nd.save();
+                    const blob = new Blob([bytes], {type: 'application/pdf'});
+                    outputEl.innerHTML = '<div style="font-size:13px;">提取了 ' + indices.length + ' 页</div>';
+                    setResult(blob, '拆分提取.pdf');
+                    resetExtraPanel();
+                } catch (e) { setStatus('错误: ' + e.message, true); }
+            });
+        });
+
+        // 旋转
+        document.getElementById('btnRotate').addEventListener('click', () => {
+            const pdf = getFirstPdf();
+            if (!pdf) { setStatus('请先添加PDF', true); return; }
+            showExtra('旋转角度', 'select', ['0', '90', '180', '270'], async (val) => {
+                try {
+                    const angle = parseInt(val, 10);
+                    if (isNaN(angle) || ![0, 90, 180, 270].includes(angle)) {
+                        throw new Error('角度必须是 0, 90, 180, 270 之一');
+                    }
+                    const src = await PDFLib.PDFDocument.load(pdf.data.slice());
+                    const { degrees } = PDFLib;
+                    src.getPages().forEach(p => p.setRotation(degrees(angle)));
+                    const bytes = await src.save();
+                    const blob = new Blob([bytes], {type: 'application/pdf'});
+                    outputEl.innerHTML = '<div style="font-size:13px;">旋转完成 (' + angle + '°)</div>';
+                    setResult(blob, '旋转后.pdf');
+                    resetExtraPanel();
+                } catch (e) { setStatus('错误: ' + e.message, true); }
+            });
+        });
+
+        // 图片转PDF
+        document.getElementById('btnImg2Pdf').addEventListener('click', async () => {
+            const imgs = getAllImages();
+            if (imgs.length === 0) { setStatus('请添加图片', true); return; }
+            try {
+                setStatus('生成PDF...');
+                const pdf = await PDFLib.PDFDocument.create();
+                for (const item of imgs) {
+                    let img;
+                    const isPng = item.type === 'image/png' || item.name.toLowerCase().endsWith('.png');
+                    if (isPng) {
+                        img = await pdf.embedPng(item.data.slice());
+                    } else {
+                        try {
+                            img = await pdf.embedJpg(item.data.slice());
+                        } catch (jpegErr) {
+                            img = await pdf.embedPng(item.data.slice());
+                        }
+                    }
+                    const page = pdf.addPage([img.width, img.height]);
+                    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                }
+                const bytes = await pdf.save();
+                const blob = new Blob([bytes], {type: 'application/pdf'});
+                outputEl.innerHTML = '<div style="font-size:13px;">生成完成，共 ' + imgs.length + ' 页</div>';
+                setResult(blob, '图片合成.pdf');
+            } catch (e) { setStatus('错误: ' + e.message, true); }
+        });
+
+        // 清空结果
+        document.getElementById('btnClear').addEventListener('click', () => {
+            clearResult();
+            resetExtraPanel();
+        });
+
+        // 初始化
+        setStatus('请添加文件');
+        clearResult();
+        resetExtraPanel();
+    })();
+</script>
+</body>
+</html>
