@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>GIF 制作</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <style>
+        /* ===== 全局样式（与之前一致） ===== */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-weight: 350;
+            background: #f6f6f6;
+            color: #2c2c2c;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2.4rem 1.2rem 3.6rem;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+        .app {
+            max-width: 600px;
+            width: 100%;
+            background: #fff;
+            padding: 2.4rem 2rem 2.8rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 24px rgba(0,0,0,0.02);
+            align-self: flex-start;
+        }
+        .title {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: 0.08em;
+            color: #1a1a1a;
+            margin-bottom: 2rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .title small { font-size:0.9rem; font-weight:300; color:#999; letter-spacing:0.04em; margin-left:0.6rem; }
+        .upload-area {
+            border: 1px dashed #d0d0d0;
+            border-radius: 3px;
+            padding: 2.2rem 1.2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            background: #fafafa;
+            margin-bottom: 1.2rem;
+            position: relative;
+        }
+        .upload-area:hover { border-color:#a0a0a0; background:#f7f7f7; }
+        .upload-area.drag-over { border-color:#2c2c2c; background:#f2f2f2; }
+        .upload-area input[type="file"] {
+            position: absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+        }
+        .upload-text {
+            font-size:1rem; font-weight:300; color:#555; letter-spacing:0.03em; pointer-events:none;
+        }
+        .upload-text .hint {
+            display:block; font-size:0.8rem; color:#aaa; margin-top:0.3rem;
+        }
+        .order-hint {
+            font-size:0.8rem; font-weight:300; color:#888; letter-spacing:0.03em;
+            padding:0.3rem 0.2rem 0.6rem; border-bottom:1px solid #f2f2f2; margin-bottom:0.8rem;
+        }
+        .order-hint span {
+            background:#f5f5f5; padding:0.1rem 0.6rem; border-radius:2px; color:#555;
+        }
+        .list-header {
+            display:flex; justify-content:space-between; align-items:baseline;
+            font-size:0.8rem; color:#999; letter-spacing:0.04em; margin-bottom:0.4rem; padding:0 0.2rem;
+        }
+        .list-header .count { font-weight:300; }
+        .image-list {
+            list-style:none; margin-bottom:1.8rem; border:1px solid #f0f0f0; border-radius:3px;
+            overflow:hidden; min-height:44px;
+        }
+        .image-list .empty-msg {
+            padding:1.2rem 1rem; text-align:center; font-size:0.85rem; color:#bbb; font-weight:300;
+        }
+        .list-item {
+            display:flex; align-items:center; padding:0.6rem 0.8rem;
+            background:#fcfcfc; border-bottom:1px solid #f0f0f0;
+        }
+        .list-item:last-child { border-bottom:none; }
+        .list-item .index {
+            font-size:0.75rem; color:#bbb; width:2rem; flex-shrink:0; font-weight:300;
+        }
+        .list-item .name {
+            flex:1; font-size:0.9rem; font-weight:350; color:#333;
+            overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; padding:0 0.4rem;
+        }
+        .list-item .name .size { font-size:0.7rem; color:#bbb; margin-left:0.5rem; font-weight:300; }
+        .list-item .actions { flex-shrink:0; margin-left:0.4rem; }
+        .list-item .actions button {
+            background:none; border:none; font-size:0.75rem; color:#999;
+            padding:0.2rem 0.6rem; cursor:pointer; transition:color 0.15s;
+            font-weight:300; font-family:inherit; border-radius:2px;
+            min-height:32px; min-width:32px; display:inline-flex; align-items:center; justify-content:center;
+        }
+        .list-item .actions button:hover { color:#1a1a1a; background:#f0f0f0; }
+        .list-item .actions button.danger:hover { color:#b33; background:#f8eeee; }
+        .params {
+            display:grid; grid-template-columns:1fr 1fr; gap:1.2rem 1.6rem;
+            margin-bottom:2rem; padding:1.2rem 0 0.4rem; border-top:1px solid #f0f0f0;
+        }
+        .param-group { display:flex; flex-direction:column; }
+        .param-group label {
+            font-size:0.75rem; font-weight:300; color:#999; letter-spacing:0.04em; margin-bottom:0.2rem;
+        }
+        .param-group input {
+            font-size:0.95rem; font-weight:350; font-family:inherit;
+            padding:0.4rem 0.2rem; border:none; border-bottom:1px solid #e0e0e0;
+            background:transparent; color:#2c2c2c; outline:none; transition:border-color 0.2s;
+            width:100%; min-height:38px;
+        }
+        .param-group input:focus { border-bottom-color:#2c2c2c; }
+        .param-group input:disabled { color:#bbb; border-bottom-color:#eee; }
+        .param-group .readonly-input { color:#777; border-bottom-color:#eee; }
+        .param-group .unit {
+            font-size:0.7rem; color:#bbb; font-weight:300; margin-top:0.1rem;
+        }
+        .actions-bar {
+            display:flex; gap:1.2rem; margin-top:0.4rem; flex-wrap:wrap; align-items:center;
+        }
+        .btn {
+            background:none; border:none; font-size:1rem; font-weight:300; font-family:inherit;
+            color:#2c2c2c; padding:0.6rem 1.2rem; cursor:pointer;
+            transition:color 0.2s, background 0.2s; letter-spacing:0.06em; border-radius:2px;
+            min-height:48px; min-width:80px; display:inline-flex; align-items:center; justify-content:center;
+        }
+        .btn-primary {
+            background:#2c2c2c; color:#fff; font-weight:350; border-radius:3px; padding:0.6rem 2rem;
+        }
+        .btn-primary:hover { background:#1a1a1a; }
+        .btn-primary:disabled { background:#ccc; color:#888; cursor:not-allowed; }
+        .btn-secondary {
+            color:#777; border:1px solid #e0e0e0; border-radius:3px;
+        }
+        .btn-secondary:hover { border-color:#aaa; color:#2c2c2c; }
+        .btn-download {
+            background:#1a1a1a; color:#fff; border-radius:3px; padding:0.6rem 2rem;
+        }
+        .btn-download:hover { background:#000; }
+        .btn-download:disabled { background:#ccc; color:#888; cursor:not-allowed; }
+        .result-area {
+            margin-top:2rem; border-top:1px solid #f0f0f0; padding-top:1.6rem; display:none;
+        }
+        .result-area.visible { display:block; }
+        .result-preview { text-align:center; margin-bottom:1.2rem; }
+        .result-preview canvas, .result-preview img {
+            max-width:100%; max-height:360px; border:1px solid #f0f0f0; border-radius:3px;
+            background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
+        }
+        .result-info {
+            display:flex; justify-content:space-between; align-items:center;
+            flex-wrap:wrap; gap:0.8rem; font-size:0.8rem; color:#999; font-weight:300;
+        }
+        .result-info .file-size { color:#aaa; }
+        .progress-wrap {
+            margin-top:1.2rem; display:none;
+        }
+        .progress-wrap.visible { display:block; }
+        .progress-bar {
+            width:100%; height:2px; background:#eee; border-radius:2px; overflow:hidden; margin-top:0.4rem;
+        }
+        .progress-bar .fill {
+            height:100%; width:0%; background:#2c2c2c; transition:width 0.15s;
+        }
+        .progress-label {
+            font-size:0.75rem; color:#aaa; font-weight:300; letter-spacing:0.04em;
+        }
+        .modal-overlay {
+            position:fixed; inset:0; background:rgba(0,0,0,0.25);
+            backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center;
+            z-index:999; padding:1.6rem;
+        }
+        .modal-overlay.visible { display:flex; }
+        .modal-box {
+            background:#fff; max-width:400px; width:100%;
+            padding:2.4rem 2rem 2rem; border-radius:4px;
+            box-shadow:0 12px 48px rgba(0,0,0,0.06); text-align:center;
+        }
+        .modal-box p {
+            font-size:1rem; font-weight:300; color:#333; line-height:1.8; margin-bottom:2rem;
+            letter-spacing:0.02em;
+        }
+        .modal-box .actions { display:flex; gap:1.2rem; justify-content:center; }
+        .modal-box .actions button {
+            background:none; border:none; font-size:0.95rem; font-weight:350; font-family:inherit;
+            padding:0.5rem 2rem; cursor:pointer; transition:background 0.2s, color 0.2s;
+            border-radius:3px; min-height:44px; min-width:72px; letter-spacing:0.04em;
+        }
+        .modal-box .actions .btn-confirm { background:#2c2c2c; color:#fff; }
+        .modal-box .actions .btn-confirm:hover { background:#1a1a1a; }
+        .modal-box .actions .btn-cancel { color:#888; border:1px solid #e0e0e0; }
+        .modal-box .actions .btn-cancel:hover { border-color:#aaa; color:#2c2c2c; }
+        @media (max-width:500px) {
+            body { padding:1.2rem 0.6rem 2.4rem; }
+            .app { padding:1.6rem 1.2rem 2rem; }
+            .title { font-size:1.5rem; margin-bottom:1.4rem; }
+            .params { grid-template-columns:1fr 1fr; gap:1rem 1rem; }
+            .list-item { padding:0.4rem 0.4rem; flex-wrap:nowrap; }
+            .list-item .name { font-size:0.8rem; }
+            .list-item .actions button { font-size:0.7rem; padding:0.1rem 0.4rem; min-width:28px; min-height:28px; }
+            .btn { font-size:0.9rem; padding:0.4rem 1rem; min-height:44px; min-width:64px; }
+            .btn-primary, .btn-download { padding:0.4rem 1.4rem; }
+            .upload-area { padding:1.6rem 0.8rem; }
+            .modal-box { padding:1.8rem 1.2rem 1.6rem; }
+            .modal-box p { font-size:0.9rem; }
+        }
+        @media (max-width:400px) {
+            .params { grid-template-columns:1fr; gap:0.8rem; }
+            .actions-bar { flex-direction:column; align-items:stretch; }
+            .actions-bar .btn { width:100%; }
+            .result-info { flex-direction:column; align-items:flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app" id="app">
+    <h1 class="title">GIF <small>制作</small></h1>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-text">点击或拖入图片<span class="hint">支持 PNG · JPG · WebP · BMP · SVG · GIF 等</span></div>
+        <input type="file" id="fileInput" accept="image/*" multiple />
+    </div>
+
+    <div class="order-hint"><span>⏺ GIF 播放顺序按照上传图片顺序</span></div>
+
+    <div class="list-header">
+        <span class="count" id="imageCount">0 张</span>
+        <span style="font-weight:300;">点击 ✕ 可删除</span>
+    </div>
+    <ul class="image-list" id="imageList"><li class="empty-msg">暂无图片</li></ul>
+
+    <div class="params">
+        <div class="param-group">
+            <label for="fpsInput">帧率 (FPS)</label>
+            <input type="number" id="fpsInput" value="10" min="1" max="60" step="1" />
+            <span class="unit">每秒帧数</span>
+        </div>
+        <div class="param-group">
+            <label for="widthInput">输出宽度</label>
+            <input type="number" id="widthInput" value="400" min="16" max="4096" step="1" />
+            <span class="unit">高度自动等比</span>
+        </div>
+        <div class="param-group">
+            <label for="heightDisplay">输出高度</label>
+            <input type="text" id="heightDisplay" class="readonly-input" readonly disabled value="—" />
+            <span class="unit">自动计算</span>
+        </div>
+        <div class="param-group">
+            <label for="loopInput">循环次数</label>
+            <input type="number" id="loopInput" value="0" min="0" max="999" step="1" />
+            <span class="unit">0 = 无限循环</span>
+        </div>
+    </div>
+
+    <div class="actions-bar">
+        <button class="btn btn-primary" id="generateBtn">生成 GIF</button>
+        <button class="btn btn-secondary" id="clearBtn">清空全部</button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label" id="progressLabel">处理中 0%</div>
+        <div class="progress-bar"><div class="fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="result-area" id="resultArea">
+        <div class="result-preview" id="resultPreview"></div>
+        <div class="result-info">
+            <span class="file-size" id="resultSize">—</span>
+            <button class="btn btn-download" id="downloadBtn">下载 GIF</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+        <p id="modalMessage">图片数量较多 (超过20张)，生成可能较慢，是否继续？</p>
+        <div class="actions">
+            <button class="btn btn-cancel" id="modalCancel">取消</button>
+            <button class="btn btn-confirm" id="modalConfirm">继续</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // DOM 引用
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const imageList = document.getElementById('imageList');
+        const imageCount = document.getElementById('imageCount');
+        const fpsInput = document.getElementById('fpsInput');
+        const widthInput = document.getElementById('widthInput');
+        const heightDisplay = document.getElementById('heightDisplay');
+        const loopInput = document.getElementById('loopInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progressWrap = document.getElementById('progressWrap');
+        const progressFill = document.getElementById('progressFill');
+        const progressLabel = document.getElementById('progressLabel');
+        const resultArea = document.getElementById('resultArea');
+        const resultPreview = document.getElementById('resultPreview');
+        const resultSize = document.getElementById('resultSize');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirm = document.getElementById('modalConfirm');
+        const modalCancel = document.getElementById('modalCancel');
+
+        // 状态
+        let files = [];
+        let nextId = 0;
+        let generatedBlob = null;
+        let isGenerating = false;
+
+        // 辅助
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+        function isImageType(type) { return type && type.startsWith('image/'); }
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // 渲染列表
+        function renderList() {
+            const len = files.length;
+            imageCount.textContent = len + ' 张';
+            if (len === 0) {
+                imageList.innerHTML = '<li class="empty-msg">暂无图片</li>';
+                return;
+            }
+            let html = '';
+            files.forEach((f, idx) => {
+                const sizeStr = formatSize(f.size);
+                html += `
+                    <li class="list-item" data-id="${f.id}">
+                        <span class="index">${idx + 1}</span>
+                        <span class="name">${escapeHtml(f.name)} <span class="size">${sizeStr}</span></span>
+                        <span class="actions">
+                            <button type="button" class="danger remove" title="删除">✕</button>
+                        </span>
+                    </li>
+                `;
+            });
+            imageList.innerHTML = html;
+            imageList.querySelectorAll('.remove').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const li = btn.closest('.list-item');
+                    const id = parseInt(li.dataset.id);
+                    removeItem(id);
+                });
+            });
+            updateHeightDisplay();
+        }
+
+        // 文件操作
+        function addFiles(fileList) {
+            const newItems = [];
+            for (const file of fileList) {
+                if (!isImageType(file.type)) continue;
+                const exist = files.some(f => f.name === file.name && f.size === file.size);
+                if (exist) continue;
+                newItems.push({ id: nextId++, file, name: file.name, size: file.size, dataURL: null });
+            }
+            if (newItems.length === 0) return;
+            let loaded = 0;
+            const total = newItems.length;
+            newItems.forEach((item) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    item.dataURL = e.target.result;
+                    loaded++;
+                    if (loaded === total) {
+                        files = files.concat(newItems);
+                        renderList();
+                        clearResult();
+                    }
+                };
+                reader.onerror = () => {
+                    loaded++;
+                    if (loaded === total) {
+                        files = files.concat(newItems.filter(n => n.dataURL !== null));
+                        renderList();
+                        clearResult();
+                    }
+                };
+                reader.readAsDataURL(item.file);
+            });
+        }
+
+        function removeItem(id) {
+            files = files.filter(f => f.id !== id);
+            renderList();
+            clearResult();
+        }
+
+        function clearAll() {
+            if (files.length === 0) return;
+            files = [];
+            renderList();
+            clearResult();
+            generatedBlob = null;
+        }
+
+        // 高度计算
+        function updateHeightDisplay() {
+            const w = parseInt(widthInput.value) || 400;
+            if (files.length === 0 || !files[0].dataURL) {
+                heightDisplay.value = '—';
+                return;
+            }
+            const img = new Image();
+            img.onload = function() {
+                const ratio = img.height / img.width;
+                const h = Math.round(w * ratio);
+                heightDisplay.value = h + ' px';
+            };
+            img.onerror = function() {
+                heightDisplay.value = '—';
+            };
+            img.src = files[0].dataURL;
+        }
+        widthInput.addEventListener('input', updateHeightDisplay);
+
+        function clearResult() {
+            resultArea.classList.remove('visible');
+            resultPreview.innerHTML = '';
+            resultSize.textContent = '—';
+            generatedBlob = null;
+            downloadBtn.disabled = true;
+            if (downloadBtn._url) {
+                URL.revokeObjectURL(downloadBtn._url);
+                downloadBtn._url = null;
+            }
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('图片加载失败: ' + src.substring(0, 50)));
+                img.src = src;
+            });
+        }
+
+        // ---------- 使用 gif.js，通过 Blob URL 指定 workerScript ----------
+        async function generateGIF() {
+            if (isGenerating) return;
+            if (files.length === 0) {
+                alert('请先上传图片。');
+                return;
+            }
+
+            if (files.length > 20) {
+                const confirmed = await new Promise((resolve) => {
+                    modalMessage.textContent =
+                        `当前 ${files.length} 张图片，数量较多，生成可能较慢或占用较多内存，是否继续？`;
+                    modalOverlay.classList.add('visible');
+                    const onConfirm = () => {
+                        modalOverlay.classList.remove('visible');
+                        modalConfirm.removeEventListener('click', onConfirm);
+                        modalCancel.removeEventListener('click', onCancel);
+                        resolve(true);
+                    };
+                    const onCancel = () => {
+                        modalOverlay.classList.remove('visible');
+                        modalConfirm.removeEventListener('click', onConfirm);
+                        modalCancel.removeEventListener('click', onCancel);
+                        resolve(false);
+                    };
+                    modalConfirm.addEventListener('click', onConfirm);
+                    modalCancel.addEventListener('click', onCancel);
+                });
+                if (!confirmed) return;
+            }
+
+            const fps = parseFloat(fpsInput.value) || 10;
+            if (fps < 1) { alert('帧率不能小于 1。'); return; }
+            const delay = Math.round(1000 / fps);
+            let width = parseInt(widthInput.value) || 400;
+            if (width < 16) width = 16;
+            if (width > 4096) width = 4096;
+            const loop = parseInt(loopInput.value) || 0;
+            if (loop < 0) { alert('循环次数不能为负数。'); return; }
+
+            // 收集图片 dataURL
+            const imageData = [];
+            for (const f of files) {
+                if (!f.dataURL) {
+                    alert(`图片 "${f.name}" 尚未加载完成，请重新上传。`);
+                    return;
+                }
+                imageData.push(f.dataURL);
+            }
+
+            // 计算高度
+            let height = 600;
+            try {
+                const img = await loadImage(imageData[0]);
+                const ratio = img.height / img.width;
+                height = Math.round(width * ratio);
+                if (height < 1) height = 1;
+                if (height > 4096) height = 4096;
+            } catch (e) {
+                height = Math.round(width * 0.75);
+            }
+
+            // 显示进度条
+            progressWrap.classList.add('visible');
+            progressFill.style.width = '0%';
+            progressLabel.textContent = '处理中 0%';
+            generateBtn.disabled = true;
+            isGenerating = true;
+            clearResult();
+
+            try {
+                // ① 获取 worker 脚本内容（从 CDN 加载并转为 Blob URL）
+                const workerScriptResponse = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                const workerScriptText = await workerScriptResponse.text();
+                const workerBlob = new Blob([workerScriptText], { type: 'application/javascript' });
+                const workerUrl = URL.createObjectURL(workerBlob);
+
+                // ② 创建 GIF 实例，指定 workerScript 为 Blob URL
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: width,
+                    height: height,
+                    repeat: loop === 0 ? 0 : loop,
+                    workerScript: workerUrl
+                });
+
+                // ③ 逐帧添加
+                const total = imageData.length;
+                for (let i = 0; i < total; i++) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, width, height);
+
+                    const img = await loadImage(imageData[i]);
+                    const iw = img.width,
+                        ih = img.height;
+                    const scale = Math.min(width / iw, height / ih);
+                    const dw = iw * scale,
+                        dh = ih * scale;
+                    const dx = (width - dw) / 2,
+                        dy = (height - dh) / 2;
+                    ctx.drawImage(img, dx, dy, dw, dh);
+
+                    gif.addFrame(canvas, { copy: true, delay: delay });
+
+                    const pct = Math.round(((i + 1) / total) * 100);
+                    progressFill.style.width = pct + '%';
+                    progressLabel.textContent = `处理中 ${pct}%`;
+                }
+
+                // ④ 渲染并等待完成
+                progressLabel.textContent = '编码中，请稍候...';
+                const blob = await new Promise((resolve, reject) => {
+                    gif.on('progress', (p) => {
+                        const pct = Math.round(p * 100);
+                        progressFill.style.width = pct + '%';
+                        progressLabel.textContent = `编码中 ${pct}%`;
+                    });
+                    gif.on('finished', (blob) => {
+                        resolve(blob);
+                    });
+                    gif.on('error', (err) => {
+                        reject(err);
+                    });
+                    gif.render();
+                });
+
+                // ⑤ 释放 Worker Blob URL
+                URL.revokeObjectURL(workerUrl);
+
+                generatedBlob = blob;
+                const url = URL.createObjectURL(blob);
+                resultPreview.innerHTML =
+                    `<img src="${url}" alt="GIF 预览" style="max-width:100%;max-height:360px;border-radius:3px;" />`;
+                resultSize.textContent = formatSize(blob.size);
+                resultArea.classList.add('visible');
+                downloadBtn.disabled = false;
+                downloadBtn._url = url;
+
+                console.log(`✅ 生成成功，共 ${total} 帧`);
+
+            } catch (err) {
+                alert('生成失败：' + err.message);
+                console.error(err);
+            } finally {
+                progressWrap.classList.remove('visible');
+                generateBtn.disabled = false;
+                isGenerating = false;
+            }
+        }
+
+        function downloadGIF() {
+            if (!generatedBlob) return;
+            const url = downloadBtn._url || URL.createObjectURL(generatedBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'output.gif';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // 事件绑定
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                addFiles(e.target.files);
+            }
+            fileInput.value = '';
+        });
+
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault();
+            uploadArea.classList.add('drag-over'); });
+        uploadArea.addEventListener('dragleave', (e) => { e.preventDefault();
+            uploadArea.classList.remove('drag-over'); });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
+        });
+
+        generateBtn.addEventListener('click', generateGIF);
+        clearBtn.addEventListener('click', () => {
+            if (files.length > 0 && !confirm('确定要清空所有图片吗？')) return;
+            clearAll();
+        });
+        downloadBtn.addEventListener('click', downloadGIF);
+
+        window.addEventListener('resize', updateHeightDisplay);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) modalOverlay.classList.remove('visible');
+        });
+
+        // 初始化
+        renderList();
+        updateHeightDisplay();
+        clearResult();
+
+        console.log('GIF 制作工具已加载 (gif.js + Blob URL workerScript)');
+    })();
+</script>
+</body>
+</html>
