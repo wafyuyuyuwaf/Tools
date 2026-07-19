@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件加密工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #f4f6fa;
+            color: #1e2a3a;
+            font-family: system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            padding: 30px 35px;
+            border-radius: 20px;
+            max-width: 640px;
+            width: 100%;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border: 1px solid #e6ecf3;
+        }
+        h1 {
+            font-weight: 500;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            color: #0b1a2b;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #eef2f7;
+        }
+        .section:last-child { border-bottom: none; margin-bottom: 0; }
+        .section-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #2c3e55;
+            margin-bottom: 14px;
+        }
+        .field { margin-bottom: 14px; }
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #3f556b;
+            margin-bottom: 4px;
+        }
+        .field input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 14px;
+            padding: 8px 12px;
+            border: 1px solid #d0d9e5;
+            border-radius: 8px;
+            background: #fafcff;
+            color: #1a2b3d;
+        }
+        .field input[type="password"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d0d9e5;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fafcff;
+            color: #1a2b3d;
+            outline: none;
+            transition: 0.2s;
+        }
+        .field input[type="password"]:focus {
+            border-color: #7a94b8;
+            box-shadow: 0 0 0 3px rgba(60, 100, 150, 0.15);
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+            align-items: center;
+        }
+        .btn {
+            padding: 9px 28px;
+            background: #eef2f7;
+            border: none;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1f3143;
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid transparent;
+        }
+        .btn-primary {
+            background: #1a2b3d;
+            color: #fff;
+        }
+        .btn-primary:hover { background: #2a4058; }
+        .btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #3f5a77;
+            word-break: break-all;
+            min-height: 1.4em;
+        }
+        .status.error { color: #b53b3b; }
+        .status.success { color: #1f7840; }
+        .file-name {
+            font-size: 13px;
+            color: #4d6889;
+            margin-top: 2px;
+            word-break: break-all;
+        }
+        .progress {
+            margin-top: 8px;
+            background: #eef2f7;
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #1a2b3d;
+            width: 0%;
+            transition: width 0.2s;
+        }
+        .note {
+            font-size: 13px;
+            color: #6a7f9b;
+            margin-top: 10px;
+            border-top: 1px dashed #dce3ed;
+            padding-top: 10px;
+        }
+        .note code {
+            background: #edf2f8;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .mode-badge {
+            display: inline-block;
+            font-size: 12px;
+            background: #eef2f7;
+            padding: 2px 12px;
+            border-radius: 30px;
+            color: #3f556b;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>文件加密工具</h1>
+
+    <!-- 加密区 -->
+    <div class="section">
+        <div class="section-title">加密文件</div>
+        <div class="field">
+            <label for="encryptFile">选择文件</label>
+            <input type="file" id="encryptFile">
+            <div class="file-name" id="encryptFileName"></div>
+        </div>
+        <div class="field">
+            <label for="encryptPassword">加密密码</label>
+            <input type="password" id="encryptPassword" placeholder="输入密码">
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" id="encryptBtn">加密并下载</button>
+            <span style="font-size:13px;color:#4d6889;">自动选择最佳模式</span>
+        </div>
+        <div class="progress"><div class="progress-bar" id="encryptProgress"></div></div>
+        <div class="status" id="encryptStatus">等待操作</div>
+        <div class="note">加密后生成 <code>.enc</code> 文件。小于 500MB 使用标准模式，更大使用大文件模式。</div>
+    </div>
+
+    <!-- 解密区 -->
+    <div class="section">
+        <div class="section-title">解密文件</div>
+        <div class="field">
+            <label for="decryptFile">选择 .enc 加密文件</label>
+            <input type="file" id="decryptFile" accept=".enc">
+            <div class="file-name" id="decryptFileName"></div>
+        </div>
+        <div class="field">
+            <label for="decryptPassword">解密密码</label>
+            <input type="password" id="decryptPassword" placeholder="输入加密时的密码">
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" id="decryptBtn">解密并下载</button>
+        </div>
+        <div class="progress"><div class="progress-bar" id="decryptProgress"></div></div>
+        <div class="status" id="decryptStatus">等待操作</div>
+        <div class="note">工具自动识别加密模式，无需手动切换。</div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        "use strict";
+
+        // DOM
+        const encryptFileInput = document.getElementById('encryptFile');
+        const encryptFileName = document.getElementById('encryptFileName');
+        const encryptPassword = document.getElementById('encryptPassword');
+        const encryptBtn = document.getElementById('encryptBtn');
+        const encryptStatus = document.getElementById('encryptStatus');
+        const encryptProgress = document.getElementById('encryptProgress');
+
+        const decryptFileInput = document.getElementById('decryptFile');
+        const decryptFileName = document.getElementById('decryptFileName');
+        const decryptPassword = document.getElementById('decryptPassword');
+        const decryptBtn = document.getElementById('decryptBtn');
+        const decryptStatus = document.getElementById('decryptStatus');
+        const decryptProgress = document.getElementById('decryptProgress');
+
+        // 常量
+        const CHUNK_SIZE = 1024 * 1024; // 1MB
+        const MODE_STANDARD = 0x01;
+        const MODE_LARGE = 0x02;
+
+        // ---- 工具函数 ----
+        function numberToArrayBuffer(num, bytes = 16) {
+            const buf = new ArrayBuffer(bytes);
+            const view = new DataView(buf);
+            let big = BigInt(num);
+            for (let i = bytes - 1; i >= 0; i--) {
+                view.setUint8(i, Number(big & 0xFFn));
+                big >>= 8n;
+            }
+            return buf;
+        }
+
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function downloadFile(data, fileName) {
+            const blob = new Blob([data], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        // ---- 加密函数（自动选择模式） ----
+        async function encryptAuto(file, password, onProgress) {
+            // 如果文件小于 500MB，用标准模式，否则大文件模式
+            const useLarge = file.size > 500 * 1024 * 1024;
+            const mode = useLarge ? MODE_LARGE : MODE_STANDARD;
+
+            // 派生密钥（统一使用PBKDF2）
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+            );
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+
+            if (mode === MODE_STANDARD) {
+                // 标准模式 AES-GCM
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const key = await crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']
+                );
+                const fileData = await readFileAsArrayBuffer(file);
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv }, key, fileData
+                );
+                // 组合: [mode(1)] + salt(16) + iv(12) + ciphertext
+                const result = new Uint8Array(1 + salt.length + iv.length + ciphertext.byteLength);
+                result[0] = mode;
+                result.set(salt, 1);
+                result.set(iv, 1 + salt.length);
+                result.set(new Uint8Array(ciphertext), 1 + salt.length + iv.length);
+                onProgress && onProgress(1);
+                return result.buffer;
+            } else {
+                // 大文件模式 AES-CTR
+                const nonce = crypto.getRandomValues(new Uint8Array(12));
+                const key = await crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial, { name: 'AES-CTR', length: 256 }, false, ['encrypt', 'decrypt']
+                );
+                // 输出: mode(1) + salt(16) + nonce(12) + 各块密文(连续)
+                const chunks = [];
+                // 先预留头部空间，但为了方便，我们直接构建一个完整数组
+                // 先收集所有块
+                let processed = 0;
+                let counter = 0;
+                const header = new Uint8Array(1 + salt.length + nonce.length);
+                header[0] = mode;
+                header.set(salt, 1);
+                header.set(nonce, 1 + salt.length);
+                chunks.push(header);
+
+                while (processed < file.size) {
+                    const end = Math.min(processed + CHUNK_SIZE, file.size);
+                    const slice = file.slice(processed, end);
+                    const buf = await slice.arrayBuffer();
+                    const counterBuf = numberToArrayBuffer(counter, 16);
+                    const encrypted = await crypto.subtle.encrypt(
+                        { name: 'AES-CTR', counter: counterBuf, length: 64 },
+                        key, buf
+                    );
+                    chunks.push(new Uint8Array(encrypted));
+                    processed = end;
+                    counter++;
+                    if (onProgress) onProgress(processed / file.size);
+                }
+
+                const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+                const result = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const c of chunks) {
+                    result.set(c, offset);
+                    offset += c.length;
+                }
+                return result.buffer;
+            }
+        }
+
+        // ---- 解密函数（自动识别模式） ----
+        async function decryptAuto(file, password, onProgress) {
+            // 先读取整个文件头部（第一个字节 + salt + iv/nonce）
+            // 为了读取头部，使用slice读取前29字节（1+16+12）
+            const headerSlice = file.slice(0, 1 + 16 + 12);
+            const headerBuf = await headerSlice.arrayBuffer();
+            const header = new Uint8Array(headerBuf);
+            if (header.length < 1 + 16 + 12) throw new Error('无效的加密文件：头部过短');
+            const mode = header[0];
+            if (mode !== MODE_STANDARD && mode !== MODE_LARGE) {
+                throw new Error('无法识别的加密模式，文件可能已损坏');
+            }
+            const salt = header.slice(1, 1+16);
+            const ivOrNonce = header.slice(1+16, 1+16+12);
+
+            // 派生密钥
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
+            );
+
+            if (mode === MODE_STANDARD) {
+                const key = await crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+                );
+                // 读取剩余密文部分（从第29字节开始）
+                const cipherSlice = file.slice(1 + 16 + 12);
+                const cipherBuf = await cipherSlice.arrayBuffer();
+                const plaintext = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: ivOrNonce }, key, cipherBuf
+                );
+                onProgress && onProgress(1);
+                return plaintext;
+            } else {
+                // 大文件模式
+                const key = await crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial, { name: 'AES-CTR', length: 256 }, false, ['decrypt']
+                );
+                const totalSize = file.size - (1 + 16 + 12);
+                if (totalSize <= 0) throw new Error('加密文件内容为空');
+                let processed = 0;
+                let counter = 0;
+                const chunks = [];
+                // 从第29字节开始读取
+                let start = 1 + 16 + 12;
+                while (start < file.size) {
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const slice = file.slice(start, end);
+                    const buf = await slice.arrayBuffer();
+                    const counterBuf = numberToArrayBuffer(counter, 16);
+                    const decrypted = await crypto.subtle.decrypt(
+                        { name: 'AES-CTR', counter: counterBuf, length: 64 },
+                        key, buf
+                    );
+                    chunks.push(new Uint8Array(decrypted));
+                    processed += (end - start);
+                    start = end;
+                    counter++;
+                    if (onProgress) onProgress(processed / totalSize);
+                }
+                const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+                const result = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const c of chunks) {
+                    result.set(c, offset);
+                    offset += c.length;
+                }
+                return result.buffer;
+            }
+        }
+
+        // ---- 加密流程 ----
+        encryptBtn.addEventListener('click', async function() {
+            const file = encryptFileInput.files[0];
+            const password = encryptPassword.value;
+            if (!file) {
+                encryptStatus.textContent = '请选择文件';
+                encryptStatus.className = 'status error';
+                return;
+            }
+            if (!password) {
+                encryptStatus.textContent = '请输入加密密码';
+                encryptStatus.className = 'status error';
+                return;
+            }
+
+            encryptBtn.disabled = true;
+            encryptStatus.textContent = '加密中...';
+            encryptStatus.className = 'status';
+            encryptProgress.style.width = '0%';
+
+            try {
+                const start = performance.now();
+                const encrypted = await encryptAuto(file, password, (ratio) => {
+                    encryptProgress.style.width = (ratio * 100) + '%';
+                });
+                const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+                downloadFile(encrypted, file.name + '.enc');
+                encryptStatus.textContent = `加密完成 (${elapsed}s) 已开始下载`;
+                encryptStatus.className = 'status success';
+                encryptProgress.style.width = '100%';
+                encryptFileInput.value = '';
+                encryptFileName.textContent = '';
+            } catch (err) {
+                encryptStatus.textContent = '加密失败: ' + err.message;
+                encryptStatus.className = 'status error';
+                encryptProgress.style.width = '0%';
+            } finally {
+                encryptBtn.disabled = false;
+            }
+        });
+
+        // ---- 解密流程 ----
+        decryptBtn.addEventListener('click', async function() {
+            const file = decryptFileInput.files[0];
+            const password = decryptPassword.value;
+            if (!file) {
+                decryptStatus.textContent = '请选择 .enc 文件';
+                decryptStatus.className = 'status error';
+                return;
+            }
+            if (!password) {
+                decryptStatus.textContent = '请输入解密密码';
+                decryptStatus.className = 'status error';
+                return;
+            }
+
+            decryptBtn.disabled = true;
+            decryptStatus.textContent = '解密中...';
+            decryptStatus.className = 'status';
+            decryptProgress.style.width = '0%';
+
+            try {
+                const start = performance.now();
+                const decrypted = await decryptAuto(file, password, (ratio) => {
+                    decryptProgress.style.width = (ratio * 100) + '%';
+                });
+                const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+                let originalName = file.name;
+                if (originalName.endsWith('.enc')) {
+                    originalName = originalName.slice(0, -4);
+                } else {
+                    originalName = 'decrypted_' + originalName;
+                }
+                downloadFile(decrypted, originalName);
+                decryptStatus.textContent = `解密完成 (${elapsed}s) 已开始下载`;
+                decryptStatus.className = 'status success';
+                decryptProgress.style.width = '100%';
+                decryptFileInput.value = '';
+                decryptFileName.textContent = '';
+            } catch (err) {
+                decryptStatus.textContent = '解密失败: ' + err.message;
+                decryptStatus.className = 'status error';
+                decryptProgress.style.width = '0%';
+            } finally {
+                decryptBtn.disabled = false;
+            }
+        });
+
+        // 显示文件名
+        encryptFileInput.addEventListener('change', function() {
+            encryptFileName.textContent = this.files.length ? this.files[0].name : '';
+        });
+        decryptFileInput.addEventListener('change', function() {
+            decryptFileName.textContent = this.files.length ? this.files[0].name : '';
+        });
+
+        // 初始提示
+        encryptStatus.textContent = '选择文件，输入密码后加密 (自动选择模式)';
+        decryptStatus.textContent = '选择 .enc 文件，输入密码后解密 (自动识别)';
+        encryptProgress.style.width = '0%';
+        decryptProgress.style.width = '0%';
+    })();
+</script>
+</body>
+</html>
