@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RGB 颜色提取器 · 分组复制 · 格式切换 · 压缩相邻相同色</title>
+    <style>
+        /* 极简风格，纯文字 */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 28px auto;
+            padding: 0 18px;
+            background: #fafafa;
+            color: #1e1e1e;
+            line-height: 1.5;
+        }
+        h2 {
+            font-weight: 400;
+            font-size: 22px;
+            margin: 0 0 16px 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 6px;
+        }
+        .section {
+            margin-bottom: 16px;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 18px;
+            margin: 4px 0;
+        }
+        label {
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+        }
+        input[type="file"] {
+            font-size: 14px;
+        }
+        input[type="number"] {
+            width: 58px;
+            padding: 4px 2px 4px 6px;
+            font-size: 14px;
+            border: 1px solid #bbb;
+            border-radius: 3px;
+            background: #fff;
+        }
+        select {
+            font-size: 14px;
+            padding: 3px 6px;
+            border: 1px solid #bbb;
+            border-radius: 3px;
+            background: #fff;
+        }
+        button {
+            font-size: 14px;
+            padding: 4px 16px;
+            border: 1px solid #888;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #eee;
+        }
+        button:active {
+            background: #ddd;
+        }
+        #previewWrap {
+            margin: 10px 0 6px 0;
+            min-height: 50px;
+        }
+        #previewWrap img {
+            max-width: 100%;
+            max-height: 400px;
+            border: 1px solid #ccc;
+            background: #fff;
+            display: none;
+            border-radius: 3px;
+        }
+        #previewWrap .placeholder {
+            color: #999;
+            font-size: 14px;
+        }
+        #resultArea {
+            margin-top: 18px;
+            border-top: 1px solid #ddd;
+            padding-top: 14px;
+        }
+        #resultMeta {
+            font-size: 13px;
+            color: #555;
+            margin: 2px 0 10px 0;
+        }
+        #resultContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 480px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px 12px;
+            background: #f6f6f6;
+        }
+        .group-item {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px 12px;
+            padding: 4px 0;
+            border-bottom: 1px dashed #d0d0d0;
+            font-size: 13px;
+            font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+        }
+        .group-item:last-child {
+            border-bottom: none;
+        }
+        .group-label {
+            font-weight: 500;
+            color: #222;
+            min-width: 80px;
+            font-family: system-ui, sans-serif;
+        }
+        .group-data {
+            word-break: break-all;
+            flex: 1;
+            color: #1a1a1a;
+            background: #fff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            border: 1px solid #e0e0e0;
+            font-size: 12px;
+            line-height: 1.6;
+            min-width: 120px;
+        }
+        .group-copy {
+            background: none;
+            border: none;
+            color: #0066cc;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 2px 8px;
+            text-decoration: underline dotted;
+            font-family: system-ui, sans-serif;
+        }
+        .group-copy:hover {
+            color: #003d80;
+            background: #e5edf5;
+            border-radius: 3px;
+        }
+        .group-copy:active {
+            color: #002a5c;
+        }
+        .status-msg {
+            font-size: 14px;
+            color: #444;
+            margin: 2px 0;
+        }
+        .info-text {
+            font-size: 13px;
+            color: #666;
+        }
+        .sep {
+            color: #ccc;
+            user-select: none;
+        }
+        .empty-hint {
+            color: #999;
+            font-style: italic;
+            font-size: 13px;
+            padding: 12px 0;
+        }
+        .compress-badge {
+            font-size: 12px;
+            color: #2c7a2c;
+            background: #e6f5e6;
+            padding: 1px 8px;
+            border-radius: 10px;
+            border: 1px solid #b3d9b3;
+            font-weight: 400;
+            font-family: system-ui, sans-serif;
+        }
+        @media (max-width: 600px) {
+            .row {
+                gap: 6px 12px;
+            }
+            input[type="number"] {
+                width: 48px;
+            }
+            button {
+                padding: 4px 12px;
+            }
+            .group-item {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h2>RGB 颜色提取器 · 分组复制 · 格式切换 · 压缩相邻相同色</h2>
+
+    <!-- 上传 -->
+    <div class="section">
+        <div class="row">
+            <label>
+                上传图片
+                <input type="file" id="fileInput" accept="image/*" />
+            </label>
+            <span class="info-text" id="sizeInfo"></span>
+        </div>
+        <div id="previewWrap">
+            <img id="previewImg" alt="图片预览" />
+            <span class="placeholder" id="placeholderText">暂无图片</span>
+        </div>
+        <div class="status-msg" id="statusMsg">请上传图片</div>
+    </div>
+
+    <!-- 操作按钮 + 步长 + 格式 + 压缩 -->
+    <div class="section">
+        <div class="row">
+            <button id="btnCol">按列提取</button>
+            <label>
+                每组 <input type="number" id="colStep" value="2" min="1" /> 列
+            </label>
+            <span class="sep">|</span>
+            <button id="btnRow">按行提取</button>
+            <label>
+                每组 <input type="number" id="rowStep" value="2" min="1" /> 行
+            </label>
+            <span class="sep">|</span>
+            <label>
+                格式
+                <select id="formatSelect">
+                    <option value="hex">#RGB</option>
+                    <option value="rgb" selected>RGB</option>
+                    <option value="rgba">RGBA</option>
+                </select>
+            </label>
+            <span class="sep">|</span>
+            <label>
+                <input type="checkbox" id="compressCheck" />
+                压缩连续相同颜色
+                <span class="compress-badge" id="compressBadge">关</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- 结果 -->
+    <div id="resultArea">
+        <div class="row" style="justify-content:space-between; flex-wrap:wrap;">
+            <span style="font-size:14px; font-weight:400;">提取结果</span>
+            <button id="btnCopyAll">复制全部</button>
+        </div>
+        <div id="resultMeta"></div>
+        <div id="resultContainer">
+            <div class="empty-hint">等待提取…</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // DOM
+            const fileInput = document.getElementById('fileInput');
+            const previewImg = document.getElementById('previewImg');
+            const placeholderText = document.getElementById('placeholderText');
+            const sizeInfo = document.getElementById('sizeInfo');
+            const statusMsg = document.getElementById('statusMsg');
+            const colStepInput = document.getElementById('colStep');
+            const rowStepInput = document.getElementById('rowStep');
+            const formatSelect = document.getElementById('formatSelect');
+            const compressCheck = document.getElementById('compressCheck');
+            const compressBadge = document.getElementById('compressBadge');
+            const btnCol = document.getElementById('btnCol');
+            const btnRow = document.getElementById('btnRow');
+            const btnCopyAll = document.getElementById('btnCopyAll');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultMeta = document.getElementById('resultMeta');
+
+            // 状态
+            let currentImageData = null; // { width, height, data }
+            let currentGroups = []; // 存储当前提取的组数据 { label, pixels: [{r,g,b}] }
+            let currentMode = ''; // 'col' | 'row'
+            let currentStep = 1;
+            let currentCompress = false; // 当前压缩状态
+
+            // ---------- 格式转换 ----------
+            function formatPixel(r, g, b, format) {
+                if (format === 'hex') {
+                    const toHex = (v) => v.toString(16).padStart(2, '0').toUpperCase();
+                    return '#' + toHex(r) + toHex(g) + toHex(b);
+                } else if (format === 'rgba') {
+                    return '(' + r + ',' + g + ',' + b + ',1.0)';
+                } else { // rgb
+                    return '(' + r + ',' + g + ',' + b + ')';
+                }
+            }
+
+            // ---------- 核心：格式化像素数据（支持压缩） ----------
+            function formatGroupData(pixels, format, compress) {
+                if (!pixels || pixels.length === 0) return '';
+
+                if (!compress) {
+                    // 普通模式：每个像素单独输出，空格分隔
+                    return pixels.map(p => formatPixel(p.r, p.g, p.b, format)).join(' ');
+                }
+
+                // ---- 压缩模式（RLE）：合并连续相同颜色 ----
+                const result = [];
+                let i = 0;
+                const len = pixels.length;
+                while (i < len) {
+                    const cur = pixels[i];
+                    let count = 1;
+                    // 向后查找连续相同颜色的像素
+                    while (i + count < len &&
+                        pixels[i + count].r === cur.r &&
+                        pixels[i + count].g === cur.g &&
+                        pixels[i + count].b === cur.b) {
+                        count++;
+                    }
+                    const colorStr = formatPixel(cur.r, cur.g, cur.b, format);
+                    if (count > 1) {
+                        result.push(colorStr + '×' + count);
+                    } else {
+                        result.push(colorStr);
+                    }
+                    i += count;
+                }
+                return result.join(' ');
+            }
+
+            // ---------- 提取分组（返回原始像素对象） ----------
+            function extractGroupsByColumn(imageData, step) {
+                const w = imageData.width;
+                const h = imageData.height;
+                const data = imageData.data;
+                const groups = [];
+                for (let colStart = 0; colStart < w; colStart += step) {
+                    const colEnd = Math.min(colStart + step, w) - 1;
+                    const label = '列 ' + colStart + '-' + colEnd;
+                    const pixels = [];
+                    for (let c = colStart; c <= colEnd; c++) {
+                        for (let r = 0; r < h; r++) {
+                            const idx = (r * w + c) * 4;
+                            pixels.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+                        }
+                    }
+                    groups.push({ label, pixels });
+                }
+                return groups;
+            }
+
+            function extractGroupsByRow(imageData, step) {
+                const w = imageData.width;
+                const h = imageData.height;
+                const data = imageData.data;
+                const groups = [];
+                for (let rowStart = 0; rowStart < h; rowStart += step) {
+                    const rowEnd = Math.min(rowStart + step, h) - 1;
+                    const label = '行 ' + rowStart + '-' + rowEnd;
+                    const pixels = [];
+                    for (let r = rowStart; r <= rowEnd; r++) {
+                        for (let c = 0; c < w; c++) {
+                            const idx = (r * w + c) * 4;
+                            pixels.push({ r: data[idx], g: data[idx + 1], b: data[idx + 2] });
+                        }
+                    }
+                    groups.push({ label, pixels });
+                }
+                return groups;
+            }
+
+            // ---------- 更新压缩徽章 ----------
+            function updateCompressBadge() {
+                if (currentCompress) {
+                    compressBadge.textContent = '开';
+                    compressBadge.style.color = '#1a6e1a';
+                    compressBadge.style.borderColor = '#8cc08c';
+                    compressBadge.style.background = '#dff0df';
+                } else {
+                    compressBadge.textContent = '关';
+                    compressBadge.style.color = '#7a7a7a';
+                    compressBadge.style.borderColor = '#ccc';
+                    compressBadge.style.background = '#f0f0f0';
+                }
+            }
+
+            // ---------- 渲染分组（根据当前格式和压缩状态） ----------
+            function renderGroups(groups, mode, step, imgW, imgH, format) {
+                currentGroups = groups;
+                resultContainer.innerHTML = '';
+                if (!groups || groups.length === 0) {
+                    resultContainer.innerHTML = '<div class="empty-hint">未提取到数据</div>';
+                    resultMeta.textContent = '无数据';
+                    return;
+                }
+
+                const modeLabel = (mode === 'col') ? '按列分组' : '按行分组';
+                const stepLabel = (mode === 'col') ? '每组 ' + step + ' 列' : '每组 ' + step + ' 行';
+                const formatLabel = formatSelect.options[formatSelect.selectedIndex].text;
+                const compressLabel = currentCompress ? '压缩开启' : '压缩关闭';
+                resultMeta.textContent = modeLabel + ' | ' + stepLabel + ' | 图片 ' + imgW + '×' + imgH +
+                    ' | 共 ' + groups.length + ' 组 | 格式 ' + formatLabel + ' | ' + compressLabel;
+
+                groups.forEach((g, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'group-item';
+
+                    const labelSpan = document.createElement('span');
+                    labelSpan.className = 'group-label';
+                    labelSpan.textContent = g.label;
+                    div.appendChild(labelSpan);
+
+                    const dataText = formatGroupData(g.pixels, format, currentCompress);
+                    const dataSpan = document.createElement('span');
+                    dataSpan.className = 'group-data';
+                    dataSpan.textContent = dataText || '（空）';
+                    div.appendChild(dataSpan);
+
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'group-copy';
+                    copyBtn.textContent = '复制';
+                    copyBtn.setAttribute('data-index', idx);
+                    copyBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const text = formatGroupData(groups[idx].pixels, format, currentCompress);
+                        if (!text) { alert('该组无数据'); return; }
+                        copyToClipboard(text, '复制该组');
+                    });
+                    div.appendChild(copyBtn);
+
+                    // 如果压缩开启且该组有压缩效果，显示小提示（可选）
+                    if (currentCompress) {
+                        const rawLen = g.pixels.length;
+                        const compressedLen = formatGroupData(g.pixels, format, true).split(' ').length;
+                        if (compressedLen < rawLen) {
+                            const badge = document.createElement('span');
+                            badge.style.cssText =
+                                'font-size:11px;color:#666;background:#eee;padding:0 8px;border-radius:8px;font-family:system-ui;';
+                            badge.textContent = '压缩 ' + rawLen + '→' + compressedLen;
+                            div.appendChild(badge);
+                        }
+                    }
+
+                    resultContainer.appendChild(div);
+                });
+            }
+
+            // ---------- 复制工具 ----------
+            function copyToClipboard(text, successMsg) {
+                if (!text) return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        if (successMsg) {
+                            const orig = btnCopyAll.textContent;
+                            btnCopyAll.textContent = '已复制';
+                            setTimeout(() => { btnCopyAll.textContent = '复制全部'; }, 1200);
+                        }
+                    }).catch(() => {
+                        fallbackCopy(text);
+                    });
+                } else {
+                    fallbackCopy(text);
+                }
+            }
+
+            function fallbackCopy(text) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.left = '-9999px';
+                    ta.style.top = '-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    btnCopyAll.textContent = '已复制';
+                    setTimeout(() => { btnCopyAll.textContent = '复制全部'; }, 1200);
+                } catch (err) {
+                    alert('复制失败，请手动选中复制。');
+                }
+            }
+
+            function copyAllGroups() {
+                if (!currentGroups || currentGroups.length === 0) {
+                    alert('没有可复制的内容，请先提取数据。');
+                    return;
+                }
+                const format = formatSelect.value;
+                const fullText = currentGroups.map(g =>
+                    g.label + ': ' + formatGroupData(g.pixels, format, currentCompress)
+                ).join('\n');
+                copyToClipboard(fullText, '复制全部');
+            }
+
+            // ---------- 执行提取 ----------
+            function doExtract(mode) {
+                if (!currentImageData) {
+                    statusMsg.textContent = '请先上传图片';
+                    return;
+                }
+                const imgData = currentImageData;
+                const w = imgData.width;
+                const h = imgData.height;
+                let step = 1;
+                let groups = [];
+
+                try {
+                    if (mode === 'col') {
+                        step = parseInt(colStepInput.value, 10);
+                        if (isNaN(step) || step < 1) step = 1;
+                        colStepInput.value = step;
+                        groups = extractGroupsByColumn(imgData, step);
+                    } else { // row
+                        step = parseInt(rowStepInput.value, 10);
+                        if (isNaN(step) || step < 1) step = 1;
+                        rowStepInput.value = step;
+                        groups = extractGroupsByRow(imgData, step);
+                    }
+                } catch (err) {
+                    statusMsg.textContent = '提取失败：' + err.message;
+                    return;
+                }
+
+                if (groups.length === 0) {
+                    statusMsg.textContent = '未提取到数据，请检查步长或图片';
+                    resultContainer.innerHTML = '<div class="empty-hint">无数据</div>';
+                    resultMeta.textContent = '';
+                    currentGroups = [];
+                    return;
+                }
+
+                currentMode = mode;
+                currentStep = step;
+                const format = formatSelect.value;
+                renderGroups(groups, mode, step, w, h, format);
+                statusMsg.textContent = '提取完成，共 ' + groups.length + ' 组数据' +
+                    (currentCompress ? ' （压缩已开启）' : '');
+            }
+
+            // ---------- 重新渲染（格式或压缩切换时） ----------
+            function reRenderWithCurrentFormat() {
+                if (!currentGroups || currentGroups.length === 0 || !currentImageData) {
+                    // 如果没有数据，但压缩状态变了，更新徽章即可
+                    updateCompressBadge();
+                    return;
+                }
+                const format = formatSelect.value;
+                renderGroups(
+                    currentGroups,
+                    currentMode,
+                    currentStep,
+                    currentImageData.width,
+                    currentImageData.height,
+                    format
+                );
+                const formatLabel = formatSelect.options[formatSelect.selectedIndex].text;
+                statusMsg.textContent = '已切换：' + formatLabel +
+                    (currentCompress ? ' | 压缩开启' : ' | 压缩关闭');
+            }
+
+            // ---------- 图片加载 ----------
+            function loadImageDataFromFile(file) {
+                if (!file || !file.type.startsWith('image/')) {
+                    statusMsg.textContent = '请上传有效的图片文件';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        previewImg.src = e.target.result;
+                        previewImg.style.display = 'block';
+                        placeholderText.style.display = 'none';
+
+                        const w = img.naturalWidth || img.width;
+                        const h = img.naturalHeight || img.height;
+                        sizeInfo.textContent = w + ' × ' + h + ' 像素';
+
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = w;
+                            canvas.height = h;
+                            ctx.drawImage(img, 0, 0);
+                            const imageData = ctx.getImageData(0, 0, w, h);
+                            currentImageData = {
+                                width: imageData.width,
+                                height: imageData.height,
+                                data: imageData.data
+                            };
+                            statusMsg.textContent = '图片已加载，可执行提取';
+                            // 清空旧结果
+                            resultContainer.innerHTML = '<div class="empty-hint">等待提取…</div>';
+                            resultMeta.textContent = '';
+                            currentGroups = [];
+                        } catch (err) {
+                            statusMsg.textContent = '读取像素数据失败：' + err.message;
+                        }
+                    };
+                    img.onerror = function() {
+                        statusMsg.textContent = '图片加载失败，请尝试其他图片';
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function() {
+                    statusMsg.textContent = '读取文件失败';
+                };
+                reader.readAsDataURL(file);
+            }
+
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files.length > 0) {
+                    loadImageDataFromFile(this.files[0]);
+                }
+            });
+
+            // 拖拽
+            document.addEventListener('dragover', function(e) { e.preventDefault(); });
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+                    loadImageDataFromFile(files[0]);
+                    fileInput.files = files;
+                }
+            });
+
+            // ---------- 事件绑定 ----------
+            btnCol.addEventListener('click', function() { doExtract('col'); });
+            btnRow.addEventListener('click', function() { doExtract('row'); });
+            btnCopyAll.addEventListener('click', copyAllGroups);
+
+            // 格式切换
+            formatSelect.addEventListener('change', reRenderWithCurrentFormat);
+
+            // 压缩切换
+            compressCheck.addEventListener('change', function() {
+                currentCompress = this.checked;
+                updateCompressBadge();
+                reRenderWithCurrentFormat();
+            });
+
+            // 输入框回车触发提取
+            colStepInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault();
+                    doExtract('col'); }
+            });
+            rowStepInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault();
+                    doExtract('row'); }
+            });
+
+            // 点击预览图触发文件选择
+            previewImg.addEventListener('click', function() { fileInput.click(); });
+
+            // 初始状态
+            statusMsg.textContent = '请上传图片';
+            resultContainer.innerHTML = '<div class="empty-hint">等待提取…</div>';
+            updateCompressBadge();
+
+        })();
+    </script>
+
+</body>
+</html>

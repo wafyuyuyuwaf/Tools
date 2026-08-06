@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>图片压缩工具</title>
+    <style>
+        /* 全局重置与极简风格 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .app {
+            max-width: 1100px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 36px 40px 44px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            align-self: flex-start;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-bottom: 24px;
+            color: #0f172a;
+        }
+
+        /* 上传区域 */
+        .upload-area {
+            margin-bottom: 28px;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            background: #1e293b;
+            color: #fff;
+            padding: 10px 28px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+        }
+
+        .upload-btn:hover {
+            background: #0f172a;
+        }
+
+        .upload-btn input {
+            display: none;
+        }
+
+        .file-name {
+            display: inline-block;
+            margin-left: 16px;
+            font-size: 14px;
+            color: #64748b;
+            vertical-align: middle;
+        }
+
+        /* 选项区域 */
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px 48px;
+            padding: 20px 0 18px;
+            border-top: 1px solid #e9edf2;
+            border-bottom: 1px solid #e9edf2;
+            margin-bottom: 28px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group .label-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .option-group .label-row input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: #1e293b;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .option-group .label-row label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 14px;
+            padding-left: 28px;
+            font-size: 14px;
+            color: #334155;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .radio-group input[type="radio"] {
+            accent-color: #1e293b;
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .radio-group.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* 自定义输入框 */
+        .custom-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .custom-wrapper input[type="number"] {
+            width: 64px;
+            padding: 4px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #ffffff;
+            color: #1e293b;
+            transition: border-color 0.2s;
+            outline: none;
+            text-align: center;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .custom-wrapper input[type="number"]::-webkit-outer-spin-button,
+        .custom-wrapper input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .custom-wrapper input[type="number"]:focus {
+            border-color: #1e293b;
+            box-shadow: 0 0 0 2px rgba(30, 41, 59, 0.15);
+        }
+
+        .custom-wrapper input[type="number"]:disabled {
+            background: #f1f5f9;
+            color: #94a3b8;
+            cursor: not-allowed;
+            border-color: #e2e8f0;
+        }
+
+        .custom-wrapper .unit {
+            font-size: 13px;
+            color: #475569;
+            margin-left: 2px;
+        }
+
+        /* 预览区域 */
+        .preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 28px;
+        }
+
+        .preview-item {
+            flex: 1 1 240px;
+            min-width: 200px;
+        }
+
+        .preview-item .title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .preview-item .title span {
+            font-weight: 400;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-left: 6px;
+        }
+
+        .preview-item .image-wrap {
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            border: 1px solid #e2e8f0;
+            position: relative;
+        }
+
+        .preview-item .image-wrap img,
+        .preview-item .image-wrap canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 420px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .preview-item .image-wrap .placeholder {
+            color: #94a3b8;
+            font-size: 14px;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 24px;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .info-row .info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 下载区域 */
+        .download-area {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding-top: 20px;
+            border-top: 1px solid #e9edf2;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            padding: 10px 32px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #0f172a;
+        }
+
+        .download-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .status-msg {
+            font-size: 14px;
+            color: #64748b;
+            padding: 4px 0;
+        }
+
+        /* 响应式 */
+        @media (max-width: 640px) {
+            .app {
+                padding: 20px 16px 28px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .options {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .preview {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .preview-item {
+                flex: 1 1 auto;
+            }
+
+            .radio-group {
+                padding-left: 0;
+                gap: 6px 10px;
+            }
+
+            .download-area {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .download-btn {
+                text-align: center;
+            }
+
+            .custom-wrapper input[type="number"] {
+                width: 56px;
+            }
+        }
+
+        /* 复选框/单选禁用状态微调 */
+        input[type="checkbox"]:disabled,
+        input[type="radio"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .option-group .label-row input[type="checkbox"]:disabled+label {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 错误提示颜色 */
+        .status-msg.error {
+            color: #b91c1c;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <h1>图片压缩工具</h1>
+
+        <!-- 上传 -->
+        <div class="upload-area">
+            <label class="upload-btn">
+                选择图片
+                <input type="file" id="fileInput" accept="image/*" />
+            </label>
+            <span class="file-name" id="fileName">未选择文件</span>
+        </div>
+
+        <!-- 压缩选项 -->
+        <div class="options" id="optionsArea">
+            <!-- 像素压缩 -->
+            <div class="option-group">
+                <div class="label-row">
+                    <input type="checkbox" id="chkPixel" />
+                    <label for="chkPixel">压缩像素</label>
+                </div>
+                <div class="radio-group" id="pixelRadios">
+                    <label><input type="radio" name="pixelRatio" value="0.25" /> 25%</label>
+                    <label><input type="radio" name="pixelRatio" value="0.50" checked /> 50%</label>
+                    <label><input type="radio" name="pixelRatio" value="0.75" /> 75%</label>
+                    <label><input type="radio" name="pixelRatio" value="custom" /> 自定义</label>
+                    <span class="custom-wrapper">
+                        <input type="number" id="pixelCustom" min="1" max="99" value="30" disabled />
+                        <span class="unit">%</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 颜色压缩 -->
+            <div class="option-group">
+                <div class="label-row">
+                    <input type="checkbox" id="chkColor" />
+                    <label for="chkColor">压缩颜色</label>
+                </div>
+                <div class="radio-group" id="colorRadios">
+                    <label><input type="radio" name="colorStep" value="2" /> 步长2</label>
+                    <label><input type="radio" name="colorStep" value="4" checked /> 步长4</label>
+                    <label><input type="radio" name="colorStep" value="8" /> 步长8</label>
+                    <label><input type="radio" name="colorStep" value="16" /> 步长16</label>
+                    <label><input type="radio" name="colorStep" value="custom" /> 自定义</label>
+                    <span class="custom-wrapper">
+                        <span class="unit">步长</span>
+                        <input type="number" id="colorCustom" min="2" max="255" value="32" disabled />
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预览 -->
+        <div class="preview">
+            <div class="preview-item">
+                <div class="title">原图 <span id="origInfo"></span></div>
+                <div class="image-wrap" id="origWrap">
+                    <div class="placeholder">请上传图片</div>
+                </div>
+                <div class="info-row" id="origMeta"></div>
+            </div>
+            <div class="preview-item">
+                <div class="title">压缩后 <span id="compInfo"></span></div>
+                <div class="image-wrap" id="compWrap">
+                    <div class="placeholder">等待处理</div>
+                </div>
+                <div class="info-row" id="compMeta"></div>
+            </div>
+        </div>
+
+        <!-- 下载 -->
+        <div class="download-area">
+            <button class="download-btn" id="downloadBtn" disabled>下载压缩图片</button>
+            <span class="status-msg" id="statusMsg">请上传图片开始</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ----- DOM 引用 -----
+            const fileInput = document.getElementById('fileInput');
+            const fileName = document.getElementById('fileName');
+            const chkPixel = document.getElementById('chkPixel');
+            const chkColor = document.getElementById('chkColor');
+            const pixelRadios = document.getElementById('pixelRadios');
+            const colorRadios = document.getElementById('colorRadios');
+            const pixelCustom = document.getElementById('pixelCustom');
+            const colorCustom = document.getElementById('colorCustom');
+            const origWrap = document.getElementById('origWrap');
+            const compWrap = document.getElementById('compWrap');
+            const origInfo = document.getElementById('origInfo');
+            const compInfo = document.getElementById('compInfo');
+            const origMeta = document.getElementById('origMeta');
+            const compMeta = document.getElementById('compMeta');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const statusMsg = document.getElementById('statusMsg');
+
+            // ----- 状态 -----
+            let originalImage = null; // HTMLImageElement
+            let originalWidth = 0;
+            let originalHeight = 0;
+            let processedDataURL = null;
+            let isProcessing = false;
+
+            // ----- 辅助函数 -----
+
+            // 获取像素压缩比例 (0~1)
+            function getPixelRatio() {
+                const checked = document.querySelector('input[name="pixelRatio"]:checked');
+                if (!checked) return 0.5;
+                if (checked.value === 'custom') {
+                    const val = parseInt(pixelCustom.value, 10);
+                    if (!isNaN(val) && val >= 1 && val <= 99) {
+                        return val / 100;
+                    }
+                    // 无效值：提示并回退
+                    setStatus('像素自定义值需在 1~99 之间，已使用 50%', true);
+                    return 0.5;
+                }
+                return parseFloat(checked.value);
+            }
+
+            // 获取颜色压缩步长
+            function getColorStep() {
+                const checked = document.querySelector('input[name="colorStep"]:checked');
+                if (!checked) return 4;
+                if (checked.value === 'custom') {
+                    const val = parseInt(colorCustom.value, 10);
+                    if (!isNaN(val) && val >= 2 && val <= 255) {
+                        return val;
+                    }
+                    setStatus('颜色自定义步长需在 2~255 之间，已使用步长 4', true);
+                    return 4;
+                }
+                return parseInt(checked.value, 10);
+            }
+
+            // 设置状态消息
+            function setStatus(msg, isError) {
+                statusMsg.textContent = msg;
+                statusMsg.className = 'status-msg' + (isError ? ' error' : '');
+            }
+
+            // 更新选项禁用状态
+            function updateOptionsState() {
+                const pixelEnabled = chkPixel.checked;
+                const colorEnabled = chkColor.checked;
+
+                // 控制整个 radio-group 的禁用样式
+                pixelRadios.classList.toggle('disabled', !pixelEnabled);
+                colorRadios.classList.toggle('disabled', !colorEnabled);
+
+                // 控制内部 radio 和输入框的 disabled 属性
+                const allPixelRadios = pixelRadios.querySelectorAll('input[type="radio"]');
+                const allColorRadios = colorRadios.querySelectorAll('input[type="radio"]');
+
+                allPixelRadios.forEach(r => r.disabled = !pixelEnabled);
+                allColorRadios.forEach(r => r.disabled = !colorEnabled);
+
+                // 自定义输入框跟随 checkbox 和 自定义radio 状态
+                const pixelCustomRadio = document.querySelector('input[name="pixelRatio"][value="custom"]');
+                const colorCustomRadio = document.querySelector('input[name="colorStep"][value="custom"]');
+
+                const pixelCustomEnabled = pixelEnabled && pixelCustomRadio && pixelCustomRadio.checked;
+                const colorCustomEnabled = colorEnabled && colorCustomRadio && colorCustomRadio.checked;
+
+                pixelCustom.disabled = !pixelCustomEnabled;
+                colorCustom.disabled = !colorCustomEnabled;
+            }
+
+            // 显示原图
+            function displayOriginal(img) {
+                origWrap.innerHTML = '';
+                const clone = img.cloneNode(true);
+                clone.style.maxWidth = '100%';
+                clone.style.maxHeight = '420px';
+                clone.style.width = 'auto';
+                clone.style.height = 'auto';
+                clone.style.display = 'block';
+                origWrap.appendChild(clone);
+
+                origInfo.textContent = `${originalWidth} × ${originalHeight}`;
+                origMeta.innerHTML = '';
+            }
+
+            // 显示压缩图 (canvas)
+            function displayCompressed(dataURL, width, height) {
+                compWrap.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    compWrap.appendChild(canvas);
+                    compInfo.textContent = `${width} × ${height}`;
+                    compMeta.innerHTML = '';
+                    processedDataURL = canvas.toDataURL('image/png');
+                    downloadBtn.disabled = false;
+                    setStatus('压缩完成，可下载');
+                };
+                img.onerror = function() {
+                    setStatus('压缩图渲染失败，请重试', true);
+                };
+                img.src = dataURL;
+            }
+
+            // ----- 核心处理函数 -----
+            function processImage() {
+                if (!originalImage) {
+                    compWrap.innerHTML = '<div class="placeholder">请上传图片</div>';
+                    compInfo.textContent = '';
+                    compMeta.innerHTML = '';
+                    downloadBtn.disabled = true;
+                    processedDataURL = null;
+                    return;
+                }
+
+                if (isProcessing) return;
+                isProcessing = true;
+                setStatus('处理中...');
+
+                setTimeout(() => {
+                    try {
+                        const doPixel = chkPixel.checked;
+                        const doColor = chkColor.checked;
+
+                        // 如果什么都没选，直接输出原图
+                        if (!doPixel && !doColor) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = originalWidth;
+                            canvas.height = originalHeight;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(originalImage, 0, 0, originalWidth, originalHeight);
+                            compWrap.innerHTML = '';
+                            compWrap.appendChild(canvas);
+                            compInfo.textContent = `${originalWidth} × ${originalHeight}`;
+                            compMeta.innerHTML = '';
+                            processedDataURL = canvas.toDataURL('image/png');
+                            downloadBtn.disabled = false;
+                            setStatus('未压缩，直接输出原图');
+                            isProcessing = false;
+                            return;
+                        }
+
+                        // 临时画布
+                        let w = originalWidth;
+                        let h = originalHeight;
+                        let tempCanvas = document.createElement('canvas');
+                        let tempCtx = tempCanvas.getContext('2d');
+
+                        // 1) 像素压缩
+                        if (doPixel) {
+                            const ratio = getPixelRatio();
+                            // 确保至少 1x1
+                            w = Math.max(1, Math.round(originalWidth * ratio));
+                            h = Math.max(1, Math.round(originalHeight * ratio));
+                            tempCanvas.width = w;
+                            tempCanvas.height = h;
+                            tempCtx.drawImage(originalImage, 0, 0, w, h);
+                        } else {
+                            tempCanvas.width = w;
+                            tempCanvas.height = h;
+                            tempCtx.drawImage(originalImage, 0, 0, w, h);
+                        }
+
+                        // 2) 颜色压缩
+                        if (doColor) {
+                            const step = getColorStep();
+                            if (step > 1) {
+                                const imageData = tempCtx.getImageData(0, 0, w, h);
+                                const data = imageData.data;
+                                const len = data.length;
+                                for (let i = 0; i < len; i += 4) {
+                                    data[i] = Math.round(data[i] / step) * step;
+                                    data[i + 1] = Math.round(data[i + 1] / step) * step;
+                                    data[i + 2] = Math.round(data[i + 2] / step) * step;
+                                }
+                                tempCtx.putImageData(imageData, 0, 0);
+                            }
+                        }
+
+                        const dataURL = tempCanvas.toDataURL('image/png');
+                        displayCompressed(dataURL, w, h);
+
+                    } catch (err) {
+                        setStatus('压缩失败: ' + err.message, true);
+                        console.error(err);
+                    } finally {
+                        isProcessing = false;
+                    }
+                }, 30);
+            }
+
+            // ----- 加载图片 -----
+            function loadImage(file) {
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataURL = e.target.result;
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = img;
+                        originalWidth = img.width;
+                        originalHeight = img.height;
+
+                        displayOriginal(img);
+
+                        compWrap.innerHTML = '<div class="placeholder">处理中...</div>';
+                        compInfo.textContent = '';
+                        compMeta.innerHTML = '';
+                        downloadBtn.disabled = true;
+                        processedDataURL = null;
+
+                        fileName.textContent = file.name;
+
+                        // 启用选项
+                        chkPixel.disabled = false;
+                        chkColor.disabled = false;
+                        updateOptionsState();
+
+                        setStatus('图片已加载，请选择压缩选项');
+
+                        processImage();
+                    };
+                    img.onerror = function() {
+                        setStatus('图片加载失败，请尝试其他文件', true);
+                        fileName.textContent = '加载失败';
+                    };
+                    img.src = dataURL;
+                };
+                reader.onerror = function() {
+                    setStatus('文件读取失败', true);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // ----- 重置状态 -----
+            function resetState() {
+                originalImage = null;
+                originalWidth = 0;
+                originalHeight = 0;
+                processedDataURL = null;
+                downloadBtn.disabled = true;
+                chkPixel.disabled = true;
+                chkColor.disabled = true;
+                updateOptionsState();
+                fileName.textContent = '未选择文件';
+                origWrap.innerHTML = '<div class="placeholder">请上传图片</div>';
+                compWrap.innerHTML = '<div class="placeholder">等待处理</div>';
+                origInfo.textContent = '';
+                compInfo.textContent = '';
+                origMeta.innerHTML = '';
+                compMeta.innerHTML = '';
+                setStatus('请上传图片开始');
+            }
+
+            // ----- 事件绑定 -----
+
+            // 文件上传
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    loadImage(file);
+                } else {
+                    resetState();
+                }
+                this.value = '';
+            });
+
+            // 复选框变化
+            chkPixel.addEventListener('change', function() {
+                updateOptionsState();
+                if (originalImage) processImage();
+            });
+
+            chkColor.addEventListener('change', function() {
+                updateOptionsState();
+                if (originalImage) processImage();
+            });
+
+            // 所有 radio 变化
+            document.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    // 更新自定义输入框的禁用状态
+                    updateOptionsState();
+                    // 如果选中自定义，自动聚焦输入框
+                    if (this.value === 'custom') {
+                        const targetInput = this.name === 'pixelRatio' ? pixelCustom : colorCustom;
+                        if (!targetInput.disabled) {
+                            targetInput.focus();
+                            targetInput.select();
+                        }
+                    }
+                    if (originalImage) processImage();
+                });
+            });
+
+            // 自定义输入框值变化
+            pixelCustom.addEventListener('input', function() {
+                if (originalImage) processImage();
+            });
+
+            colorCustom.addEventListener('input', function() {
+                if (originalImage) processImage();
+            });
+
+            // 下载按钮
+            downloadBtn.addEventListener('click', function() {
+                if (!processedDataURL) {
+                    setStatus('没有可下载的图片', true);
+                    return;
+                }
+                const link = document.createElement('a');
+                link.download = 'compressed_image.png';
+                link.href = processedDataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setStatus('下载已开始');
+            });
+
+            // ----- 拖拽上传 (极简实现) -----
+            const app = document.querySelector('.app');
+            app.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = '#0f172a';
+                this.style.boxShadow = '0 0 0 2px #0f172a';
+            });
+            app.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'transparent';
+                this.style.boxShadow = 'none';
+            });
+            app.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.style.borderColor = 'transparent';
+                this.style.boxShadow = 'none';
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type.startsWith('image/')) {
+                    fileInput.files = files;
+                    loadImage(files[0]);
+                } else {
+                    setStatus('请拖拽图片文件', true);
+                }
+            });
+
+            // ----- 初始状态 -----
+            resetState();
+            chkPixel.disabled = true;
+            chkColor.disabled = true;
+            updateOptionsState();
+
+            // 确保自定义输入框初始禁用
+            pixelCustom.disabled = true;
+            colorCustom.disabled = true;
+
+            // 暴露调试 (非必须)
+            window.__debug = {
+                processImage,
+                originalImage,
+                getPixelRatio,
+                getColorStep
+            };
+
+        })();
+    </script>
+
+</body>
+</html>
