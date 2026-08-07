@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频转WAV工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 40px 48px;
+            max-width: 520px;
+            width: 100%;
+            border: 1px solid #e6e9ed;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 500;
+            color: #1e293b;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .sub {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 28px;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 16px;
+        }
+        .drop-area {
+            border: 2px dashed #d0d7de;
+            border-radius: 6px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            background: #fafbfc;
+        }
+        .drop-area:hover {
+            border-color: #94a3b8;
+        }
+        .drop-area p {
+            color: #475569;
+            font-size: 15px;
+            margin: 0;
+        }
+        .drop-area .hint {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 8px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-info {
+            margin-top: 16px;
+            padding: 10px 14px;
+            background: #f1f4f9;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #1e293b;
+            word-break: break-all;
+            display: none;
+        }
+        .file-info span {
+            font-weight: 500;
+        }
+        .actions {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        button {
+            flex: 1;
+            min-width: 100px;
+            padding: 10px 0;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 15px;
+            font-weight: 450;
+            cursor: pointer;
+            transition: background 0.15s, opacity 0.15s;
+            letter-spacing: 0.3px;
+        }
+        button:hover:not(:disabled) {
+            background: #0f172a;
+        }
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #e9edf2;
+            color: #1e293b;
+        }
+        button.secondary:hover:not(:disabled) {
+            background: #d5dce4;
+        }
+        #downloadBtn {
+            display: none;
+            background: #0b5e42;
+        }
+        #downloadBtn:hover:not(:disabled) {
+            background: #084b34;
+        }
+        .status {
+            margin-top: 18px;
+            font-size: 14px;
+            color: #475569;
+            min-height: 22px;
+            padding: 6px 0;
+            border-top: 1px solid #f0f2f5;
+        }
+        .status.error {
+            color: #b91c1c;
+        }
+        .status.success {
+            color: #0b5e42;
+        }
+        .spec-note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: right;
+            border-top: 1px solid #f0f2f5;
+            padding-top: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>音频 / 视频 转 WAV</h1>
+    <div class="sub">支持 MP3, M4A, FLAC, MP4, AVI, WebM 等常见格式</div>
+
+    <div class="drop-area" id="dropArea">
+        <p>点击选择 或 拖拽文件至此</p>
+        <div class="hint">最大支持约 500MB (浏览器内存限制)</div>
+    </div>
+    <input type="file" id="fileInput" accept="video/*,audio/*">
+
+    <div class="file-info" id="fileInfo">
+        已选: <span id="fileName"></span>  (<span id="fileSize"></span>)
+    </div>
+
+    <div class="actions">
+        <button id="convertBtn" disabled>转换为 WAV</button>
+        <button id="downloadBtn">下载 WAV</button>
+    </div>
+
+    <div class="status" id="status">等待文件加载...</div>
+    <div class="spec-note">输出规格: 44.1 kHz / 16-bit / 立体声 PCM</div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 可配置参数 (若需修改，直接改此处) ----------
+        const TARGET_SAMPLE_RATE = 44100;   // 44100 或 48000
+        const TARGET_CHANNELS = 2;          // 2 立体声, 1 单声道
+        const TARGET_BITS = 16;             // 仅支持 16
+        // -------------------------------------------------------
+
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertBtn = document.getElementById('convertBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const statusDiv = document.getElementById('status');
+
+        let currentFile = null;
+        let wavBlob = null;
+
+        // ----- 辅助函数 -----
+        function setStatus(msg, type = '') {
+            statusDiv.textContent = msg;
+            statusDiv.className = 'status' + (type ? ' ' + type : '');
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function resetUI() {
+            wavBlob = null;
+            downloadBtn.style.display = 'none';
+            convertBtn.disabled = true;
+            fileInfo.style.display = 'none';
+            setStatus('等待文件加载...');
+        }
+
+        // 文件选择/拖拽处理
+        function handleFile(file) {
+            if (!file) return;
+            // 基础类型过滤
+            const type = file.type;
+            if (!type.startsWith('video/') && !type.startsWith('audio/')) {
+                setStatus('不支持的文件类型，请选择音视频文件', 'error');
+                return;
+            }
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatSize(file.size);
+            fileInfo.style.display = 'block';
+            convertBtn.disabled = false;
+            downloadBtn.style.display = 'none';
+            wavBlob = null;
+            setStatus('文件就绪，点击 "转换为 WAV" 开始处理');
+        }
+
+        // 拖拽事件
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#64748b';
+        });
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.style.borderColor = '#d0d7de';
+        });
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#d0d7de';
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        dropArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        // ----- 核心转换逻辑 (Web Audio API) -----
+        function arrayBufferToWav(arrayBuffer, sampleRate, numChannels, bitDepth) {
+            // 使用 AudioContext 解码
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return audioCtx.decodeAudioData(arrayBuffer).then(audioBuffer => {
+                // 目标参数
+                const targetRate = sampleRate;
+                const targetChannels = Math.min(numChannels, audioBuffer.numberOfChannels);
+                // 创建离线上下文以重采样 / 混音
+                const duration = audioBuffer.duration;
+                const offlineCtx = new OfflineAudioContext(
+                    targetChannels,
+                    Math.ceil(duration * targetRate),
+                    targetRate
+                );
+                // 创建音源
+                const source = offlineCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineCtx.destination);
+                source.start(0);
+                // 渲染
+                return offlineCtx.startRendering();
+            }).then(renderedBuffer => {
+                // 提取 PCM 数据 (16-bit 有符号整型)
+                const channels = renderedBuffer.numberOfChannels;
+                const sampleRateOut = renderedBuffer.sampleRate;
+                const length = renderedBuffer.length;
+                const dataLength = length * channels * 2; // 2 bytes per sample (16-bit)
+                const buffer = new ArrayBuffer(44 + dataLength);
+                const view = new DataView(buffer);
+
+                // 写入 WAV 头 (RIFF + fmt + data)
+                const writeString = (offset, str) => {
+                    for (let i = 0; i < str.length; i++) {
+                        view.setUint8(offset + i, str.charCodeAt(i));
+                    }
+                };
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + dataLength, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true); // PCM
+                view.setUint16(22, channels, true);
+                view.setUint32(24, sampleRateOut, true);
+                view.setUint32(28, sampleRateOut * channels * 2, true); // byteRate
+                view.setUint16(32, channels * 2, true); // blockAlign
+                view.setUint16(34, 16, true); // bitsPerSample
+                writeString(36, 'data');
+                view.setUint32(40, dataLength, true);
+
+                // 写入 PCM 数据 (Interleaved)
+                const offset = 44;
+                let pos = 0;
+                for (let i = 0; i < length; i++) {
+                    for (let ch = 0; ch < channels; ch++) {
+                        const sample = renderedBuffer.getChannelData(ch)[i];
+                        // 浮点 [-1,1] -> 16-bit 整型 [-32768, 32767]
+                        const intVal = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
+                        view.setInt16(offset + pos, intVal, true);
+                        pos += 2;
+                    }
+                }
+                return buffer;
+            });
+        }
+
+        // 转换触发
+        convertBtn.addEventListener('click', () => {
+            if (!currentFile) return;
+            if (wavBlob) {
+                setStatus('已转换完成，点击下载即可', 'success');
+                downloadBtn.style.display = 'block';
+                return;
+            }
+
+            convertBtn.disabled = true;
+            setStatus('正在解码并转换 (请勿操作)...');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const arrayBuffer = e.target.result;
+                arrayBufferToWav(arrayBuffer, TARGET_SAMPLE_RATE, TARGET_CHANNELS, TARGET_BITS)
+                    .then(wavArrayBuffer => {
+                        const blob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
+                        wavBlob = blob;
+                        downloadBtn.style.display = 'block';
+                        convertBtn.disabled = false;
+                        setStatus('转换完成，点击 "下载 WAV" 保存', 'success');
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        setStatus('转换失败: ' + (err.message || '解码器错误，请检查文件是否损坏'), 'error');
+                        convertBtn.disabled = false;
+                    });
+            };
+            reader.onerror = () => {
+                setStatus('读取文件失败', 'error');
+                convertBtn.disabled = false;
+            };
+            reader.readAsArrayBuffer(currentFile);
+        });
+
+        // 下载触发
+        downloadBtn.addEventListener('click', () => {
+            if (!wavBlob) return;
+            const a = document.createElement('a');
+            const originalName = currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'output';
+            a.download = originalName + '.wav';
+            a.href = URL.createObjectURL(wavBlob);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            // 释放内存
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            setStatus('下载已开始', 'success');
+        });
+
+        // 重置状态 (如果重新选文件)
+        const origHandle = handleFile;
+        handleFile = function(file) {
+            resetUI();
+            origHandle(file);
+        };
+        // 额外监听input变化重置
+        fileInput.addEventListener('click', () => {
+            // 点击选择文件时重置旧状态（但实际change才触发）
+        });
+        // 若用户重复选择同一文件，清空input value以触发change
+        fileInput.addEventListener('click', function() {
+            this.value = null;
+        });
+
+        // 初始状态
+        resetUI();
+    })();
+</script>
+</body>
+</html>
