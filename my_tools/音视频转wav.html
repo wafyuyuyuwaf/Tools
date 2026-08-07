@@ -252,37 +252,36 @@
         });
 
         // ----- 核心转换逻辑 (Web Audio API) -----
-        function arrayBufferToWav(arrayBuffer, sampleRate, numChannels, bitDepth) {
-            // 使用 AudioContext 解码
+        // 增加 onEstimate 回调，用于在解码后、渲染前返回预估大小
+        function arrayBufferToWav(arrayBuffer, sampleRate, numChannels, bitDepth, onEstimate) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             return audioCtx.decodeAudioData(arrayBuffer).then(audioBuffer => {
+                // 计算预估 WAV 大小 (PCM数据 + 44字节头部)
+                const duration = audioBuffer.duration;
+                const estimatedSize = Math.ceil(duration * sampleRate * numChannels * (bitDepth / 8)) + 44;
+                if (onEstimate) onEstimate(estimatedSize);
+
                 // 目标参数
                 const targetRate = sampleRate;
                 const targetChannels = Math.min(numChannels, audioBuffer.numberOfChannels);
-                // 创建离线上下文以重采样 / 混音
-                const duration = audioBuffer.duration;
                 const offlineCtx = new OfflineAudioContext(
                     targetChannels,
                     Math.ceil(duration * targetRate),
                     targetRate
                 );
-                // 创建音源
                 const source = offlineCtx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(offlineCtx.destination);
                 source.start(0);
-                // 渲染
                 return offlineCtx.startRendering();
             }).then(renderedBuffer => {
-                // 提取 PCM 数据 (16-bit 有符号整型)
                 const channels = renderedBuffer.numberOfChannels;
                 const sampleRateOut = renderedBuffer.sampleRate;
                 const length = renderedBuffer.length;
-                const dataLength = length * channels * 2; // 2 bytes per sample (16-bit)
+                const dataLength = length * channels * 2;
                 const buffer = new ArrayBuffer(44 + dataLength);
                 const view = new DataView(buffer);
 
-                // 写入 WAV 头 (RIFF + fmt + data)
                 const writeString = (offset, str) => {
                     for (let i = 0; i < str.length; i++) {
                         view.setUint8(offset + i, str.charCodeAt(i));
@@ -293,22 +292,20 @@
                 writeString(8, 'WAVE');
                 writeString(12, 'fmt ');
                 view.setUint32(16, 16, true);
-                view.setUint16(20, 1, true); // PCM
+                view.setUint16(20, 1, true);
                 view.setUint16(22, channels, true);
                 view.setUint32(24, sampleRateOut, true);
-                view.setUint32(28, sampleRateOut * channels * 2, true); // byteRate
-                view.setUint16(32, channels * 2, true); // blockAlign
-                view.setUint16(34, 16, true); // bitsPerSample
+                view.setUint32(28, sampleRateOut * channels * 2, true);
+                view.setUint16(32, channels * 2, true);
+                view.setUint16(34, 16, true);
                 writeString(36, 'data');
                 view.setUint32(40, dataLength, true);
 
-                // 写入 PCM 数据 (Interleaved)
                 const offset = 44;
                 let pos = 0;
                 for (let i = 0; i < length; i++) {
                     for (let ch = 0; ch < channels; ch++) {
                         const sample = renderedBuffer.getChannelData(ch)[i];
-                        // 浮点 [-1,1] -> 16-bit 整型 [-32768, 32767]
                         const intVal = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
                         view.setInt16(offset + pos, intVal, true);
                         pos += 2;
@@ -328,24 +325,36 @@
             }
 
             convertBtn.disabled = true;
-            setStatus('正在解码并转换 (请勿操作)...');
+            setStatus('正在读取文件...');
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 const arrayBuffer = e.target.result;
-                arrayBufferToWav(arrayBuffer, TARGET_SAMPLE_RATE, TARGET_CHANNELS, TARGET_BITS)
-                    .then(wavArrayBuffer => {
-                        const blob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
-                        wavBlob = blob;
-                        downloadBtn.style.display = 'block';
-                        convertBtn.disabled = false;
-                        setStatus('转换完成，点击 "下载 WAV" 保存', 'success');
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        setStatus('转换失败: ' + (err.message || '解码器错误，请检查文件是否损坏'), 'error');
-                        convertBtn.disabled = false;
-                    });
+                setStatus('正在解码音频...');
+
+                arrayBufferToWav(
+                    arrayBuffer,
+                    TARGET_SAMPLE_RATE,
+                    TARGET_CHANNELS,
+                    TARGET_BITS,
+                    (estimatedSize) => {
+                        // 这里会在解码完成后、重采样渲染前触发，显示预估大小
+                        setStatus(`正在转换... 预估 WAV 大小: ${formatSize(estimatedSize)}`);
+                    }
+                )
+                .then(wavArrayBuffer => {
+                    const blob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
+                    wavBlob = blob;
+                    downloadBtn.style.display = 'block';
+                    convertBtn.disabled = false;
+                    // 显示精确的实际大小
+                    setStatus(`转换完成，WAV 实际大小: ${formatSize(blob.size)}，点击下载`, 'success');
+                })
+                .catch(err => {
+                    console.error(err);
+                    setStatus('转换失败: ' + (err.message || '解码器错误，请检查文件是否损坏'), 'error');
+                    convertBtn.disabled = false;
+                });
             };
             reader.onerror = () => {
                 setStatus('读取文件失败', 'error');
@@ -364,7 +373,6 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            // 释放内存
             setTimeout(() => URL.revokeObjectURL(a.href), 5000);
             setStatus('下载已开始', 'success');
         });
@@ -375,16 +383,10 @@
             resetUI();
             origHandle(file);
         };
-        // 额外监听input变化重置
-        fileInput.addEventListener('click', () => {
-            // 点击选择文件时重置旧状态（但实际change才触发）
-        });
-        // 若用户重复选择同一文件，清空input value以触发change
         fileInput.addEventListener('click', function() {
             this.value = null;
         });
 
-        // 初始状态
         resetUI();
     })();
 </script>
