@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转ICO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #fff;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 720px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+        .sub {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 24px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 14px;
+            background: #f8fafc;
+            border-radius: 0 8px 8px 0;
+            line-height: 1.5;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            background: #fafcff;
+            transition: 0.2s;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #f0f7ff;
+        }
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background: #e6f0ff;
+        }
+        .upload-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .upload-hint {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-list {
+            margin: 16px 0 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            border: 1px solid #e9edf2;
+        }
+        .file-item .name {
+            flex: 1;
+            font-weight: 500;
+            word-break: break-all;
+        }
+        .file-item .size {
+            color: #64748b;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .file-item .crop-warning {
+            color: #b45309;
+            background: #fef3c7;
+            padding: 0 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            line-height: 22px;
+        }
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .file-item .remove-btn:hover {
+            color: #ef4444;
+        }
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 18px;
+            padding: 14px 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 10px 0 18px;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+        .action-bar {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 8px 0 12px;
+        }
+        .btn {
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #475569;
+            cursor: pointer;
+            transition: 0.15s;
+            flex: 1 1 auto;
+        }
+        .btn-primary {
+            background: #1e293b;
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #0f172a;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #2563eb;
+        }
+        .status {
+            font-size: 14px;
+            color: #64748b;
+            min-height: 24px;
+            padding: 6px 0;
+        }
+        .status.error {
+            color: #dc2626;
+        }
+        .status.success {
+            color: #16a34a;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        #downloadLink {
+            display: none;
+            text-decoration: none;
+        }
+
+        /* 预览区域 */
+        #previewArea {
+            display: none;
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        #previewArea .preview-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 12px;
+        }
+        .preview-item {
+            text-align: center;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 4px;
+            border: 1px solid #e9edf2;
+        }
+        .preview-item img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 4px;
+            image-rendering: pixelated;
+        }
+        .preview-item .label {
+            font-size: 11px;
+            color: #64748b;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 0 4px;
+            }
+            .file-item {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .file-item .crop-warning {
+                flex: 0 0 100%;
+            }
+            .preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            }
+            .preview-item img {
+                width: 36px;
+                height: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>图片转 ICO</h1>
+    <div class="sub">上传图片 · 非正方形自动裁剪为 1:1 · 生成后预览图标</div>
+
+    <div class="upload-area" id="dropZone">
+        <div class="upload-text">点击上传或拖拽图片至此</div>
+        <div class="upload-hint">可一次选择多张图片</div>
+        <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="options" id="sizeOptions">
+        <label><input type="checkbox" value="16" checked> 16x16</label>
+        <label><input type="checkbox" value="32" checked> 32x32</label>
+        <label><input type="checkbox" value="48" checked> 48x48</label>
+        <label><input type="checkbox" value="64"> 64x64</label>
+        <label><input type="checkbox" value="128"> 128x128</label>
+        <label><input type="checkbox" value="256" checked> 256x256</label>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn btn-primary" id="convertBtn" disabled>生成图标</button>
+        <a id="downloadLink" class="btn btn-success">下载</a>
+    </div>
+    <div class="status" id="statusMsg">请选择图片</div>
+
+    <!-- 预览区域 -->
+    <div id="previewArea">
+        <div class="preview-title">生成预览</div>
+        <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <div class="footer">每个尺寸独立生成 .ico，根据数量决定单文件或压缩包</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+    (function() {
+        // DOM elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileListEl = document.getElementById('fileList');
+        const convertBtn = document.getElementById('convertBtn');
+        const downloadLink = document.getElementById('downloadLink');
+        const statusMsg = document.getElementById('statusMsg');
+        const sizeCheckboxes = document.querySelectorAll('#sizeOptions input[type="checkbox"]');
+        const previewArea = document.getElementById('previewArea');
+        const previewGrid = document.getElementById('previewGrid');
+
+        // 存储文件数据
+        let filesData = []; // 每个元素 { file, dataUrl, name, size, width, height, isSquare }
+        let previewUrls = []; // 存储预览的 object URL
+
+        // 辅助: 格式化文件大小
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+
+        // 清空预览
+        function clearPreview() {
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            previewUrls = [];
+            previewGrid.innerHTML = '';
+            previewArea.style.display = 'none';
+        }
+
+        // 显示预览
+        function showPreview(icoResults) {
+            clearPreview(); // 先清空
+            if (!icoResults || icoResults.length === 0) return;
+
+            let html = '';
+            icoResults.forEach(item => {
+                // 为每个 ico 创建 blob URL
+                const blob = new Blob([item.buffer], { type: 'image/x-icon' });
+                const url = URL.createObjectURL(blob);
+                previewUrls.push(url);
+                // 提取尺寸信息（从文件名中）
+                const sizeMatch = item.name.match(/_(\d+)\.ico$/);
+                const sizeLabel = sizeMatch ? sizeMatch[1] + 'x' + sizeMatch[1] : '';
+                html += `
+                    <div class="preview-item">
+                        <img src="${url}" alt="${item.name}">
+                        <div class="label">${sizeLabel}</div>
+                    </div>
+                `;
+            });
+            previewGrid.innerHTML = html;
+            previewArea.style.display = 'block';
+        }
+
+        // 渲染文件列表
+        function renderFileList() {
+            if (filesData.length === 0) {
+                fileListEl.innerHTML = '';
+                convertBtn.disabled = true;
+                statusMsg.textContent = '请选择图片';
+                clearPreview();
+                return;
+            }
+            let html = '';
+            filesData.forEach((item, index) => {
+                html += `
+                    <div class="file-item">
+                        <span class="name">${item.name}</span>
+                        <span class="size">${formatSize(item.size)}</span>
+                        ${!item.isSquare ? `<span class="crop-warning">裁剪为1:1</span>` : ''}
+                        <button class="remove-btn" data-index="${index}" aria-label="移除">✕</button>
+                    </div>
+                `;
+            });
+            fileListEl.innerHTML = html;
+            convertBtn.disabled = false;
+            statusMsg.textContent = `已添加 ${filesData.length} 张图片，非正方形将自动裁剪为1:1。`;
+
+            // 绑定移除事件
+            document.querySelectorAll('.file-item .remove-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const idx = parseInt(this.dataset.index, 10);
+                    if (!isNaN(idx)) {
+                        filesData.splice(idx, 1);
+                        renderFileList();
+                        // 隐藏旧下载链接和预览
+                        downloadLink.style.display = 'none';
+                        downloadLink.href = '#';
+                        clearPreview();
+                    }
+                });
+            });
+        }
+
+        // 处理添加文件
+        function addFiles(fileList) {
+            const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (validFiles.length === 0) {
+                statusMsg.textContent = '没有有效的图片文件';
+                return;
+            }
+            let loaded = 0;
+            validFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const img = new Image();
+                    img.onload = function() {
+                        const width = img.naturalWidth;
+                        const height = img.naturalHeight;
+                        const isSquare = (width === height);
+                        filesData.push({
+                            file: file,
+                            dataUrl: dataUrl,
+                            name: file.name,
+                            size: file.size,
+                            width: width,
+                            height: height,
+                            isSquare: isSquare
+                        });
+                        loaded++;
+                        if (loaded === validFiles.length) {
+                            renderFileList();
+                        }
+                    };
+                    img.onerror = function() {
+                        // 如果无法加载尺寸，仍添加但不裁剪提示
+                        filesData.push({
+                            file: file,
+                            dataUrl: dataUrl,
+                            name: file.name,
+                            size: file.size,
+                            width: 0,
+                            height: 0,
+                            isSquare: true
+                        });
+                        loaded++;
+                        if (loaded === validFiles.length) {
+                            renderFileList();
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.onerror = function() {
+                    statusMsg.textContent = '读取文件失败: ' + file.name;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ---- 核心：生成 ICO ----
+        async function generateIco() {
+            if (filesData.length === 0) {
+                statusMsg.textContent = '请先添加图片';
+                return;
+            }
+
+            // 获取选中的尺寸
+            const selectedSizes = [];
+            sizeCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    const val = parseInt(cb.value, 10);
+                    if (val > 0 && val <= 256) selectedSizes.push(val);
+                }
+            });
+            const sizes = [...new Set(selectedSizes)].sort((a, b) => a - b);
+            if (sizes.length === 0) {
+                statusMsg.textContent = '请至少勾选一个尺寸';
+                return;
+            }
+
+            convertBtn.disabled = true;
+            statusMsg.textContent = '正在生成图标...';
+            downloadLink.style.display = 'none';
+            clearPreview();
+
+            try {
+                const icoResults = []; // { name, buffer }
+
+                for (let i = 0; i < filesData.length; i++) {
+                    const item = filesData[i];
+                    const img = await loadImage(item.dataUrl);
+                    const srcWidth = img.naturalWidth || img.width;
+                    const srcHeight = img.naturalHeight || img.height;
+                    const cropSize = Math.min(srcWidth, srcHeight);
+                    const sx = (srcWidth - cropSize) / 2;
+                    const sy = (srcHeight - cropSize) / 2;
+
+                    for (const size of sizes) {
+                        const pngBuffer = await resizeToPngBuffer(img, size, size, sx, sy, cropSize);
+                        const icoBuffer = buildIcoFile([pngBuffer], [size]);
+                        const baseName = item.name.replace(/\.[^.]+$/, '') || 'icon';
+                        const fileName = `${baseName}_${size}.ico`;
+                        icoResults.push({ name: fileName, buffer: icoBuffer });
+                    }
+                }
+
+                if (icoResults.length === 0) {
+                    statusMsg.textContent = '没有生成任何图标';
+                    return;
+                }
+
+                // 显示预览
+                showPreview(icoResults);
+
+                // 下载处理
+                if (icoResults.length === 1) {
+                    const blob = new Blob([icoResults[0].buffer], { type: 'image/x-icon' });
+                    const url = URL.createObjectURL(blob);
+                    downloadLink.href = url;
+                    downloadLink.download = icoResults[0].name;
+                    downloadLink.style.display = 'inline-flex';
+                    statusMsg.textContent = '生成完成，点击下载按钮保存。';
+                } else {
+                    const zip = new JSZip();
+                    icoResults.forEach(res => {
+                        zip.file(res.name, res.buffer);
+                    });
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(zipBlob);
+                    downloadLink.href = url;
+                    downloadLink.download = 'icons.zip';
+                    downloadLink.style.display = 'inline-flex';
+                    statusMsg.textContent = `生成完成，共 ${icoResults.length} 个图标，已打包为zip。`;
+                }
+            } catch (err) {
+                console.error(err);
+                statusMsg.textContent = '生成失败: ' + err.message;
+                statusMsg.className = 'status error';
+            } finally {
+                convertBtn.disabled = false;
+            }
+        }
+
+        // 加载图片
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('图片加载失败'));
+                img.src = src;
+            });
+        }
+
+        // 生成指定尺寸的PNG buffer（裁剪+缩放）
+        function resizeToPngBuffer(img, width, height, sx, sy, cropSize) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error(`无法生成 ${width}x${height} 的 PNG`));
+                            return;
+                        }
+                        blob.arrayBuffer().then(buf => resolve(buf)).catch(reject);
+                    }, 'image/png');
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // 构建ICO文件
+        function buildIcoFile(pngBuffers, sizes) {
+            const count = pngBuffers.length;
+            const headerSize = 6 + count * 16;
+            let totalSize = headerSize;
+            const offsets = [];
+            for (let i = 0; i < count; i++) {
+                offsets.push(totalSize);
+                totalSize += pngBuffers[i].byteLength;
+            }
+            const buffer = new ArrayBuffer(totalSize);
+            const view = new DataView(buffer);
+            let pos = 0;
+            view.setUint16(pos, 0, true); pos += 2;
+            view.setUint16(pos, 1, true); pos += 2;
+            view.setUint16(pos, count, true); pos += 2;
+            for (let i = 0; i < count; i++) {
+                const size = sizes[i];
+                const dataLen = pngBuffers[i].byteLength;
+                const offset = offsets[i];
+                view.setUint8(pos, size === 256 ? 0 : size); pos += 1;
+                view.setUint8(pos, size === 256 ? 0 : size); pos += 1;
+                view.setUint8(pos, 0); pos += 1;
+                view.setUint8(pos, 0); pos += 1;
+                view.setUint16(pos, 0, true); pos += 2;
+                view.setUint16(pos, 0, true); pos += 2;
+                view.setUint32(pos, dataLen, true); pos += 4;
+                view.setUint32(pos, offset, true); pos += 4;
+            }
+            for (let i = 0; i < count; i++) {
+                const data = new Uint8Array(pngBuffers[i]);
+                new Uint8Array(buffer).set(data, offsets[i]);
+            }
+            return buffer;
+        }
+
+        // ---- 事件绑定 ----
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                addFiles(e.dataTransfer.files);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                addFiles(e.target.files);
+            }
+            fileInput.value = '';
+        });
+
+        convertBtn.addEventListener('click', generateIco);
+
+        // 尺寸变化时隐藏旧下载链接和预览
+        sizeCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                downloadLink.style.display = 'none';
+                downloadLink.href = '#';
+                clearPreview();
+                if (filesData.length > 0) {
+                    statusMsg.textContent = '尺寸已更改，请重新生成';
+                }
+            });
+        });
+
+        // 初始化
+        renderFileList();
+    })();
+</script>
+</body>
+</html>
