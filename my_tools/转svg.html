@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片转SVG </title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; color: #222; }
+        .container { width: 100%; max-width: 860px; background: #ffffff; border-radius: 8px; padding: 32px 36px 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #e4e7ed; }
+        h1 { font-size: 22px; font-weight: 600; letter-spacing: 0.3px; margin-bottom: 6px; }
+        .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; border-bottom: 1px solid #eee; padding-bottom: 16px; }
+        .upload-area { border: 1.5px dashed #c8ccd4; border-radius: 6px; padding: 36px 20px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafbfc; position: relative; }
+        .upload-area:hover { border-color: #8c8f97; background: #f8f9fb; }
+        .upload-area.dragover { border-color: #3b82f6; background: #f0f4ff; }
+        .upload-area .label { font-size: 15px; color: #444; display: block; font-weight: 450; }
+        .upload-area .hint { font-size: 12.5px; color: #999; margin-top: 6px; }
+        .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .preview-section { margin-top: 20px; display: none; border: 1px solid #e8eaee; border-radius: 6px; overflow: hidden; background: #fcfcfd; }
+        .preview-section.active { display: block; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #f8f9fb; border-bottom: 1px solid #e8eaee; font-size: 13px; color: #555; flex-wrap: wrap; gap: 8px; }
+        .preview-header .file-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .preview-header .file-size { color: #999; font-size: 12px; }
+        .size-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+        .size-controls label { display: flex; align-items: center; gap: 3px; font-size: 13px; color: #555; }
+        .size-controls input[type="number"] { width: 64px; padding: 4px 6px; border: 1px solid #d0d4dd; border-radius: 4px; font-size: 13px; background: #fff; }
+        .size-controls input[type="number"]:focus { outline: none; border-color: #3b82f6; }
+        .size-controls .lock-btn { background: none; border: 1px solid #d0d4dd; border-radius: 4px; padding: 4px 10px; font-size: 13px; cursor: pointer; color: #555; transition: 0.15s; }
+        .size-controls .lock-btn.active { background: #e8edf4; border-color: #8c9bb0; color: #1a2a3a; }
+        .size-controls .lock-btn:hover { background: #f0f2f5; }
+        .preview-body { padding: 12px; display: flex; justify-content: center; align-items: center; min-height: 120px; background: #fff; }
+        .preview-body img { max-width: 100%; max-height: 300px; object-fit: contain; display: block; border-radius: 3px; }
+        .action-bar { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; padding: 8px 24px; font-size: 14px; font-weight: 450; border-radius: 5px; border: 1px solid #d0d4dd; background: #fff; color: #333; cursor: pointer; transition: 0.15s; user-select: none; font-family: inherit; height: 40px; }
+        .btn:hover { background: #f3f4f6; border-color: #b8bcc6; }
+        .btn:active { background: #e6e8ec; }
+        .btn-primary { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+        .btn-primary:hover { background: #333; border-color: #333; color: #fff; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; background: #888; border-color: #888; }
+        .btn-success { background: #1a7a3a; border-color: #1a7a3a; color: #fff; }
+        .btn-success:hover { background: #1f8a44; border-color: #1f8a44; }
+        .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-msg { margin-top: 12px; font-size: 13px; color: #666; min-height: 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .status-msg.error { color: #c0392b; }
+        .status-msg.success { color: #1a7a3a; }
+        .result-section { margin-top: 20px; display: none; border: 1px solid #e8eaee; border-radius: 6px; overflow: hidden; }
+        .result-section.active { display: block; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #f8f9fb; border-bottom: 1px solid #e8eaee; font-size: 13px; color: #555; flex-wrap: wrap; gap: 6px; }
+        .result-header .info { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .result-header .info span { color: #888; font-size: 12px; }
+        .result-body { padding: 16px; background: #fff; display: flex; flex-direction: column; gap: 14px; }
+        .svg-preview { border: 1px solid #e8eaee; border-radius: 4px; padding: 12px; background: #fcfcfd; display: flex; justify-content: center; align-items: center; min-height: 140px; max-height: 360px; overflow: auto; }
+        .svg-preview svg { max-width: 100%; max-height: 320px; display: block; }
+        .svg-code-wrap { position: relative; border: 1px solid #e8eaee; border-radius: 4px; background: #f8f9fb; }
+        .svg-code-wrap pre { margin: 0; padding: 12px 14px; font-size: 12px; font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace; line-height: 1.6; color: #333; white-space: pre-wrap; word-break: break-all; max-height: 240px; overflow: auto; }
+        .svg-code-wrap .code-label { position: absolute; top: 8px; right: 12px; font-size: 11px; color: #aaa; background: #f0f1f3; padding: 1px 10px; border-radius: 3px; letter-spacing: 0.2px; pointer-events: none; }
+        .footer { margin-top: 28px; font-size: 12px; color: #bbb; text-align: center; border-top: 1px solid #eee; padding-top: 18px; letter-spacing: 0.2px; }
+        @media (max-width:600px) {
+            .container { padding: 20px 16px 28px; }
+            h1 { font-size: 19px; }
+            .upload-area { padding: 24px 14px; }
+            .upload-area .label { font-size: 14px; }
+            .action-bar { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .result-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .preview-header { flex-direction: column; align-items: stretch; gap: 6px; }
+            .size-controls { justify-content: flex-start; flex-wrap: wrap; }
+            .size-controls label { flex: 0 0 auto; }
+            .svg-code-wrap .code-label { position: static; display: inline-block; margin-bottom: 6px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>图片转SVG </h1>
+    <div class="subtitle">将图片转为彩色方块构成的 SVG，可自定义输出尺寸和像素块大小</div>
+
+    <div class="upload-area" id="uploadArea">
+        <span class="label">点击选择或拖拽图片</span>
+        <span class="hint">支持 PNG / JPG / BMP / WEBP</span>
+        <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="preview-section" id="previewSection">
+        <div class="preview-header">
+            <span class="file-name" id="fileName">未命名</span>
+            <span class="file-size" id="fileSize">0 KB</span>
+            <div class="size-controls">
+                <label>宽 <input type="number" id="outputWidth" min="1" max="2000" value="400"></label>
+                <label>高 <input type="number" id="outputHeight" min="1" max="2000" value="300"></label>
+                <button class="lock-btn active" id="lockBtn" title="锁定宽高比">锁定比例</button>
+                <label>像素大小 <input type="number" id="blockSize" min="1" max="50" value="4"></label>
+            </div>
+        </div>
+        <div class="preview-body">
+            <img id="previewImage" alt="预览">
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn btn-primary" id="convertBtn" disabled>转换</button>
+        <button class="btn" id="clearBtn">清除</button>
+        <div style="flex:1;min-width:40px;"></div>
+        <button class="btn btn-success" id="downloadBtn" disabled>下载 SVG</button>
+    </div>
+
+    <div class="status-msg" id="statusMsg">
+        <span id="statusText">上传图片后设置尺寸和像素大小，点击转换</span>
+    </div>
+
+    <div class="result-section" id="resultSection">
+        <div class="result-header">
+            <div class="info">
+                <span>转换结果</span>
+                <span id="svgInfo"></span>
+            </div>
+            <div>
+                <button class="btn" id="copyBtn" style="padding:4px 14px;height:30px;font-size:12px;">复制代码</button>
+            </div>
+        </div>
+        <div class="result-body">
+            <div class="svg-preview" id="svgPreview"></div>
+            <div class="svg-code-wrap">
+                <span class="code-label">SVG</span>
+                <pre id="svgCode"></pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">数量请不要太大，尽量少于1000，否则将会卡死</div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // DOM 引用
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const convertBtn = document.getElementById('convertBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const resultSection = document.getElementById('resultSection');
+        const svgPreview = document.getElementById('svgPreview');
+        const svgCode = document.getElementById('svgCode');
+        const svgInfo = document.getElementById('svgInfo');
+        const statusText = document.getElementById('statusText');
+        const outputWidth = document.getElementById('outputWidth');
+        const outputHeight = document.getElementById('outputHeight');
+        const lockBtn = document.getElementById('lockBtn');
+        const blockSizeInput = document.getElementById('blockSize');
+
+        // 状态
+        let currentFile = null;
+        let currentImage = null;
+        let currentSvgString = null;
+        let isConverting = false;
+        let isLocked = true;
+        let aspectRatio = 1;
+
+        // ----- 辅助函数 -----
+        function setStatus(msg, type) {
+            statusText.textContent = msg || '';
+            statusText.className = 'status-msg' + (type ? ' ' + type : '');
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function resetAll() {
+            currentFile = null;
+            currentImage = null;
+            currentSvgString = null;
+            isConverting = false;
+            previewSection.classList.remove('active');
+            resultSection.classList.remove('active');
+            convertBtn.disabled = true;
+            downloadBtn.disabled = true;
+            svgPreview.innerHTML = '';
+            svgCode.textContent = '';
+            svgInfo.textContent = '';
+            fileInput.value = '';
+            uploadArea.classList.remove('dragover');
+            setStatus('已清除，等待上传图片');
+        }
+
+        // ----- 尺寸控制逻辑 -----
+        function updateAspectRatio(img) {
+            if (!img) return;
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            if (w > 0 && h > 0) {
+                aspectRatio = w / h;
+                if (isLocked) {
+                    const curW = parseInt(outputWidth.value) || 400;
+                    const newH = Math.round(curW / aspectRatio);
+                    if (newH > 0 && newH <= 2000) {
+                        outputHeight.value = newH;
+                    }
+                }
+            }
+        }
+
+        function onWidthChange() {
+            if (!isLocked) return;
+            const w = parseInt(outputWidth.value);
+            if (w > 0 && aspectRatio > 0) {
+                const h = Math.round(w / aspectRatio);
+                if (h > 0 && h <= 2000) {
+                    outputHeight.value = h;
+                }
+            }
+        }
+
+        function onHeightChange() {
+            if (!isLocked) return;
+            const h = parseInt(outputHeight.value);
+            if (h > 0 && aspectRatio > 0) {
+                const w = Math.round(h * aspectRatio);
+                if (w > 0 && w <= 2000) {
+                    outputWidth.value = w;
+                }
+            }
+        }
+
+        function toggleLock() {
+            isLocked = !isLocked;
+            lockBtn.classList.toggle('active', isLocked);
+            lockBtn.textContent = isLocked ? '锁定比例' : '已解锁';
+            if (isLocked && currentImage) {
+                const w = parseInt(outputWidth.value);
+                if (w > 0 && aspectRatio > 0) {
+                    const h = Math.round(w / aspectRatio);
+                    if (h > 0 && h <= 2000) outputHeight.value = h;
+                }
+            }
+        }
+
+        outputWidth.addEventListener('input', onWidthChange);
+        outputHeight.addEventListener('input', onHeightChange);
+        lockBtn.addEventListener('click', toggleLock);
+
+        // ----- 像素块转换（核心） -----
+        function pixelBlockConvert(img, targetWidth, targetHeight, blockSize) {
+            if (blockSize < 1) blockSize = 1;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            if (w === 0 || h === 0) throw new Error('图片尺寸无效');
+
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+            const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+            const data = imageData.data;
+            const cols = targetWidth;
+            const rows = targetHeight;
+            const step = Math.min(blockSize, Math.max(cols, rows)); // 防止步长超过尺寸
+            const rects = [];
+
+            for (let y = 0; y < rows; y += step) {
+                for (let x = 0; x < cols; x += step) {
+                    const cx = Math.min(x, cols - 1);
+                    const cy = Math.min(y, rows - 1);
+                    const idx = (cy * cols + cx) * 4;
+                    const r = data[idx];
+                    const g = data[idx+1];
+                    const b = data[idx+2];
+                    const a = data[idx+3] / 255;
+                    if (a < 0.05) continue;
+                    const w_ = Math.min(step, cols - x);
+                    const h_ = Math.min(step, rows - y);
+                    rects.push(`<rect x="${x}" y="${y}" width="${w_}" height="${h_}" fill="rgb(${r},${g},${b})" opacity="${a}"/>`);
+                }
+            }
+
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${cols}" height="${rows}" viewBox="0 0 ${cols} ${rows}">\n${rects.join('\n')}\n</svg>`;
+            return svg;
+        }
+
+        // ----- 转换入口 -----
+        function convertToSvg() {
+            if (!currentImage) { setStatus('请先上传图片', 'error'); return; }
+            if (isConverting) return;
+
+            const w = parseInt(outputWidth.value);
+            const h = parseInt(outputHeight.value);
+            const bs = parseInt(blockSizeInput.value);
+            if (!w || !h || w < 1 || h < 1 || w > 2000 || h > 2000) {
+                setStatus('请输入有效的宽度和高度 (1-2000)', 'error');
+                return;
+            }
+            if (!bs || bs < 1 || bs > 50) {
+                setStatus('请输入有效的像素大小 (1-50)', 'error');
+                return;
+            }
+
+            if (isLocked && aspectRatio > 0) {
+                const newH = Math.round(w / aspectRatio);
+                if (newH > 0 && newH <= 2000) {
+                    outputHeight.value = newH;
+                } else {
+                    setStatus('计算出的高度超出范围，请调整宽度', 'error');
+                    return;
+                }
+            }
+
+            isConverting = true;
+            convertBtn.disabled = true;
+            setStatus('正在生成 SVG ...', '');
+
+            setTimeout(() => {
+                try {
+                    const targetW = parseInt(outputWidth.value);
+                    const targetH = parseInt(outputHeight.value);
+                    const blockSize = parseInt(blockSizeInput.value);
+                    const svg = pixelBlockConvert(currentImage, targetW, targetH, blockSize);
+                    currentSvgString = svg;
+                    displayResult(svg);
+                    setStatus('转换完成！', 'success');
+                    downloadBtn.disabled = false;
+                } catch (err) {
+                    setStatus('转换出错：' + err.message, 'error');
+                    console.error(err);
+                } finally {
+                    isConverting = false;
+                    convertBtn.disabled = false;
+                }
+            }, 50);
+        }
+
+        function displayResult(svgString) {
+            if (!svgString) return;
+            svgPreview.innerHTML = svgString;
+            svgCode.textContent = svgString;
+            const size = new Blob([svgString]).size;
+            const rectCount = (svgString.match(/<rect/g) || []).length;
+            svgInfo.textContent = '大小 ' + formatSize(size) + ' · 方块 ' + rectCount + ' 个';
+            resultSection.classList.add('active');
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function downloadSvg() {
+            if (!currentSvgString) { setStatus('没有可下载的 SVG，请先转换', 'error'); return; }
+            const blob = new Blob([currentSvgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const name = currentFile ? currentFile.name.replace(/\.[^.]+$/, '') : 'image';
+            a.download = name + '.svg';
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            setStatus('下载已开始', 'success');
+        }
+
+        function copySvgCode() {
+            if (!currentSvgString) { setStatus('没有可复制的代码，请先转换', 'error'); return; }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(currentSvgString).then(() => setStatus('已复制到剪贴板', 'success'))
+                    .catch(() => fallbackCopy());
+            } else { fallbackCopy(); }
+        }
+        function fallbackCopy() {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = currentSvgString;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                ta.style.top = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                setStatus('已复制到剪贴板', 'success');
+            } catch(e) { setStatus('复制失败，请手动选择复制', 'error'); }
+        }
+
+        // ----- 文件处理 -----
+        function handleFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { setStatus('请选择图片文件', 'error'); return; }
+            if (file.size > 20 * 1024 * 1024) { setStatus('文件过大，请选择小于 20MB 的图片', 'error'); return; }
+
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatSize(file.size);
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    previewImage.src = e.target.result;
+                    previewSection.classList.add('active');
+                    convertBtn.disabled = false;
+                    downloadBtn.disabled = true;
+                    resultSection.classList.remove('active');
+                    currentSvgString = null;
+
+                    const origW = img.naturalWidth || img.width;
+                    const origH = img.naturalHeight || img.height;
+                    let setW = origW;
+                    let setH = origH;
+                    const MAX_AUTO = 800;
+                    if (setW > MAX_AUTO || setH > MAX_AUTO) {
+                        const scale = Math.min(MAX_AUTO / setW, MAX_AUTO / setH);
+                        setW = Math.round(setW * scale);
+                        setH = Math.round(setH * scale);
+                    }
+                    outputWidth.value = setW;
+                    outputHeight.value = setH;
+                    aspectRatio = origW / origH;
+                    if (isLocked) {
+                        const h = Math.round(setW / aspectRatio);
+                        if (h > 0 && h <= 2000) outputHeight.value = h;
+                    }
+                    setStatus('图片已加载，设置参数后点击转换', '');
+                };
+                img.onerror = function() { setStatus('图片加载失败，请尝试其他文件', 'error'); };
+                img.src = e.target.result;
+            };
+            reader.onerror = function() { setStatus('读取文件失败', 'error'); };
+            reader.readAsDataURL(file);
+        }
+
+        // ----- 事件绑定 -----
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files.length > 0) handleFile(this.files[0]);
+            this.value = '';
+        });
+        uploadArea.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', function(e) { e.preventDefault(); this.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) handleFile(files[0]);
+        });
+        uploadArea.addEventListener('click', function(e) { if (e.target.tagName !== 'INPUT') fileInput.click(); });
+
+        convertBtn.addEventListener('click', convertToSvg);
+        clearBtn.addEventListener('click', function() { resetAll(); });
+        downloadBtn.addEventListener('click', downloadSvg);
+        copyBtn.addEventListener('click', copySvgCode);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !convertBtn.disabled && document.activeElement !== fileInput) convertBtn.click();
+        });
+
+        // 初始化
+        resetAll();
+        lockBtn.classList.add('active');
+        lockBtn.textContent = '锁定比例';
+        // 设定像素大小范围提示（通过HTML min/max已限制）
+    })();
+</script>
+</body>
+</html>
