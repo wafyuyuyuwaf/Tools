@@ -7,366 +7,76 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js">
     </script>
     <style>
-        /* 极简样式 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #f6f6f6;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            padding: 2rem 1rem;
-            color: #222;
-        }
-        .app {
-            max-width: 640px;
-            width: 100%;
-            background: #fff;
-            padding: 2rem 1.8rem;
-            border-radius: 4px;
-            box-shadow: 0 1px 12px rgba(0, 0, 0, 0.04);
-        }
-        h1 {
-            font-size: 1.6rem;
-            font-weight: 350;
-            letter-spacing: 0.04em;
-            border-bottom: 1px solid #e8e8e8;
-            padding-bottom: 0.6rem;
-            margin-bottom: 1.6rem;
-            color: #1a1a1a;
-        }
-        .upload-area {
-            border: 1px dashed #ccc;
-            padding: 2rem 1rem;
-            text-align: center;
-            cursor: pointer;
-            background: #fafafa;
-            transition: border-color 0.2s, background 0.2s;
-            margin-bottom: 1.2rem;
-            position: relative;
-        }
-        .upload-area:hover {
-            border-color: #999;
-            background: #f5f5f5;
-        }
-        .upload-area input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-        .upload-text {
-            font-size: 1rem;
-            font-weight: 300;
-            color: #555;
-            letter-spacing: 0.02em;
-            pointer-events: none;
-        }
-        .upload-text .hint {
-            display: block;
-            font-size: 0.8rem;
-            color: #aaa;
-            margin-top: 0.2rem;
-        }
-
-        .video-section {
-            display: none;
-            margin-bottom: 1.2rem;
-            background: #fafafa;
-            padding: 0.6rem;
-            border: 1px solid #eee;
-        }
-        .video-section.visible {
-            display: block;
-        }
-        .video-section video {
-            width: 100%;
-            max-height: 280px;
-            background: #000;
-            display: block;
-        }
-        .video-info {
-            font-size: 0.8rem;
-            color: #666;
-            padding: 0.4rem 0.2rem 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem 0.8rem;
-        }
-        .video-info span {
-            background: #eee;
-            padding: 0.1rem 0.6rem;
-            border-radius: 2px;
-        }
-
-        .params {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.8rem 1.2rem;
-            margin-bottom: 1.6rem;
-            padding: 0.8rem 0 0.2rem;
-            border-top: 1px solid #eee;
-        }
-        .param-group {
-            display: flex;
-            flex-direction: column;
-        }
-        .param-group label {
-            font-size: 0.75rem;
-            font-weight: 300;
-            color: #999;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.1rem;
-        }
-        .param-group input {
-            font-size: 0.95rem;
-            font-weight: 350;
-            font-family: inherit;
-            padding: 0.3rem 0.2rem;
-            border: none;
-            border-bottom: 1px solid #e0e0e0;
-            background: transparent;
-            color: #2c2c2c;
-            outline: none;
-            transition: border-color 0.2s;
-            width: 100%;
-        }
-        .param-group input:focus {
-            border-bottom-color: #2c2c2c;
-        }
-        .param-group .unit {
-            font-size: 0.7rem;
-            color: #bbb;
-            margin-top: 0.1rem;
-        }
-        .param-full {
-            grid-column: 1 / -1;
-        }
-        .est-frames {
-            font-size: 0.8rem;
-            color: #888;
-            font-weight: 300;
-        }
-        .perf-hint {
-            font-size: 0.75rem;
-            color: #b0b0b0;
-            margin-top: 0.2rem;
-            font-weight: 300;
-        }
-
-        .actions {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 1.2rem;
-        }
-        .btn {
-            background: none;
-            border: none;
-            font-size: 1rem;
-            font-weight: 300;
-            font-family: inherit;
-            padding: 0.5rem 1.4rem;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
-            border-radius: 2px;
-            letter-spacing: 0.04em;
-            min-height: 44px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-primary {
-            background: #2c2c2c;
-            color: #fff;
-            font-weight: 350;
-            border-radius: 3px;
-            padding: 0.5rem 2rem;
-        }
-        .btn-primary:hover:not(:disabled) {
-            background: #1a1a1a;
-        }
-        .btn-primary:disabled {
-            background: #ccc;
-            color: #888;
-            cursor: not-allowed;
-        }
-        .btn-danger {
-            color: #b33;
-            border: 1px solid #e0e0e0;
-            border-radius: 3px;
-        }
-        .btn-danger:hover:not(:disabled) {
-            border-color: #b33;
-            background: #fdf5f5;
-        }
-        .btn-danger:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .btn-success {
-            background: #1a1a1a;
-            color: #fff;
-            border-radius: 3px;
-            padding: 0.5rem 2rem;
-        }
-        .btn-success:hover:not(:disabled) {
-            background: #000;
-        }
-        .btn-success:disabled {
-            background: #ccc;
-            color: #888;
-            cursor: not-allowed;
-        }
-        .btn-outline {
-            color: #777;
-            border: 1px solid #e0e0e0;
-            border-radius: 3px;
-        }
-        .btn-outline:hover:not(:disabled) {
-            border-color: #aaa;
-            color: #2c2c2c;
-        }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .progress-wrap {
-            margin-top: 0.8rem;
-            display: none;
-        }
-        .progress-wrap.visible {
-            display: block;
-        }
-        .progress-label {
-            font-size: 0.8rem;
-            color: #999;
-            font-weight: 300;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.2rem;
-        }
-        .progress-track {
-            width: 100%;
-            height: 2px;
-            background: #eee;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            background: #2c2c2c;
-            transition: width 0.15s ease;
-        }
-
-        .result {
-            display: none;
-            margin-top: 1.6rem;
-            padding-top: 1.2rem;
-            border-top: 1px solid #eee;
-        }
-        .result.visible {
-            display: block;
-        }
-        .result-preview {
-            text-align: center;
-            margin-bottom: 0.8rem;
-        }
-        .result-preview img {
-            max-width: 100%;
-            max-height: 360px;
-            border: 1px solid #eee;
-            background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
-        }
-        .result-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.6rem;
-            font-size: 0.8rem;
-            color: #999;
-            font-weight: 300;
-        }
-
-        .toast {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-30px);
-            background: #222;
-            color: #fff;
-            padding: 8px 24px;
-            font-size: 14px;
-            font-weight: 300;
-            letter-spacing: 0.04em;
-            opacity: 0;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            pointer-events: none;
-            z-index: 999;
-            max-width: 90%;
-            text-align: center;
-            border-radius: 2px;
-        }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        .toast.error {
-            background: #b03a2e;
-        }
-        .toast.success {
-            background: #1e7e34;
-        }
-
-        @media (max-width: 500px) {
-            .app {
-                padding: 1.2rem 0.8rem;
-            }
-            .params {
-                grid-template-columns: 1fr 1fr;
-                gap: 0.6rem 0.8rem;
-            }
-            .btn {
-                font-size: 0.9rem;
-                padding: 0.4rem 1rem;
-                min-height: 40px;
-            }
-            .btn-primary,
-            .btn-success {
-                padding: 0.4rem 1.4rem;
-            }
-            .actions {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .actions .btn {
-                width: 100%;
-                justify-content: center;
-            }
-            .result-info {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+        /* 样式未变，省略……（与原文一致） */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background:#f6f6f6; font-family:system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display:flex; justify-content:center; padding:2rem 1rem; color:#222; }
+        .app { max-width:640px; width:100%; background:#fff; padding:2rem 1.8rem; border-radius:4px; box-shadow:0 1px 12px rgba(0,0,0,0.04); }
+        h1 { font-size:1.6rem; font-weight:350; letter-spacing:0.04em; border-bottom:1px solid #e8e8e8; padding-bottom:0.6rem; margin-bottom:1.6rem; color:#1a1a1a; }
+        .upload-area { border:1px dashed #ccc; padding:2rem 1rem; text-align:center; cursor:pointer; background:#fafafa; transition:border-color 0.2s, background 0.2s; margin-bottom:1.2rem; position:relative; }
+        .upload-area:hover { border-color:#999; background:#f5f5f5; }
+        .upload-area input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+        .upload-text { font-size:1rem; font-weight:300; color:#555; letter-spacing:0.02em; pointer-events:none; }
+        .upload-text .hint { display:block; font-size:0.8rem; color:#aaa; margin-top:0.2rem; }
+        .video-section { display:none; margin-bottom:1.2rem; background:#fafafa; padding:0.6rem; border:1px solid #eee; }
+        .video-section.visible { display:block; }
+        .video-section video { width:100%; max-height:280px; background:#000; display:block; }
+        .video-info { font-size:0.8rem; color:#666; padding:0.4rem 0.2rem 0; display:flex; flex-wrap:wrap; gap:0.4rem 0.8rem; }
+        .video-info span { background:#eee; padding:0.1rem 0.6rem; border-radius:2px; }
+        .params { display:grid; grid-template-columns:1fr 1fr; gap:0.8rem 1.2rem; margin-bottom:1.6rem; padding:0.8rem 0 0.2rem; border-top:1px solid #eee; }
+        .param-group { display:flex; flex-direction:column; }
+        .param-group label { font-size:0.75rem; font-weight:300; color:#999; letter-spacing:0.04em; margin-bottom:0.1rem; }
+        .param-group input { font-size:0.95rem; font-weight:350; font-family:inherit; padding:0.3rem 0.2rem; border:none; border-bottom:1px solid #e0e0e0; background:transparent; color:#2c2c2c; outline:none; transition:border-color 0.2s; width:100%; }
+        .param-group input:focus { border-bottom-color:#2c2c2c; }
+        .param-group .unit { font-size:0.7rem; color:#bbb; margin-top:0.1rem; }
+        .param-full { grid-column:1 / -1; }
+        .est-frames { font-size:0.8rem; color:#888; font-weight:300; }
+        .perf-hint { font-size:0.75rem; color:#b0b0b0; margin-top:0.2rem; font-weight:300; }
+        .actions { display:flex; gap:1rem; flex-wrap:wrap; align-items:center; margin-bottom:1.2rem; }
+        .btn { background:none; border:none; font-size:1rem; font-weight:300; font-family:inherit; padding:0.5rem 1.4rem; cursor:pointer; transition:background 0.15s, color 0.15s; border-radius:2px; letter-spacing:0.04em; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+        .btn-primary { background:#2c2c2c; color:#fff; font-weight:350; border-radius:3px; padding:0.5rem 2rem; }
+        .btn-primary:hover:not(:disabled) { background:#1a1a1a; }
+        .btn-primary:disabled { background:#ccc; color:#888; cursor:not-allowed; }
+        .btn-danger { color:#b33; border:1px solid #e0e0e0; border-radius:3px; }
+        .btn-danger:hover:not(:disabled) { border-color:#b33; background:#fdf5f5; }
+        .btn-danger:disabled { opacity:0.4; cursor:not-allowed; }
+        .btn-success { background:#1a1a1a; color:#fff; border-radius:3px; padding:0.5rem 2rem; }
+        .btn-success:hover:not(:disabled) { background:#000; }
+        .btn-success:disabled { background:#ccc; color:#888; cursor:not-allowed; }
+        .btn-outline { color:#777; border:1px solid #e0e0e0; border-radius:3px; }
+        .btn-outline:hover:not(:disabled) { border-color:#aaa; color:#2c2c2c; }
+        .btn:disabled { opacity:0.5; cursor:not-allowed; }
+        .progress-wrap { margin-top:0.8rem; display:none; }
+        .progress-wrap.visible { display:block; }
+        .progress-label { font-size:0.8rem; color:#999; font-weight:300; letter-spacing:0.04em; margin-bottom:0.2rem; }
+        .progress-track { width:100%; height:2px; background:#eee; border-radius:2px; overflow:hidden; }
+        .progress-bar { height:100%; width:0%; background:#2c2c2c; transition:width 0.15s ease; }
+        .result { display:none; margin-top:1.6rem; padding-top:1.2rem; border-top:1px solid #eee; }
+        .result.visible { display:block; }
+        .result-preview { text-align:center; margin-bottom:0.8rem; }
+        .result-preview img { max-width:100%; max-height:360px; border:1px solid #eee; background:repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 12px 12px; }
+        .result-info { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; font-size:0.8rem; color:#999; font-weight:300; }
+        .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-30px); background:#222; color:#fff; padding:8px 24px; font-size:14px; font-weight:300; letter-spacing:0.04em; opacity:0; transition:opacity 0.25s ease, transform 0.25s ease; pointer-events:none; z-index:999; max-width:90%; text-align:center; border-radius:2px; }
+        .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+        .toast.error { background:#b03a2e; }
+        .toast.success { background:#1e7e34; }
+        @media (max-width:500px) {
+            .app { padding:1.2rem 0.8rem; }
+            .params { grid-template-columns:1fr 1fr; gap:0.6rem 0.8rem; }
+            .btn { font-size:0.9rem; padding:0.4rem 1rem; min-height:40px; }
+            .btn-primary, .btn-success { padding:0.4rem 1.4rem; }
+            .actions { flex-direction:column; align-items:stretch; }
+            .actions .btn { width:100%; justify-content:center; }
+            .result-info { flex-direction:column; align-items:flex-start; }
         }
     </style>
 </head>
 <body>
     <div class="app">
         <h1>视频转 GIF</h1>
-
         <div class="upload-area" id="uploadArea">
             <div class="upload-text">点击或拖拽上传视频<span class="hint">支持 MP4, WebM, MOV 等</span></div>
             <input type="file" id="fileInput" accept="video/*" />
         </div>
-
         <div class="video-section" id="videoSection">
             <video id="videoPreview" controls muted playsinline></video>
             <div class="video-info">
@@ -376,17 +86,16 @@
                 <span id="fileResolution">0x0</span>
             </div>
         </div>
-
         <div class="params">
             <div class="param-group">
                 <label>输出宽度 (px)</label>
-                <input type="number" id="outWidth" value="320" min="80" max="1280" step="8" />
-                <div class="perf-hint">宽度越大越慢，建议 ≤ 480</div>
+                <input type="number" id="outWidth" value="320" min="80" step="8" />
+                <div class="perf-hint">宽度越大越慢，请合理设置</div>
             </div>
             <div class="param-group">
                 <label>帧率 (fps)</label>
-                <input type="number" id="outFps" value="8" min="1" max="30" step="1" />
-                <div class="perf-hint">帧率越高越慢，建议 ≤ 15</div>
+                <input type="number" id="outFps" value="8" min="1" step="1" />
+                <div class="perf-hint">帧率越高越慢，请合理设置</div>
             </div>
             <div class="param-group">
                 <label>质量 (1-20)</label>
@@ -399,26 +108,23 @@
             </div>
             <div class="param-group">
                 <label>持续时长 (秒)</label>
-                <input type="number" id="duration" value="3" min="0.5" max="30" step="0.5" />
+                <input type="number" id="duration" value="3" min="0.5" step="0.5" />
             </div>
             <div class="param-group param-full">
-                <div class="est-frames">预估帧数: <strong id="estFrames">24</strong> (建议 ≤ 200)</div>
+                <div class="est-frames">预估帧数: <strong id="estFrames">24</strong></div>
             </div>
         </div>
-
         <div class="actions">
             <button class="btn btn-primary" id="btnConvert">开始转换</button>
             <button class="btn btn-danger" id="btnCancel" disabled>取消</button>
             <button class="btn btn-outline" id="btnReset">重置</button>
         </div>
-
         <div class="progress-wrap" id="progressWrap">
             <div class="progress-label" id="progressLabel">准备中 0%</div>
             <div class="progress-track">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
         </div>
-
         <div class="result" id="resultArea">
             <div class="result-preview">
                 <img id="resultImage" src="" alt="GIF 预览" style="display:none;" />
@@ -431,14 +137,10 @@
             </div>
         </div>
     </div>
-
     <div id="toast" class="toast"></div>
-
     <script>
         (function() {
             'use strict';
-
-            // DOM refs
             const $ = id => document.getElementById(id);
             const fileInput = $('fileInput');
             const uploadArea = $('uploadArea');
@@ -468,7 +170,6 @@
             const btnDownload = $('btnDownload');
             const toast = $('toast');
 
-            // 状态
             let currentFile = null;
             let videoLoaded = false;
             let isEncoding = false;
@@ -476,8 +177,6 @@
             let gifBlob = null;
             let gifUrl = null;
             let totalFrames = 0;
-
-            // Toast
             let toastTimer = null;
 
             function showToast(msg, type = 'info', durationMs = 3500) {
@@ -495,7 +194,6 @@
                 }, durationMs);
             }
 
-            // 工具
             function formatSize(bytes) {
                 if (bytes < 1024) return bytes + ' B';
                 if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -522,7 +220,6 @@
             duration.addEventListener('input', updateEstFrames);
             updateEstFrames();
 
-            // 文件处理 (修复上传两次)
             let processingFile = false;
 
             function handleFile(file) {
@@ -562,10 +259,7 @@
                     videoLoaded = true;
                     fileDuration.textContent = formatTime(videoPreview.duration);
                     fileResolution.textContent = videoPreview.videoWidth + '×' + videoPreview.videoHeight;
-                    const maxDur = Math.floor(videoPreview.duration);
-                    duration.max = Math.min(maxDur, 30);
-                    if (parseFloat(duration.value) > maxDur) duration.value = Math.min(maxDur, 3);
-                    startTime.max = Math.max(0, maxDur - 0.5);
+                    // 不再限制输入框的 max，保留 min 即可
                     updateEstFrames();
                     showToast('视频加载成功', 'success', 2000);
                     processingFile = false;
@@ -608,7 +302,6 @@
                 }
             });
 
-            // 重置
             function resetAll() {
                 if (isEncoding) {
                     cancelFlag = true;
@@ -642,7 +335,6 @@
             }
             btnReset.addEventListener('click', resetAll);
 
-            // 取消
             function cancelConvert() {
                 if (isEncoding) {
                     cancelFlag = true;
@@ -652,7 +344,6 @@
             }
             btnCancel.addEventListener('click', cancelConvert);
 
-            // 等待视频解码完成 (增强)
             function waitForDecode(video, targetTime, timeoutMs = 800) {
                 return new Promise((resolve, reject) => {
                     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
@@ -677,14 +368,11 @@
                         }
                         requestAnimationFrame(check);
                     };
-                    // 先触发一次 seeked 事件
                     const onSeeked = () => {
                         video.removeEventListener('seeked', onSeeked);
-                        // 继续检查
                         check();
                     };
                     video.addEventListener('seeked', onSeeked);
-                    // 如果已经 seeked 完成，但事件未触发，手动检查
                     setTimeout(() => {
                         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
                             video.removeEventListener('seeked', onSeeked);
@@ -694,7 +382,6 @@
                 });
             }
 
-            // 核心转换 (使用 Worker 模式)
             async function convertToGif() {
                 if (isEncoding) return;
                 if (!currentFile || !videoLoaded) {
@@ -709,24 +396,20 @@
                 let dur = parseFloat(duration.value) || 3;
 
                 const maxDur = videoPreview.duration || 30;
-                start = clamp(start, 0, Math.max(0, maxDur - 0.5));
-                dur = clamp(dur, 0.5, Math.min(maxDur - start, 30));
-                fps = clamp(fps, 1, 30);
-                quality = clamp(quality, 1, 20);
-                width = clamp(width, 80, 1280);
+                // 只做边界修正，不设硬上限
+                start = Math.max(0, start);
+                if (start > maxDur) start = 0;
+                dur = Math.max(0.5, dur);
+                if (start + dur > maxDur) dur = maxDur - start;
+                if (dur < 0.5) dur = 0.5;
+                fps = Math.max(1, fps);
+                width = Math.max(80, width);
                 const aspect = videoPreview.videoWidth / videoPreview.videoHeight || (16 / 9);
                 let height = Math.round(width / aspect);
                 if (height % 2 !== 0) height += 1;
                 if (height < 40) height = 40;
 
                 const frameCount = Math.ceil(fps * dur);
-                if (frameCount > 600) {
-                    showToast('帧数过多 (' + frameCount + ')，请减少时长或帧率', 'error');
-                    return;
-                }
-                if (frameCount > 300) {
-                    showToast('帧数较多 (' + frameCount + ')，转换可能较慢', 'error', 3000);
-                }
                 totalFrames = frameCount;
                 cancelFlag = false;
                 isEncoding = true;
@@ -742,7 +425,6 @@
                 btnDownload.disabled = true;
 
                 try {
-                    // 加载 worker 脚本
                     const workerResponse = await fetch(
                         'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
                     );
@@ -770,7 +452,6 @@
                     const video = videoPreview;
                     video.pause();
 
-                    // 逐帧提取
                     for (let i = 0; i < frameCount; i++) {
                         if (cancelFlag) {
                             showToast('转换已取消', 'info');
@@ -780,19 +461,14 @@
                         if (targetTime >= maxDur) break;
 
                         video.currentTime = targetTime;
-                        // 等待解码完成
                         try {
                             await waitForDecode(video, targetTime, 800);
                         } catch (e) {
-                            // 超时或取消，尝试继续
                             if (cancelFlag) return;
-                            // 如果解码超时，可能视频编码问题，跳过此帧
                             continue;
                         }
 
-                        // 额外等待一帧确保渲染
                         await new Promise(r => requestAnimationFrame(r));
-                        // 微小延迟
                         await new Promise(r => setTimeout(r, 10));
 
                         ctx.clearRect(0, 0, width, height);
@@ -809,7 +485,6 @@
                         return;
                     }
 
-                    // 编码阶段
                     progressLabel.textContent = '编码中 80%';
                     progressBar.style.width = '80%';
 
@@ -875,7 +550,6 @@
 
             btnConvert.addEventListener('click', convertToGif);
 
-            // 下载
             function downloadGif() {
                 if (!gifBlob) {
                     showToast('没有可下载的 GIF', 'error');
@@ -893,7 +567,6 @@
             }
             btnDownload.addEventListener('click', downloadGif);
 
-            // 初始提示
             showToast('上传视频开始转换', 'info', 2500);
         })();
     </script>
