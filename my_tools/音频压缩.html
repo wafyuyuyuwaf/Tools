@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>音频压缩 (WAV)</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 560px;
+            margin: 40px auto;
+            padding: 0 16px;
+            background: #ffffff;
+            color: #000000;
+            line-height: 1.5;
+        }
+        h2 {
+            font-weight: 500;
+            border-bottom: 1px solid #000;
+            padding-bottom: 6px;
+        }
+        .drop-area {
+            border: 2px dashed #888;
+            padding: 28px 12px;
+            text-align: center;
+            margin: 20px 0;
+            background: #fafafa;
+            cursor: pointer;
+            position: relative;
+        }
+        .drop-area:hover {
+            border-color: #000;
+            background: #f0f0f0;
+        }
+        #fileInput {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .option-group {
+            margin: 18px 0;
+        }
+        .option-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 14px;
+        }
+        .option-header label {
+            font-weight: 500;
+            min-width: 80px;
+        }
+        select {
+            font-size: 16px;
+            padding: 5px 10px;
+            border: 1px solid #888;
+            background: #fff;
+            color: #000;
+            border-radius: 0;
+            font-family: inherit;
+            height: 34px;
+            box-sizing: border-box;
+            flex: 1;
+            min-width: 180px;
+        }
+        .option-hint {
+            font-size: 13px;
+            color: #555;
+            margin-top: 3px;
+            padding-left: 88px;
+        }
+        .custom-options {
+            margin-top: 10px;
+            padding-left: 88px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+        }
+        .custom-options.visible {
+            display: flex;
+        }
+        .custom-options label {
+            font-weight: 400;
+            margin-right: 4px;
+        }
+        .custom-options select {
+            min-width: 120px;
+            flex: none;
+        }
+        button {
+            font-size: 16px;
+            padding: 7px 24px;
+            border: 1px solid #000;
+            background: #000;
+            color: #fff;
+            border-radius: 0;
+            font-family: inherit;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: default;
+            background: #666;
+            border-color: #666;
+        }
+        button:not(:disabled):hover {
+            background: #333;
+        }
+        .info {
+            border: 1px solid #ccc;
+            padding: 10px 14px;
+            margin: 14px 0;
+            background: #f8f8f8;
+            font-size: 14px;
+            word-break: break-all;
+            min-height: 1.5em;
+        }
+        .warning {
+            border: 1px solid #cc0000;
+            background: #ffeeee;
+            padding: 8px 12px;
+            margin: 8px 0;
+            font-size: 13px;
+            color: #990000;
+            display: none;
+        }
+        .progress-wrap {
+            width: 100%;
+            height: 5px;
+            background: #e5e5e5;
+            margin: 12px 0 16px 0;
+            display: none;
+        }
+        .progress-wrap.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #000;
+            transition: width 0.2s ease;
+        }
+        .footnote {
+            font-size: 13px;
+            color: #555;
+            margin-top: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>音频压缩 (WAV)</h2>
+    <p>上传音频，调整参数生成较小的 WAV 文件（本地处理）。</p>
+
+    <div class="drop-area" id="dropZone">
+        <span>点击此处或拖拽文件上传</span>
+        <div style="font-size:13px; color:#666; margin-top:4px;">支持 MP3 / WAV / M4A / FLAC / OGG / AAC 等</div>
+        <input type="file" id="fileInput" accept="audio/*">
+    </div>
+
+    <div class="option-group">
+        <div class="option-header">
+            <label for="presetSelect">压缩模式</label>
+            <select id="presetSelect">
+                <option value="mono4k">极限压缩 (4kHz 单声道)</option>
+                <option value="mono8k" selected>高压缩 (8kHz 单声道)</option>
+                <option value="stereo16k">平衡 (16kHz 立体声)</option>
+                <option value="stereo22k">低压缩 (22kHz 立体声)</option>
+                <option value="stereo44k">原始品质 (44.1kHz 立体声)</option>
+                <option value="custom">自定义 (高级)</option>
+            </select>
+        </div>
+        <div class="option-hint">采样率低于 8kHz 时人声会变闷，仅适合极低带宽需求的语音。音乐建议 16kHz 以上。</div>
+
+        <div class="custom-options" id="customOptions">
+            <div>
+                <label for="customSampleRate">采样率</label>
+                <select id="customSampleRate">
+                    <option value="2000">2 kHz (极低语音)</option>
+                    <option value="4000">4 kHz (低语音)</option>
+                    <option value="5512">5.512 kHz (语音编码)</option>
+                    <option value="8000" selected>8 kHz (电话音质)</option>
+                    <option value="11025">11.025 kHz</option>
+                    <option value="16000">16 kHz</option>
+                    <option value="22050">22.05 kHz</option>
+                    <option value="24000">24 kHz</option>
+                    <option value="32000">32 kHz</option>
+                    <option value="44100">44.1 kHz (CD标准)</option>
+                    <option value="48000">48 kHz (广播标准)</option>
+                    <option value="64000">64 kHz</option>
+                    <option value="88200">88.2 kHz</option>
+                    <option value="96000">96 kHz (母带级)</option>
+                    <option value="192000">192 kHz (超高解析)</option>
+                </select>
+            </div>
+            <div>
+                <label for="customChannels">声道</label>
+                <select id="customChannels">
+                    <option value="1">单声道</option>
+                    <option value="2">立体声</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="warning" id="sizeWarning">提示：当前设置下，压缩后文件可能接近或超过原始大小。</div>
+
+    <div class="info" id="fileInfo">未选择文件</div>
+
+    <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <button id="compressBtn" disabled>开始压缩</button>
+    <div class="footnote">压缩后自动下载 WAV。极低采样率（2-4kHz）仅建议用于纯语音。选择高于原始采样率的值只会增大体积，不会提升音质。</div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const compressBtn = document.getElementById('compressBtn');
+            const presetSelect = document.getElementById('presetSelect');
+            const customOptions = document.getElementById('customOptions');
+            const customSampleRate = document.getElementById('customSampleRate');
+            const customChannels = document.getElementById('customChannels');
+            const progressWrap = document.getElementById('progressWrap');
+            const progressBar = document.getElementById('progressBar');
+            const sizeWarning = document.getElementById('sizeWarning');
+
+            let currentFile = null;
+            let audioBuffer = null;
+            let originalSize = 0;
+
+            // 显示/隐藏自定义选项
+            presetSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customOptions.classList.add('visible');
+                } else {
+                    customOptions.classList.remove('visible');
+                }
+                updateSizeWarning();
+            });
+
+            customSampleRate.addEventListener('change', updateSizeWarning);
+            customChannels.addEventListener('change', updateSizeWarning);
+
+            // ---------- 文件大小预判 ----------
+            function updateSizeWarning() {
+                if (!audioBuffer || !currentFile) {
+                    sizeWarning.style.display = 'none';
+                    return;
+                }
+                const mode = presetSelect.value;
+                let sampleRate, channels;
+                if (mode === 'custom') {
+                    sampleRate = parseInt(customSampleRate.value);
+                    channels = parseInt(customChannels.value);
+                } else {
+                    const map = {
+                        'mono4k': { sr: 4000, ch: 1 },
+                        'mono8k': { sr: 8000, ch: 1 },
+                        'stereo16k': { sr: 16000, ch: 2 },
+                        'stereo22k': { sr: 22050, ch: 2 },
+                        'stereo44k': { sr: 44100, ch: 2 }
+                    };
+                    const cfg = map[mode];
+                    sampleRate = cfg.sr;
+                    channels = cfg.ch;
+                }
+                const duration = audioBuffer.duration;
+                const estimated = sampleRate * channels * 2 * duration; // 16bit = 2 bytes per sample
+                if (estimated > originalSize * 1.05) {
+                    sizeWarning.style.display = 'block';
+                } else {
+                    sizeWarning.style.display = 'none';
+                }
+            }
+
+            // ---------- 文件加载 ----------
+            function loadFile(file) {
+                if (!file) return;
+                if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|m4a|flac|ogg|aac)$/i)) {
+                    alert('请选择音频文件');
+                    return;
+                }
+                currentFile = file;
+                originalSize = file.size;
+                fileInfo.textContent = '正在解码: ' + file.name;
+                compressBtn.disabled = true;
+                sizeWarning.style.display = 'none';
+
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const ctx = new(window.AudioContext || window.webkitAudioContext)();
+                        audioBuffer = await ctx.decodeAudioData(e.target.result);
+                        const dur = audioBuffer.duration;
+                        const ch = audioBuffer.numberOfChannels;
+                        const sr = audioBuffer.sampleRate;
+                        fileInfo.textContent = '已解码: ' + file.name + ' | ' + dur.toFixed(1) + '秒 | ' + ch + '声道 | ' +
+                            sr + 'Hz';
+                        compressBtn.disabled = false;
+                        progressBar.style.width = '0%';
+                        progressWrap.classList.remove('active');
+                        updateSizeWarning();
+                    } catch (err) {
+                        fileInfo.textContent = '解码失败: ' + err.message;
+                        compressBtn.disabled = true;
+                        audioBuffer = null;
+                    }
+                };
+                reader.onerror = function() {
+                    fileInfo.textContent = '读取文件失败';
+                    compressBtn.disabled = true;
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            // 上传交互
+            dropZone.addEventListener('click', function(e) {
+                if (e.target.tagName === 'INPUT') return;
+                fileInput.click();
+            });
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files.length) loadFile(this.files[0]);
+                this.value = '';
+            });
+
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#000';
+            });
+            dropZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#888';
+            });
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#888';
+                if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+            });
+
+            // ---------- 工具函数：浮点转16位PCM ----------
+            function floatTo16Bit(float32) {
+                const out = new Int16Array(float32.length);
+                for (let i = 0; i < float32.length; i++) {
+                    let s = Math.max(-1, Math.min(1, float32[i]));
+                    out[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                return out;
+            }
+
+            // ---------- 导出 WAV ----------
+            function exportWAV(buffer, targetSampleRate, targetChannels) {
+                const srcRate = buffer.sampleRate;
+                const srcCh = buffer.numberOfChannels;
+                const srcLen = buffer.length;
+                const ratio = srcRate / targetSampleRate;
+                const dstLen = Math.round(srcLen / ratio);
+
+                const mixDown = (targetChannels === 1 && srcCh > 1);
+
+                const pcm = new Float32Array(dstLen * targetChannels);
+                for (let i = 0; i < dstLen; i++) {
+                    const srcPos = i * ratio;
+                    const idx = Math.floor(srcPos);
+                    const frac = srcPos - idx;
+                    const idx0 = Math.min(idx, srcLen - 1);
+                    const idx1 = Math.min(idx + 1, srcLen - 1);
+
+                    for (let ch = 0; ch < targetChannels; ch++) {
+                        let val;
+                        if (mixDown) {
+                            let sum = 0;
+                            for (let sc = 0; sc < srcCh; sc++) {
+                                const data = buffer.getChannelData(sc);
+                                const d0 = data[idx0];
+                                const d1 = data[idx1];
+                                sum += d0 * (1 - frac) + d1 * frac;
+                            }
+                            val = sum / srcCh;
+                        } else {
+                            const srcChIdx = Math.min(ch, srcCh - 1);
+                            const data = buffer.getChannelData(srcChIdx);
+                            val = data[idx0] * (1 - frac) + data[idx1] * frac;
+                        }
+                        pcm[i * targetChannels + ch] = val;
+                    }
+                }
+
+                const pcm16 = floatTo16Bit(pcm);
+                const dataLength = pcm16.length * 2;
+                const headerLength = 44;
+                const totalLength = headerLength + dataLength;
+
+                const view = new DataView(new ArrayBuffer(totalLength));
+                writeStr(view, 0, 'RIFF');
+                view.setUint32(4, totalLength - 8, true);
+                writeStr(view, 8, 'WAVE');
+                writeStr(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, targetChannels, true);
+                view.setUint32(24, targetSampleRate, true);
+                view.setUint32(28, targetSampleRate * targetChannels * 2, true);
+                view.setUint16(32, targetChannels * 2, true);
+                view.setUint16(34, 16, true);
+                writeStr(view, 36, 'data');
+                view.setUint32(40, dataLength, true);
+
+                const offset = 44;
+                for (let i = 0; i < pcm16.length; i++) {
+                    view.setInt16(offset + i * 2, pcm16[i], true);
+                }
+                return new Blob([view.buffer], { type: 'audio/wav' });
+            }
+
+            function writeStr(view, offset, str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset + i, str.charCodeAt(i));
+                }
+            }
+
+            // ---------- 压缩按钮 ----------
+            compressBtn.addEventListener('click', function() {
+                if (!audioBuffer) {
+                    alert('请先上传音频');
+                    return;
+                }
+
+                const mode = presetSelect.value;
+                let targetSampleRate, targetChannels;
+                if (mode === 'custom') {
+                    targetSampleRate = parseInt(customSampleRate.value);
+                    targetChannels = parseInt(customChannels.value);
+                } else {
+                    const map = {
+                        'mono4k': { sr: 4000, ch: 1 },
+                        'mono8k': { sr: 8000, ch: 1 },
+                        'stereo16k': { sr: 16000, ch: 2 },
+                        'stereo22k': { sr: 22050, ch: 2 },
+                        'stereo44k': { sr: 44100, ch: 2 }
+                    };
+                    const cfg = map[mode];
+                    targetSampleRate = cfg.sr;
+                    targetChannels = cfg.ch;
+                }
+
+                // 附加校验：如果目标采样率超过原始采样率且用户未使用自定义，给出提示但继续
+                if (targetSampleRate > audioBuffer.sampleRate) {
+                    if (!confirm('目标采样率 (' + targetSampleRate + ' Hz) 高于原始采样率 (' + audioBuffer.sampleRate +
+                            ' Hz)，这将导致文件变大但音质不会提升。是否继续？')) {
+                        return;
+                    }
+                }
+
+                compressBtn.disabled = true;
+                progressWrap.classList.add('active');
+                progressBar.style.width = '0%';
+                fileInfo.textContent = '压缩中...';
+                sizeWarning.style.display = 'none';
+
+                setTimeout(() => {
+                    try {
+                        const blob = exportWAV(audioBuffer, targetSampleRate, targetChannels);
+                        progressBar.style.width = '100%';
+
+                        if (blob.size < 200) {
+                            throw new Error('生成文件过小 (' + blob.size + ' 字节)');
+                        }
+
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const baseName = currentFile.name.replace(/\.[^.]+$/, '');
+                        a.download = baseName + '_compressed.wav';
+                        a.href = url;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+                        const origSizeMB = (currentFile.size / 1024 / 1024).toFixed(2);
+                        const newSizeMB = (blob.size / 1024 / 1024).toFixed(2);
+                        const modeLabel = (mode === 'custom') ?
+                            ('自定义 ' + targetSampleRate + 'Hz ' + (targetChannels === 1 ? '单声道' : '立体声')) :
+                            mode;
+                        fileInfo.textContent = '完成: ' + baseName + '.wav (' + modeLabel + ') | 原 ' + origSizeMB +
+                            ' MB -> 压缩后 ' + newSizeMB + ' MB';
+
+                    } catch (err) {
+                        fileInfo.textContent = '压缩出错: ' + err.message;
+                        alert('压缩失败: ' + err.message);
+                    } finally {
+                        compressBtn.disabled = false;
+                        setTimeout(() => progressWrap.classList.remove('active'), 800);
+                    }
+                }, 50);
+            });
+
+            customOptions.classList.remove('visible');
+
+        })();
+    </script>
+
+</body>
+</html>
