@@ -452,7 +452,7 @@
         const hotX = document.getElementById('hotX');
         const hotY = document.getElementById('hotY');
         const cursorPos = document.getElementById('cursorPos');
-        const zipNameInput = document.getElementById('zipNameInput'); // 新增
+        const zipNameInput = document.getElementById('zipNameInput');
 
         // 数据
         let filesData = []; // { file, dataUrl, name, size, width, height }
@@ -662,15 +662,8 @@
                         }
                     };
                     img.onerror = function() {
-                        // 仍添加，但无法获取尺寸
-                        filesData.push({
-                            file: file,
-                            dataUrl: dataUrl,
-                            name: file.name,
-                            size: file.size,
-                            width: 0,
-                            height: 0
-                        });
+                        // 图片无效，不添加，仅提示
+                        statusMsg.textContent = `图片 "${file.name}" 无法加载，已跳过。`;
                         loaded++;
                         if (loaded === validFiles.length) {
                             renderFileList();
@@ -716,8 +709,7 @@
 
             // 获取压缩包名称
             let zipName = zipNameInput.value.trim() || 'cursors';
-            // 移除非法字符（保留中文、字母、数字、下划线、横线）
-            zipName = zipName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-]/g, '');
+            zipName = zipName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\- ]/g, ''); // 允许空格
 
             convertBtn.disabled = true;
             statusMsg.textContent = '正在生成光标...';
@@ -732,23 +724,31 @@
                     const img = await loadImage(item.dataUrl);
                     const srcWidth = img.naturalWidth || img.width;
                     const srcHeight = img.naturalHeight || img.height;
-                    // 取较小值作为裁剪边长（保持1:1）
+                    
+                    // 计算中心裁剪区域（与 resizeToPngBuffer 保持一致）
                     const cropSize = Math.min(srcWidth, srcHeight);
                     const sx = (srcWidth - cropSize) / 2;
                     const sy = (srcHeight - cropSize) / 2;
 
-                    // 为每个尺寸生成 PNG buffer
-                    const pngBuffers = [];
-                    for (const size of sizes) {
-                        const png = await resizeToPngBuffer(img, size, size, sx, sy, cropSize);
-                        pngBuffers.push(png);
-                    }
-                    // 构建 CUR 文件（每个尺寸独立一个CUR）
+                    // 将用户设定的热点从原始图片坐标 转换到 裁剪后正方形图片的坐标
+                    let adjX = hotXVal - sx;
+                    let adjY = hotYVal - sy;
+                    adjX = Math.max(0, Math.min(cropSize, adjX));
+                    adjY = Math.max(0, Math.min(cropSize, adjY));
+
                     const baseName = item.name.replace(/\.[^.]+$/, '') || 'cursor';
-                    for (let idx = 0; idx < sizes.length; idx++) {
-                        const singlePng = [pngBuffers[idx]];
-                        const singleCur = buildCurFile(singlePng, [sizes[idx]], hotXVal, hotYVal);
-                        const singleName = `${baseName}_${sizes[idx]}.cur`;
+                    
+                    for (const size of sizes) {
+                        // 生成该尺寸的 PNG Buffer
+                        const png = await resizeToPngBuffer(img, size, size, sx, sy, cropSize);
+                        
+                        // 将热点从裁剪图尺寸 缩放映射到 目标尺寸
+                        const targetHotX = Math.round(adjX * (size / cropSize));
+                        const targetHotY = Math.round(adjY * (size / cropSize));
+
+                        // 构建单个 CUR 文件
+                        const singleCur = buildCurFile([png], [size], targetHotX, targetHotY);
+                        const singleName = `${baseName}_${size}.cur`;
                         curResults.push({ name: singleName, buffer: singleCur });
                     }
                 }
@@ -905,6 +905,10 @@
             e.preventDefault();
             if (!isImageLoaded) return;
             const pos = getCanvasCoords(e);
+            // 实时更新标记
+            hotX.value = pos.x;
+            hotY.value = pos.y;
+            updateHotspotMarker(pos.x, pos.y);
             cursorPos.textContent = `坐标: (${pos.x}, ${pos.y})`;
         }, { passive: false });
         canvas.addEventListener('touchend', function(e) {
