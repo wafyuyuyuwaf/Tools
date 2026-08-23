@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>图片转CUR光标</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #fff;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 720px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+        .sub {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 14px;
+            background: #f8fafc;
+            border-radius: 0 8px 8px 0;
+            line-height: 1.5;
+        }
+        .notice {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #1e293b;
+            border-left: 4px solid #2563eb;
+        }
+        .notice strong {
+            color: #2563eb;
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            background: #fafcff;
+            transition: 0.2s;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #f0f7ff;
+        }
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background: #e6f0ff;
+        }
+        .upload-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .upload-hint {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-list {
+            margin: 12px 0 16px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 12px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            border: 1px solid #e9edf2;
+        }
+        .file-item .name {
+            flex: 1;
+            font-weight: 500;
+            word-break: break-all;
+        }
+        .file-item .size {
+            color: #64748b;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .file-item .remove-btn:hover {
+            color: #ef4444;
+        }
+
+        .hotspot-section {
+            margin: 12px 0 16px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 14px;
+        }
+        .hotspot-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+        .hotspot-hint {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 12px;
+            padding: 4px 0;
+        }
+        .preview-container {
+            position: relative;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            min-height: 60px;
+            margin-bottom: 8px;
+        }
+        .preview-container img {
+            display: block;
+            width: 100%;
+            height: auto;
+            pointer-events: none;
+        }
+        .preview-container canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .hotspot-coords {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+            background: #f8fafc;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .hotspot-coords label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        .hotspot-coords input[type="number"] {
+            width: 70px;
+            padding: 4px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        .hotspot-coords .hint {
+            color: #64748b;
+            font-size: 13px;
+            margin-left: auto;
+        }
+
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 18px;
+            padding: 14px 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 10px 0 18px;
+        }
+        .options label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+
+        .zip-name-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .zip-name-row label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e293b;
+        }
+        .zip-name-row input {
+            flex: 1;
+            min-width: 150px;
+            padding: 6px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin: 8px 0 12px;
+        }
+        .btn {
+            border: none;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 600;
+            background: #e2e8f0;
+            color: #475569;
+            cursor: pointer;
+            transition: 0.15s;
+            flex: 1 1 auto;
+        }
+        .btn-primary {
+            background: #1e293b;
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #0f172a;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #2563eb;
+        }
+        .status {
+            font-size: 14px;
+            color: #64748b;
+            min-height: 24px;
+            padding: 6px 0;
+        }
+        .status.error {
+            color: #dc2626;
+        }
+        .status.success {
+            color: #16a34a;
+        }
+        .footer {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        #downloadLink {
+            display: none;
+            text-decoration: none;
+        }
+
+        #previewArea {
+            display: none;
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 16px;
+        }
+        #previewArea .preview-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 12px;
+        }
+        .preview-item {
+            text-align: center;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 8px 4px;
+            border: 1px solid #e9edf2;
+        }
+        .preview-item img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 4px;
+            image-rendering: pixelated;
+        }
+        .preview-item .label {
+            font-size: 11px;
+            color: #64748b;
+            word-break: break-all;
+            line-height: 1.2;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 0 4px;
+            }
+            .file-item {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            }
+            .preview-item img {
+                width: 36px;
+                height: 36px;
+            }
+            .hotspot-coords {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            .hotspot-coords .hint {
+                margin-left: 0;
+            }
+            .zip-name-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>图片转 CUR 光标</h1>
+    <div class="sub">上传图片 · 设置热点 · 生成多尺寸光标</div>
+
+    <div class="notice">
+        <strong>热点</strong> 是光标上触发点击的精确像素点（如箭头尖端）。<br>
+        点击下方预览图即可设置热点，也可手动输入坐标。
+    </div>
+
+    <div class="upload-area" id="dropZone">
+        <div class="upload-text">点击上传或拖拽图片至此</div>
+        <div class="upload-hint">可一次选择多张图片，所有图片共用同一热点</div>
+        <input type="file" id="fileInput" accept="image/*" multiple>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <!-- 热点设置 -->
+    <div class="hotspot-section" id="hotspotSection" style="display:none;">
+        <div class="hotspot-title">设置热点</div>
+        <div class="hotspot-hint">一般电脑使用32/48/64三种尺寸的指针大小，请根据需要生成      请点击预览图确定热点位置，或直接输入下方坐标</div>
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImg" src="" alt="预览图" style="visibility:hidden;">
+            <canvas id="hotspotCanvas"></canvas>
+        </div>
+        <div class="hotspot-coords">
+            <label>X <input type="number" id="hotX" value="0" min="0" max="255"></label>
+            <label>Y <input type="number" id="hotY" value="0" min="0" max="255"></label>
+            <span class="hint" id="cursorPos">坐标: (0, 0)</span>
+        </div>
+    </div>
+
+    <div class="options" id="sizeOptions">
+        <label><input type="checkbox" value="16" checked> 16x16</label>
+        <label><input type="checkbox" value="32" checked> 32x32</label>
+        <label><input type="checkbox" value="40"> 40x40</label>
+        <label><input type="checkbox" value="48" checked> 48x48</label>
+        <label><input type="checkbox" value="64"> 64x64</label>
+        <label><input type="checkbox" value="128"> 128x128</label>
+        <label><input type="checkbox" value="256" checked> 256x256</label>
+    </div>
+
+    <!-- 新增：压缩包重命名 -->
+    <div class="zip-name-row">
+        <label for="zipNameInput">压缩包名称：</label>
+        <input type="text" id="zipNameInput" value="cursors" placeholder="默认 cursors">
+    </div>
+
+    <div class="action-bar">
+        <button class="btn btn-primary" id="convertBtn" disabled>生成 CUR 光标</button>
+        <a id="downloadLink" class="btn btn-success">下载压缩包</a>
+    </div>
+    <div class="status" id="statusMsg">请选择图片</div>
+
+    <div id="previewArea">
+        <div class="preview-title">生成预览</div>
+        <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <div class="footer">每个尺寸独立生成 .cur，所有文件打包为 ZIP</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+    (function() {
+        // DOM 元素
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileListEl = document.getElementById('fileList');
+        const convertBtn = document.getElementById('convertBtn');
+        const downloadLink = document.getElementById('downloadLink');
+        const statusMsg = document.getElementById('statusMsg');
+        const sizeCheckboxes = document.querySelectorAll('#sizeOptions input[type="checkbox"]');
+        const previewArea = document.getElementById('previewArea');
+        const previewGrid = document.getElementById('previewGrid');
+        const hotspotSection = document.getElementById('hotspotSection');
+        const previewImg = document.getElementById('previewImg');
+        const canvas = document.getElementById('hotspotCanvas');
+        const ctx = canvas.getContext('2d');
+        const hotX = document.getElementById('hotX');
+        const hotY = document.getElementById('hotY');
+        const cursorPos = document.getElementById('cursorPos');
+        const zipNameInput = document.getElementById('zipNameInput'); // 新增
+
+        // 数据
+        let filesData = []; // { file, dataUrl, name, size, width, height }
+        let previewUrls = [];
+        let imageNaturalWidth = 0, imageNaturalHeight = 0;
+        let isImageLoaded = false;
+
+        // 辅助
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+
+        // 清空预览
+        function clearPreview() {
+            previewUrls.forEach(url => URL.revokeObjectURL(url));
+            previewUrls = [];
+            previewGrid.innerHTML = '';
+            previewArea.style.display = 'none';
+        }
+
+        // 显示预览（CUR 预览与 ICO 类似）
+        function showPreview(curResults) {
+            clearPreview();
+            if (!curResults || curResults.length === 0) return;
+            let html = '';
+            curResults.forEach(item => {
+                const blob = new Blob([item.buffer], { type: 'image/x-icon' });
+                const url = URL.createObjectURL(blob);
+                previewUrls.push(url);
+                const sizeMatch = item.name.match(/_(\d+)\.cur$/);
+                const sizeLabel = sizeMatch ? sizeMatch[1] + 'x' + sizeMatch[1] : '';
+                html += `
+                    <div class="preview-item">
+                        <img src="${url}" alt="${item.name}">
+                        <div class="label">${sizeLabel}</div>
+                    </div>
+                `;
+            });
+            previewGrid.innerHTML = html;
+            previewArea.style.display = 'block';
+        }
+
+        // 渲染文件列表
+        function renderFileList() {
+            if (filesData.length === 0) {
+                fileListEl.innerHTML = '';
+                convertBtn.disabled = true;
+                statusMsg.textContent = '请选择图片';
+                hotspotSection.style.display = 'none';
+                clearPreview();
+                downloadLink.style.display = 'none';
+                return;
+            }
+            let html = '';
+            filesData.forEach((item, index) => {
+                html += `
+                    <div class="file-item">
+                        <span class="name">${item.name}</span>
+                        <span class="size">${formatSize(item.size)}</span>
+                        <button class="remove-btn" data-index="${index}" aria-label="移除">✕</button>
+                    </div>
+                `;
+            });
+            fileListEl.innerHTML = html;
+            convertBtn.disabled = false;
+            statusMsg.textContent = `已添加 ${filesData.length} 张图片，热点将应用于所有图片。`;
+            // 显示热点设置区并加载第一张图片预览
+            if (filesData.length > 0) {
+                hotspotSection.style.display = 'block';
+                loadPreviewImage(filesData[0]);
+            }
+            // 绑定移除事件
+            document.querySelectorAll('.file-item .remove-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const idx = parseInt(this.dataset.index, 10);
+                    if (!isNaN(idx)) {
+                        filesData.splice(idx, 1);
+                        renderFileList();
+                        downloadLink.style.display = 'none';
+                        downloadLink.href = '#';
+                        clearPreview();
+                        if (filesData.length === 0) {
+                            hotspotSection.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        }
+
+        // 加载预览图片并设置canvas尺寸
+        function loadPreviewImage(item) {
+            const img = new Image();
+            img.onload = function() {
+                imageNaturalWidth = img.naturalWidth;
+                imageNaturalHeight = img.naturalHeight;
+                isImageLoaded = true;
+                previewImg.src = img.src;
+                previewImg.style.visibility = 'visible';
+                canvas.width = imageNaturalWidth;
+                canvas.height = imageNaturalHeight;
+                // 绘制默认热点 (0,0)
+                updateHotspotMarker(0, 0);
+                // 同步输入框
+                hotX.value = 0;
+                hotY.value = 0;
+                cursorPos.textContent = '坐标: (0, 0)';
+            };
+            img.onerror = function() {
+                // 降级：无法预览，但保留功能
+                previewImg.style.visibility = 'hidden';
+                canvas.width = 64;
+                canvas.height = 64;
+                isImageLoaded = false;
+                statusMsg.textContent = '无法预览该图片，请手动输入热点坐标';
+            };
+            img.src = item.dataUrl;
+        }
+
+        // ---- 热点标记：自适应准星（小图用单像素红点） ----
+        function updateHotspotMarker(x, y) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!isImageLoaded) return;
+
+            const w = imageNaturalWidth;
+            const h = imageNaturalHeight;
+            const maxDim = Math.max(w, h);
+
+            // 小图（<64px）使用单像素红点
+            if (maxDim < 64) {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(x, y, 1, 1);
+                return;
+            }
+
+            // 大图：动态准星，尺寸随图片比例变化
+            const halfLen = Math.max(8, Math.min(40, Math.round(maxDim / 12)));
+            const lineWidth = Math.max(1, Math.round(halfLen / 5));
+            const dotRadius = Math.max(1, Math.round(halfLen / 3));
+
+            const cx = x, cy = y;
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            // 水平线（左右两段）
+            ctx.moveTo(cx - halfLen, cy);
+            ctx.lineTo(cx - 3, cy);
+            ctx.moveTo(cx + 3, cy);
+            ctx.lineTo(cx + halfLen, cy);
+            // 垂直线（上下两段）
+            ctx.moveTo(cx, cy - halfLen);
+            ctx.lineTo(cx, cy - 3);
+            ctx.moveTo(cx, cy + 3);
+            ctx.lineTo(cx, cy + halfLen);
+            ctx.stroke();
+
+            // 中心圆点
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(cx, cy, dotRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 获取canvas坐标
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+            const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(0, x), canvas.width);
+            y = Math.min(Math.max(0, y), canvas.height);
+            return { x: Math.round(x), y: Math.round(y) };
+        }
+
+        // ---- 添加文件 ----
+        function addFiles(fileList) {
+            const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (validFiles.length === 0) {
+                statusMsg.textContent = '没有有效的图片文件';
+                return;
+            }
+            let loaded = 0;
+            validFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const img = new Image();
+                    img.onload = function() {
+                        filesData.push({
+                            file: file,
+                            dataUrl: dataUrl,
+                            name: file.name,
+                            size: file.size,
+                            width: img.naturalWidth,
+                            height: img.naturalHeight
+                        });
+                        loaded++;
+                        if (loaded === validFiles.length) {
+                            renderFileList();
+                        }
+                    };
+                    img.onerror = function() {
+                        // 仍添加，但无法获取尺寸
+                        filesData.push({
+                            file: file,
+                            dataUrl: dataUrl,
+                            name: file.name,
+                            size: file.size,
+                            width: 0,
+                            height: 0
+                        });
+                        loaded++;
+                        if (loaded === validFiles.length) {
+                            renderFileList();
+                        }
+                    };
+                    img.src = dataUrl;
+                };
+                reader.onerror = function() {
+                    statusMsg.textContent = '读取文件失败: ' + file.name;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ---- 生成 CUR ----
+        async function generateCur() {
+            if (filesData.length === 0) {
+                statusMsg.textContent = '请先添加图片';
+                return;
+            }
+
+            // 获取选中的尺寸
+            const selectedSizes = [];
+            sizeCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    const val = parseInt(cb.value, 10);
+                    if (val > 0 && val <= 256) selectedSizes.push(val);
+                }
+            });
+            const sizes = [...new Set(selectedSizes)].sort((a, b) => a - b);
+            if (sizes.length === 0) {
+                statusMsg.textContent = '请至少勾选一个尺寸';
+                return;
+            }
+
+            // 获取热点坐标
+            let hotXVal = parseInt(hotX.value) || 0;
+            let hotYVal = parseInt(hotY.value) || 0;
+            hotXVal = Math.max(0, Math.min(255, hotXVal));
+            hotYVal = Math.max(0, Math.min(255, hotYVal));
+            hotX.value = hotXVal;
+            hotY.value = hotYVal;
+
+            // 获取压缩包名称
+            let zipName = zipNameInput.value.trim() || 'cursors';
+            // 移除非法字符（保留中文、字母、数字、下划线、横线）
+            zipName = zipName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5_\-]/g, '');
+
+            convertBtn.disabled = true;
+            statusMsg.textContent = '正在生成光标...';
+            downloadLink.style.display = 'none';
+            clearPreview();
+
+            try {
+                const curResults = [];
+
+                for (let i = 0; i < filesData.length; i++) {
+                    const item = filesData[i];
+                    const img = await loadImage(item.dataUrl);
+                    const srcWidth = img.naturalWidth || img.width;
+                    const srcHeight = img.naturalHeight || img.height;
+                    // 取较小值作为裁剪边长（保持1:1）
+                    const cropSize = Math.min(srcWidth, srcHeight);
+                    const sx = (srcWidth - cropSize) / 2;
+                    const sy = (srcHeight - cropSize) / 2;
+
+                    // 为每个尺寸生成 PNG buffer
+                    const pngBuffers = [];
+                    for (const size of sizes) {
+                        const png = await resizeToPngBuffer(img, size, size, sx, sy, cropSize);
+                        pngBuffers.push(png);
+                    }
+                    // 构建 CUR 文件（每个尺寸独立一个CUR）
+                    const baseName = item.name.replace(/\.[^.]+$/, '') || 'cursor';
+                    for (let idx = 0; idx < sizes.length; idx++) {
+                        const singlePng = [pngBuffers[idx]];
+                        const singleCur = buildCurFile(singlePng, [sizes[idx]], hotXVal, hotYVal);
+                        const singleName = `${baseName}_${sizes[idx]}.cur`;
+                        curResults.push({ name: singleName, buffer: singleCur });
+                    }
+                }
+
+                if (curResults.length === 0) {
+                    statusMsg.textContent = '没有生成任何光标';
+                    return;
+                }
+
+                // 显示预览
+                showPreview(curResults);
+
+                // 打包下载
+                const zip = new JSZip();
+                curResults.forEach(res => {
+                    zip.file(res.name, res.buffer);
+                });
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+                downloadLink.href = url;
+                downloadLink.download = `${zipName}.zip`;
+                downloadLink.style.display = 'inline-flex';
+                statusMsg.textContent = `生成完成，共 ${curResults.length} 个光标文件，已打包为 ${zipName}.zip。`;
+            } catch (err) {
+                console.error(err);
+                statusMsg.textContent = '生成失败: ' + err.message;
+                statusMsg.className = 'status error';
+            } finally {
+                convertBtn.disabled = false;
+            }
+        }
+
+        // 辅助函数
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('图片加载失败'));
+                img.src = src;
+            });
+        }
+
+        function resizeToPngBuffer(img, width, height, sx, sy, cropSize) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error(`无法生成 ${width}x${height} 的 PNG`));
+                            return;
+                        }
+                        blob.arrayBuffer().then(buf => resolve(buf)).catch(reject);
+                    }, 'image/png');
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // 构建 CUR 文件（与ICO唯一区别：类型=2，目录项写入热点）
+        function buildCurFile(pngBuffers, sizes, hotX, hotY) {
+            const count = pngBuffers.length;
+            const headerSize = 6 + count * 16;
+            let totalSize = headerSize;
+            const offsets = [];
+            for (let i = 0; i < count; i++) {
+                offsets.push(totalSize);
+                totalSize += pngBuffers[i].byteLength;
+            }
+            const buffer = new ArrayBuffer(totalSize);
+            const view = new DataView(buffer);
+            let pos = 0;
+            // 文件头
+            view.setUint16(pos, 0, true); pos += 2;
+            view.setUint16(pos, 2, true); // 类型 2 = CUR
+            pos += 2;
+            view.setUint16(pos, count, true); pos += 2;
+            // 目录项
+            for (let i = 0; i < count; i++) {
+                const size = sizes[i];
+                const dataLen = pngBuffers[i].byteLength;
+                const offset = offsets[i];
+                view.setUint8(pos, size === 256 ? 0 : size); pos += 1;
+                view.setUint8(pos, size === 256 ? 0 : size); pos += 1;
+                view.setUint8(pos, 0); pos += 1; // 颜色数
+                view.setUint8(pos, 0); pos += 1; // 保留
+                view.setUint16(pos, hotX, true); pos += 2;
+                view.setUint16(pos, hotY, true); pos += 2;
+                view.setUint32(pos, dataLen, true); pos += 4;
+                view.setUint32(pos, offset, true); pos += 4;
+            }
+            // 图像数据
+            for (let i = 0; i < count; i++) {
+                const data = new Uint8Array(pngBuffers[i]);
+                new Uint8Array(buffer).set(data, offsets[i]);
+            }
+            return buffer;
+        }
+
+        // ---- 事件绑定 ----
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                addFiles(e.dataTransfer.files);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                addFiles(e.target.files);
+            }
+            fileInput.value = '';
+        });
+
+        convertBtn.addEventListener('click', generateCur);
+
+        // 尺寸变化时隐藏旧下载和预览
+        sizeCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                downloadLink.style.display = 'none';
+                downloadLink.href = '#';
+                clearPreview();
+                if (filesData.length > 0) {
+                    statusMsg.textContent = '尺寸已更改，请重新生成';
+                }
+            });
+        });
+
+        // 热点点击事件
+        canvas.addEventListener('click', function(e) {
+            if (!isImageLoaded) return;
+            const pos = getCanvasCoords(e);
+            hotX.value = pos.x;
+            hotY.value = pos.y;
+            updateHotspotMarker(pos.x, pos.y);
+            cursorPos.textContent = `坐标: (${pos.x}, ${pos.y})`;
+        });
+        canvas.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            if (!isImageLoaded) return;
+            const pos = getCanvasCoords(e);
+            cursorPos.textContent = `坐标: (${pos.x}, ${pos.y})`;
+        }, { passive: false });
+        canvas.addEventListener('touchend', function(e) {
+            if (!isImageLoaded) return;
+            const touch = e.changedTouches[0];
+            if (!touch) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let x = (touch.clientX - rect.left) * scaleX;
+            let y = (touch.clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(0, x), canvas.width);
+            y = Math.min(Math.max(0, y), canvas.height);
+            const px = Math.round(x), py = Math.round(y);
+            hotX.value = px;
+            hotY.value = py;
+            updateHotspotMarker(px, py);
+            cursorPos.textContent = `坐标: (${px}, ${py})`;
+        });
+
+        // 手动输入同步
+        hotX.addEventListener('input', function() {
+            if (!isImageLoaded) return;
+            const x = parseInt(this.value) || 0;
+            const y = parseInt(hotY.value) || 0;
+            updateHotspotMarker(x, y);
+            cursorPos.textContent = `坐标: (${x}, ${y})`;
+        });
+        hotY.addEventListener('input', function() {
+            if (!isImageLoaded) return;
+            const y = parseInt(this.value) || 0;
+            const x = parseInt(hotX.value) || 0;
+            updateHotspotMarker(x, y);
+            cursorPos.textContent = `坐标: (${x}, ${y})`;
+        });
+
+        // 初始化
+        renderFileList();
+    })();
+</script>
+</body>
+</html>
