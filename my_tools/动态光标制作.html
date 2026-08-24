@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>图片转 ANI 动态光标（最终修复版）</title>
+    <title>图片转 ANI 动态光标（终极修复）</title>
     <style>
-        /* 样式完全沿用最初版本，此处省略以节省篇幅，实际使用时请复制原样式 */
+        /* 样式与最初版本一致，此处省略，实际使用请复制原样式 */
         * { margin:0; padding:0; box-sizing:border-box; }
         body { background:#fff; font-family:'Segoe UI',Roboto,system-ui,sans-serif; padding:30px 20px; display:flex; justify-content:center; color:#1e293b; }
         .container { max-width:820px; width:100%; }
@@ -82,7 +82,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>图片转 ANI 动态光标（最终修复版）</h1>
+    <h1>图片转 ANI 动态光标（终极修复）</h1>
     <div class="sub">上传多张图片作为动画帧 · 设置热点 · 批量生成多尺寸动态光标并打包下载</div>
     <div class="notice"><strong>热点</strong> 是光标上触发点击的精确像素点（如箭头尖端）。<br>所有帧共享同一热点，点击下方预览图即可设置，也可手动输入坐标。</div>
 
@@ -417,7 +417,7 @@
             }
         }
 
-        // ----- 生成 ANI (最终修复版) -----
+        // ----- 生成 ANI (终极修复：dwImageOffset 正确计算) -----
         async function generateAni() {
             if (frames.length < 2) {
                 statusMsg.textContent = '至少需要 2 帧才能生成动态光标';
@@ -472,7 +472,6 @@
                     for (let i = 0; i < frames.length; i++) {
                         const f = frames[i];
                         const img = loadedImages[i];
-                        // 生成 PNG 数据
                         const buffer = await cropAndResizeToPng(img, size);
 
                         const srcW = img.naturalWidth || img.width;
@@ -532,12 +531,14 @@
             }
         }
 
-        // ----- 构建 ANI 文件 (最终修复版：PNG + dwFlags=1) -----
+        // ----- 构建 ANI 文件 (彻底修正 dwImageOffset) -----
         function buildAniFile(frameData, size) {
             const numFrames = frameData.length;
 
-            const frameIconData = [];
-            let framListSize = 0;
+            // 1. 先构建每个帧的 ICONENTRY（占位）和图像数据
+            const entries = []; // 存储每个帧的 { entryData, imageData, offset }
+            let currentOffset = 0; // fram 数据区内的偏移（从 'fram' 数据开头算起）
+
             for (const fd of frameData) {
                 const entry = new ArrayBuffer(16);
                 const dv = new DataView(entry);
@@ -547,67 +548,92 @@
                 dv.setUint8(1, h);
                 dv.setUint8(2, 0);
                 dv.setUint8(3, 0);
-                // 热点写入 wPlanes 和 wBitCount
                 dv.setUint16(4, fd.hotX, true);
                 dv.setUint16(6, fd.hotY, true);
                 const dataLen = fd.pngBuffer.byteLength;
                 dv.setUint32(8, dataLen, true);
-                dv.setUint32(12, 16, true); // dwImageOffset
-                const combined = new Uint8Array(16 + dataLen);
-                combined.set(new Uint8Array(entry), 0);
-                combined.set(new Uint8Array(fd.pngBuffer), 16);
-                frameIconData.push(combined);
-                framListSize += combined.byteLength;
+                // 先占位，后面填入正确的 offset
+                dv.setUint32(12, 0, true);
+
+                const imageData = new Uint8Array(fd.pngBuffer);
+                entries.push({
+                    entryBuf: new Uint8Array(entry),
+                    imageData: imageData,
+                    offset: currentOffset, // 这个 offset 稍后会被填入 entry 的 dwImageOffset
+                    size: dataLen
+                });
+                // 每个帧占 16 字节入口 + 图像数据
+                currentOffset += 16 + dataLen;
             }
 
+            // 现在 currentOffset 等于 fram 数据区的总大小
+
+            // 2. 构建 fram 数据区：依次写入每个 ICONENTRY 和图像数据
+            const framData = new Uint8Array(currentOffset);
+            let pos = 0;
+            for (const ent of entries) {
+                // 更新 entry 中的 dwImageOffset 为当前图像数据在 fram 数据区中的起始偏移
+                const imageStart = pos + 16; // 当前 ICONENTRY 之后
+                // 修改 entryBuf 中的 offset 字段 (4 字节，从第12字节开始)
+                const dv = new DataView(ent.entryBuf.buffer);
+                dv.setUint32(12, imageStart, true);
+
+                // 复制 entry
+                framData.set(ent.entryBuf, pos);
+                pos += 16;
+                // 复制图像数据
+                framData.set(ent.imageData, pos);
+                pos += ent.imageData.length;
+            }
+
+            // 3. 构建完整的 ANI RIFF 结构
             const anihSize = 8 + 4 + 36;
-            const framListTotal = 8 + 4 + framListSize;
+            const framListTotal = 8 + 4 + currentOffset;
             const rateListTotal = 8 + 4 + 4 * numFrames;
             const riffTotal = 4 + 4 + 4 + anihSize + framListTotal + rateListTotal;
             const riffDataSize = riffTotal - 8;
 
             const buffer = new ArrayBuffer(riffTotal);
             const view = new DataView(buffer);
-            let pos = 0;
+            let pos2 = 0;
 
-            view.setUint32(pos, 0x46464952, true); pos += 4; // 'RIFF'
-            view.setUint32(pos, riffDataSize, true); pos += 4;
-            view.setUint32(pos, 0x4E4F4341, true); pos += 4; // 'ACON'
+            // RIFF header
+            view.setUint32(pos2, 0x46464952, true); pos2 += 4; // 'RIFF'
+            view.setUint32(pos2, riffDataSize, true); pos2 += 4;
+            view.setUint32(pos2, 0x4E4F4341, true); pos2 += 4; // 'ACON'
 
             // LIST 'anih'
-            view.setUint32(pos, 0x5453494C, true); pos += 4;
-            view.setUint32(pos, anihSize - 8, true); pos += 4;
-            view.setUint32(pos, 0x68696E61, true); pos += 4; // 'anih'
-            view.setUint32(pos, 36, true); pos += 4; // cbSize
-            view.setUint32(pos, numFrames, true); pos += 4; // cFrames
-            view.setUint32(pos, numFrames, true); pos += 4; // cSteps
+            view.setUint32(pos2, 0x5453494C, true); pos2 += 4;
+            view.setUint32(pos2, anihSize - 8, true); pos2 += 4;
+            view.setUint32(pos2, 0x68696E61, true); pos2 += 4; // 'anih'
+            view.setUint32(pos2, 36, true); pos2 += 4;
+            view.setUint32(pos2, numFrames, true); pos2 += 4;
+            view.setUint32(pos2, numFrames, true); pos2 += 4;
             const anihWH = (size === 256) ? 0 : size;
-            view.setUint32(pos, anihWH, true); pos += 4; // cx
-            view.setUint32(pos, anihWH, true); pos += 4; // cy
-            view.setUint32(pos, 0, true); pos += 4; // cBitCount
-            view.setUint32(pos, 0, true); pos += 4; // cPlanes
+            view.setUint32(pos2, anihWH, true); pos2 += 4;
+            view.setUint32(pos2, anihWH, true); pos2 += 4;
+            view.setUint32(pos2, 0, true); pos2 += 4; // cBitCount
+            view.setUint32(pos2, 0, true); pos2 += 4; // cPlanes
             const defaultJif = Math.max(1, Math.round((frameData[0].delay || 100) / 1000 * 60));
-            view.setUint32(pos, defaultJif, true); pos += 4; // jifRate
-            // ★★★ 关键修复：dwFlags = 0x00000001 ★★★
-            view.setUint32(pos, 0x00000001, true); pos += 4; // dwFlags
+            view.setUint32(pos2, defaultJif, true); pos2 += 4;
+            view.setUint32(pos2, 0x00000001, true); pos2 += 4; // dwFlags = 1
 
             // LIST 'fram'
-            view.setUint32(pos, 0x5453494C, true); pos += 4;
-            view.setUint32(pos, framListTotal - 8, true); pos += 4;
-            view.setUint32(pos, 0x6D617266, true); pos += 4; // 'fram'
-            for (const data of frameIconData) {
-                new Uint8Array(buffer).set(data, pos);
-                pos += data.byteLength;
-            }
+            view.setUint32(pos2, 0x5453494C, true); pos2 += 4;
+            view.setUint32(pos2, framListTotal - 8, true); pos2 += 4;
+            view.setUint32(pos2, 0x6D617266, true); pos2 += 4; // 'fram'
+            // 写入 fram 数据
+            new Uint8Array(buffer).set(framData, pos2);
+            pos2 += framData.length;
 
             // LIST 'rate'
-            view.setUint32(pos, 0x5453494C, true); pos += 4;
-            view.setUint32(pos, rateListTotal - 8, true); pos += 4;
-            view.setUint32(pos, 0x65746172, true); pos += 4; // 'rate'
+            view.setUint32(pos2, 0x5453494C, true); pos2 += 4;
+            view.setUint32(pos2, rateListTotal - 8, true); pos2 += 4;
+            view.setUint32(pos2, 0x65746172, true); pos2 += 4; // 'rate'
             for (const fd of frameData) {
                 const jif = Math.max(1, Math.round((fd.delay || 100) / 1000 * 60));
-                view.setUint32(pos, jif, true);
-                pos += 4;
+                view.setUint32(pos2, jif, true);
+                pos2 += 4;
             }
 
             return buffer;
