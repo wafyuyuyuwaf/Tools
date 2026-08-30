@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本转MIDI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #f0f2f5;
+            font-family: system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 24px 16px;
+        }
+        .container {
+            background: #fff;
+            padding: 28px 32px;
+            border-radius: 16px;
+            max-width: 860px;
+            width: 100%;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        }
+        h1 { font-size: 1.8rem; font-weight: 600; margin: 0 0 4px 0; }
+        .sub {
+            font-size: 0.95rem;
+            color: #64748b;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e9edf2;
+            padding-bottom: 12px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 24px;
+            margin: 12px 0 16px;
+        }
+        .param-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .param-group label {
+            font-weight: 500;
+            color: #334155;
+            font-size: 0.9rem;
+            min-width: 70px;
+        }
+        .param-group input, .param-group select {
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border 0.2s;
+            flex: 0 1 auto;
+            min-width: 70px;
+        }
+        .param-group input:focus, .param-group select:focus {
+            border-color: #3b82f6;
+            background: #fff;
+        }
+        .param-group input[type="number"] { width: 80px; }
+        .param-group select { min-width: 140px; cursor: pointer; }
+        .hint { color: #94a3b8; font-size: 0.8rem; margin-left: 4px; }
+        .link-row {
+            margin: 6px 0 4px 0;
+            font-size: 0.9rem;
+        }
+        .link-row a {
+            color: #3b82f6;
+            text-decoration: none;
+            border-bottom: 1px dotted #ccc;
+        }
+        .link-row a:hover { border-bottom: 1px solid #3b82f6; }
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #fafcff;
+            border: 1px solid #d1d9e6;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            resize: vertical;
+            outline: none;
+            transition: border 0.2s;
+        }
+        textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin: 14px 0 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn-outline {
+            background: transparent;
+            color: #3b82f6;
+            border: 1px solid #3b82f6;
+        }
+        .btn-outline:hover { background: #eff6ff; }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .file-wrap {
+            position: relative;
+            display: inline-block;
+        }
+        .file-wrap input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: #f8fafc;
+            font-size: 0.9rem;
+            min-height: 3em;
+            border-left: 4px solid #94a3b8;
+        }
+        .status.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+        .status.success {
+            border-left-color: #22c55e;
+            background: #f0fdf4;
+            color: #15803d;
+        }
+        .note-table-wrap {
+            margin-top: 18px;
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 10px;
+            border: 1px solid #e9edf2;
+        }
+        .note-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .note-table th {
+            background: #f1f5f9;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .note-table td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #eef2f6;
+            font-family: 'Fira Code', monospace;
+        }
+        .note-table tr:hover td { background: #f8fafc; }
+        @media (max-width: 600px) {
+            .container { padding: 16px; }
+            .grid-2 { grid-template-columns: 1fr; gap: 10px; }
+            .toolbar .btn { padding: 6px 14px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>文本转MIDI</h1>
+    <div class="sub">
+        每行 <code>音高1 音高2 ... 时长 [力度]</code> · <code>R</code> 休止 · <code>#track 乐器</code> 切换轨道
+    </div>
+    <div class="grid-2">
+        <div class="param-group"><label>单位拍</label><input type="number" id="unitBeat" value="1.0" step="0.1" min="0.01"><span class="hint">拍</span></div>
+        <div class="param-group"><label>BPM</label><input type="number" id="bpm" value="120" step="1" min="20" max="300"><span class="hint">速度</span></div>
+        <div class="param-group"><label>默认力度</label><input type="number" id="defaultVelocity" value="80" step="1" min="1" max="127"><span class="hint">1~127</span></div>
+        <div class="param-group"><label>默认乐器</label><select id="instrumentSelect"></select><input type="number" id="instrumentNum" value="1" step="1" min="0" max="127" style="width:70px;"></div>
+    </div>
+    <div class="link-row"><a href="https://m.miyoushe.com/ys?channel=ys_obc/#/article/77849737" target="_blank">查看乐器编号</a></div>
+    <div class="link-row"><a href="https://m.miyoushe.com/ys?channel=ys_obc/#/article/77849924" target="_blank">查看MIDI文本编写规则</a></div>
+    <textarea id="scoreInput" spellcheck="false" placeholder="C4 1&#10;R 0.5&#10;E4 0.5 90&#10;#track 5&#10;G4 1"></textarea>
+    <div class="toolbar">
+        <div class="file-wrap"><button class="btn btn-outline">上传TXT</button><input type="file" id="fileInput" accept=".txt"></div>
+        <button class="btn" id="generateBtn">生成MIDI</button>
+        <button class="btn btn-secondary" id="exampleBtn">示例</button>
+        <button class="btn btn-secondary" id="clearBtn">清空</button>
+        <button class="btn btn-secondary" id="listBtn">显示音符</button>
+    </div>
+    <div id="status" class="status">就绪，粘贴或上传乐谱</div>
+    <div id="noteListWrap" class="note-table-wrap" style="display:none;">
+        <table class="note-table" id="noteTable"><thead><tr><th>#</th><th>轨道</th><th>音高</th><th>时长(拍)</th><th>力度</th></tr></thead><tbody id="noteTableBody"></tbody></table>
+    </div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "midi-writer-js": "https://cdn.jsdelivr.net/npm/midi-writer-js@3.2.1/+esm"
+    }
+}
+</script>
+<script type="module">
+    import MidiWriter from 'midi-writer-js';
+
+    // ---------- DOM 引用 ----------
+    const textarea = document.getElementById('scoreInput');
+    const statusDiv = document.getElementById('status');
+    const generateBtn = document.getElementById('generateBtn');
+    const fileInput = document.getElementById('fileInput');
+    const unitBeatInput = document.getElementById('unitBeat');
+    const bpmInput = document.getElementById('bpm');
+    const defaultVelocityInput = document.getElementById('defaultVelocity');
+    const instrumentSelect = document.getElementById('instrumentSelect');
+    const instrumentNumInput = document.getElementById('instrumentNum');
+    const exampleBtn = document.getElementById('exampleBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const listBtn = document.getElementById('listBtn');
+    const noteListWrap = document.getElementById('noteListWrap');
+    const noteTableBody = document.getElementById('noteTableBody');
+
+    // ---------- 完整 GM 乐器映射 ----------
+    const gmInstruments = [
+        "Acoustic Grand Piano","Bright Acoustic Piano","Electric Grand Piano","Honky-tonk Piano",
+        "Electric Piano 1","Electric Piano 2","Harpsichord","Clavinet",
+        "Celesta","Glockenspiel","Music Box","Vibraphone",
+        "Marimba","Xylophone","Tubular Bells","Dulcimer",
+        "Drawbar Organ","Percussive Organ","Rock Organ","Church Organ",
+        "Reed Organ","Accordion","Harmonica","Tango Accordion",
+        "Acoustic Guitar (nylon)","Acoustic Guitar (steel)","Electric Guitar (jazz)","Electric Guitar (clean)",
+        "Electric Guitar (muted)","Overdriven Guitar","Distortion Guitar","Guitar Harmonics",
+        "Acoustic Bass","Electric Bass (finger)","Electric Bass (pick)","Fretless Bass",
+        "Slap Bass 1","Slap Bass 2","Synth Bass 1","Synth Bass 2",
+        "Violin","Viola","Cello","Contrabass",
+        "Tremolo Strings","Pizzicato Strings","Orchestral Harp","Timpani",
+        "String Ensemble 1","String Ensemble 2","Synth Strings 1","Synth Strings 2",
+        "Choir Aahs","Voice Oohs","Synth Voice","Orchestra Hit",
+        "Trumpet","Trombone","Tuba","Muted Trumpet",
+        "French Horn","Brass Section","Synth Brass 1","Synth Brass 2",
+        "Soprano Sax","Alto Sax","Tenor Sax","Baritone Sax",
+        "Oboe","English Horn","Bassoon","Clarinet",
+        "Piccolo","Flute","Recorder","Pan Flute",
+        "Blown Bottle","Shakuhachi","Whistle","Ocarina",
+        "Lead 1 (square)","Lead 2 (sawtooth)","Lead 3 (calliope)","Lead 4 (chiff)",
+        "Lead 5 (charang)","Lead 6 (voice)","Lead 7 (fifths)","Lead 8 (bass + lead)",
+        "Pad 1 (new age)","Pad 2 (warm)","Pad 3 (polysynth)","Pad 4 (choir)",
+        "Pad 5 (bowed)","Pad 6 (metallic)","Pad 7 (halo)","Pad 8 (sweep)",
+        "FX 1 (rain)","FX 2 (soundtrack)","FX 3 (crystal)","FX 4 (atmosphere)",
+        "FX 5 (brightness)","FX 6 (goblins)","FX 7 (echoes)","FX 8 (sci-fi)",
+        "Sitar","Banjo","Shamisen","Koto",
+        "Kalimba","Bagpipe","Fiddle","Shanai",
+        "Tinkle Bell","Agogo","Steel Drums","Woodblock",
+        "Taiko Drum","Melodic Tom","Synth Drum","Reverse Cymbal",
+        "Guitar Fret Noise","Breath Noise","Seashore","Bird Tweet",
+        "Telephone Ring","Helicopter","Applause","Gunshot"
+    ];
+
+    const select = instrumentSelect;
+    select.innerHTML = '';
+    gmInstruments.forEach((name, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `${idx}: ${name}`;
+        select.appendChild(opt);
+    });
+    select.value = '1';
+
+    select.addEventListener('change', () => {
+        instrumentNumInput.value = select.value;
+    });
+    instrumentNumInput.addEventListener('input', () => {
+        const val = parseInt(instrumentNumInput.value);
+        if (!isNaN(val) && val >= 0 && val <= 127) {
+            select.value = val;
+        } else {
+            select.value = '';
+        }
+    });
+
+    function saveConfig() {
+        localStorage.setItem('midiToolConfig', JSON.stringify({
+            unitBeat: unitBeatInput.value,
+            bpm: bpmInput.value,
+            defaultVelocity: defaultVelocityInput.value,
+            instrument: instrumentNumInput.value,
+        }));
+    }
+    function loadConfig() {
+        const raw = localStorage.getItem('midiToolConfig');
+        if (raw) {
+            try {
+                const cfg = JSON.parse(raw);
+                if (cfg.unitBeat) unitBeatInput.value = cfg.unitBeat;
+                if (cfg.bpm) bpmInput.value = cfg.bpm;
+                if (cfg.defaultVelocity) defaultVelocityInput.value = cfg.defaultVelocity;
+                if (cfg.instrument) {
+                    instrumentNumInput.value = cfg.instrument;
+                    instrumentNumInput.dispatchEvent(new Event('input'));
+                }
+            } catch (e) {}
+        }
+    }
+    loadConfig();
+    [unitBeatInput, bpmInput, defaultVelocityInput, instrumentNumInput].forEach(el => {
+        el.addEventListener('change', saveConfig);
+        el.addEventListener('input', saveConfig);
+    });
+
+    // ---------- 解析器 ----------
+    function parseScore(text, defaultInstrument, defaultVelocity, unitBeat) {
+        const lines = text.split(/\n/);
+        const tracks = [];
+        let currentInstrument = defaultInstrument;
+        tracks.push({ instrument: currentInstrument, notes: [] });
+        const errors = [];
+
+        for (let lineNum = 0; lineNum < lines.length; lineNum++) {
+            const raw = lines[lineNum];
+            const line = raw.trim();
+            if (!line || line.startsWith('#')) {
+                if (line.startsWith('#track')) {
+                    const parts = line.split(/\s+/);
+                    if (parts.length >= 2) {
+                        let instStr = parts.slice(1).join(' ');
+                        let instNum = parseInt(instStr);
+                        if (isNaN(instNum)) {
+                            const lower = instStr.toLowerCase();
+                            const found = gmInstruments.findIndex((name) => name.toLowerCase() === lower);
+                            if (found !== -1) instNum = found;
+                            else {
+                                errors.push(`第${lineNum+1}行: 未知乐器名称 "${instStr}"，使用默认`);
+                                instNum = defaultInstrument;
+                            }
+                        }
+                        currentInstrument = instNum;
+                        tracks.push({ instrument: currentInstrument, notes: [] });
+                    } else {
+                        errors.push(`第${lineNum+1}行: #track 后缺少乐器参数`);
+                    }
+                }
+                continue;
+            }
+
+            const parts = line.split(/\s+/);
+            if (parts.length < 2) {
+                errors.push(`第${lineNum+1}行: 格式错误，至少需要 "音高 时长"`);
+                continue;
+            }
+
+            let durationStr = parts[parts.length - 1];
+            let duration = parseFloat(durationStr);
+            if (isNaN(duration) || duration <= 0) {
+                errors.push(`第${lineNum+1}行: 时长必须是正数`);
+                continue;
+            }
+
+            let velocity = defaultVelocity;
+            let pitchTokens = parts.slice(0, -1);
+            if (pitchTokens.length >= 2) {
+                const lastPitch = pitchTokens[pitchTokens.length - 1];
+                const lastNum = parseFloat(lastPitch);
+                if (!isNaN(lastNum) && lastNum >= 1 && lastNum <= 127) {
+                    velocity = Math.round(lastNum);
+                    pitchTokens = pitchTokens.slice(0, -1);
+                }
+            }
+
+            const hasRest = pitchTokens.some(p => p.toUpperCase() === 'R');
+            if (hasRest) {
+                if (pitchTokens.length !== 1 || pitchTokens[0].toUpperCase() !== 'R') {
+                    errors.push(`第${lineNum+1}行: 休止 R 必须单独出现，不能与音符混用`);
+                    continue;
+                }
+                const dur = duration * unitBeat;
+                tracks[tracks.length-1].notes.push({ pitch: 'R', duration: dur, velocity: 0 });
+            } else {
+                if (pitchTokens.length === 0) {
+                    errors.push(`第${lineNum+1}行: 没有指定音高`);
+                    continue;
+                }
+                const dur = duration * unitBeat;
+                tracks[tracks.length-1].notes.push({
+                    pitch: pitchTokens,
+                    duration: dur,
+                    velocity: velocity,
+                });
+            }
+        }
+        return { tracks, errors };
+    }
+
+    // ---------- MIDI 生成 (修复：使用 TempoEvent) ----------
+    function generateMidi(tracks, bpm) {
+        const PPQ = 128;
+        const trackWriters = [];
+        let tempoSet = false;
+
+        for (let i = 0; i < tracks.length; i++) {
+            const tr = tracks[i];
+            if (tr.notes.length === 0) continue;
+
+            const track = new MidiWriter.Track();
+            
+            // 仅在第一个有效轨道设置速度，使用标准 TempoEvent
+            if (!tempoSet) {
+                track.addEvent(new MidiWriter.TempoEvent({ bpm: bpm }));
+                tempoSet = true;
+            }
+            
+            track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: tr.instrument }));
+
+            let tick = 0;
+            for (const note of tr.notes) {
+                const durTicks = Math.round(note.duration * PPQ);
+                if (note.pitch !== 'R' && note.pitch.length > 0) {
+                    const pitches = Array.isArray(note.pitch) ? note.pitch : [note.pitch];
+                    track.addEvent(new MidiWriter.NoteEvent({
+                        pitch: pitches,
+                        durationTicks: durTicks,
+                        startTick: tick,
+                        velocity: note.velocity || 80,
+                    }));
+                }
+                tick += durTicks;
+            }
+            trackWriters.push(track);
+        }
+
+        if (trackWriters.length === 0) {
+            throw new Error('没有有效的轨道');
+        }
+
+        const writer = new MidiWriter.Writer(trackWriters);
+        return { midiArray: writer.buildFile(), dataUri: writer.dataUri() };
+    }
+
+    function setStatus(msg, type = '') {
+        statusDiv.textContent = msg;
+        statusDiv.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function renderNoteTable(tracks) {
+        const tbody = noteTableBody;
+        tbody.innerHTML = '';
+        let idx = 1;
+        const unitBeat = parseFloat(unitBeatInput.value) || 1;
+        for (let ti = 0; ti < tracks.length; ti++) {
+            const track = tracks[ti];
+            for (const note of track.notes) {
+                const tr = document.createElement('tr');
+                const pitchStr = Array.isArray(note.pitch) ? note.pitch.join(' ') : note.pitch;
+                const durStr = (note.duration / unitBeat).toFixed(2);
+                tr.innerHTML = `<td>${idx++}</td><td>${ti+1}</td><td>${pitchStr}</td><td>${durStr}</td><td>${note.velocity || '-'}</td>`;
+                tbody.appendChild(tr);
+            }
+        }
+        noteListWrap.style.display = 'block';
+    }
+
+    function generateAndDisplay() {
+        const text = textarea.value;
+        if (!text.trim()) {
+            setStatus('错误: 请输入或上传乐谱文本', 'error');
+            return;
+        }
+
+        const unitBeat = parseFloat(unitBeatInput.value);
+        if (isNaN(unitBeat) || unitBeat <= 0) {
+            setStatus('错误: 单位拍必须为正数', 'error');
+            return;
+        }
+
+        const bpm = parseFloat(bpmInput.value);
+        if (isNaN(bpm) || bpm <= 0) {
+            setStatus('错误: BPM 必须为正数', 'error');
+            return;
+        }
+
+        const defaultInstrument = parseInt(instrumentNumInput.value);
+        if (isNaN(defaultInstrument) || defaultInstrument < 0 || defaultInstrument > 127) {
+            setStatus('错误: 乐器编号必须在 0~127 之间', 'error');
+            return;
+        }
+
+        const defaultVelocity = parseInt(defaultVelocityInput.value);
+        if (isNaN(defaultVelocity) || defaultVelocity < 1 || defaultVelocity > 127) {
+            setStatus('错误: 力度必须在 1~127 之间', 'error');
+            return;
+        }
+
+        try {
+            const { tracks, errors } = parseScore(text, defaultInstrument, defaultVelocity, unitBeat);
+            if (tracks.length === 0 || tracks.every(t => t.notes.length === 0)) {
+                setStatus('错误: 没有解析到任何音符', 'error');
+                return;
+            }
+
+            if (errors.length > 0) {
+                setStatus('警告: ' + errors.join('; '), 'error');
+            }
+
+            const { dataUri } = generateMidi(tracks, bpm);
+
+            const link = document.createElement('a');
+            link.href = dataUri;
+            link.download = 'melody.mid';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            const totalNotes = tracks.reduce((sum, t) => sum + t.notes.filter(n => n.pitch !== 'R').length, 0);
+            const totalRests = tracks.reduce((sum, t) => sum + t.notes.filter(n => n.pitch === 'R').length, 0);
+            setStatus(`成功生成 ${totalNotes} 个音符, ${totalRests} 个休止, ${tracks.length} 个轨道 (BPM=${bpm})`, 'success');
+
+            renderNoteTable(tracks);
+
+        } catch (err) {
+            setStatus('错误: ' + err.message, 'error');
+        }
+    }
+
+    generateBtn.addEventListener('click', generateAndDisplay);
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            textarea.value = ev.target.result;
+            setStatus(`已加载文件: ${file.name}`, '');
+        };
+        reader.onerror = () => setStatus('读取文件失败', 'error');
+        reader.readAsText(file);
+        fileInput.value = '';
+    });
+
+    exampleBtn.addEventListener('click', () => {
+        textarea.value = `# 小星星 (双轨示例)
+C4 1
+C4 1
+G4 1
+G4 1
+A4 1
+A4 1
+G4 2
+F4 1
+F4 1
+E4 1
+E4 1
+D4 1
+D4 1
+C4 2
+
+#track Lead 2 (sawtooth)
+G4 1
+G4 1
+F4 1
+F4 1
+E4 1
+E4 1
+D4 2`;
+        setStatus('已加载示例乐谱', '');
+    });
+
+    clearBtn.addEventListener('click', () => {
+        textarea.value = '';
+        noteTableBody.innerHTML = '';
+        noteListWrap.style.display = 'none';
+        setStatus('已清空', '');
+    });
+
+    listBtn.addEventListener('click', () => {
+        if (noteListWrap.style.display === 'none') {
+            const text = textarea.value;
+            if (!text.trim()) {
+                setStatus('没有乐谱可显示', 'error');
+                return;
+            }
+            const unitBeat = parseFloat(unitBeatInput.value) || 1;
+            const defaultInstrument = parseInt(instrumentNumInput.value) || 1;
+            const defaultVelocity = parseInt(defaultVelocityInput.value) || 80;
+            const { tracks, errors } = parseScore(text, defaultInstrument, defaultVelocity, unitBeat);
+            if (tracks.length > 0 && tracks.some(t => t.notes.length > 0)) {
+                renderNoteTable(tracks);
+                if (errors.length) setStatus('警告: ' + errors.join('; '), 'error');
+            } else {
+                setStatus('没有可显示的音符', 'error');
+            }
+        } else {
+            noteListWrap.style.display = 'none';
+        }
+    });
+
+    setStatus('就绪，粘贴或上传乐谱', '');
+</script>
+</body>
+</html>
