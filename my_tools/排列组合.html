@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>排列组合 </title>
+    <style>
+        /* ---------- 全局重置 & 字体 ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 10% 30%, #f0f4ff, #d9e2f5 80%);
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* ---------- 主容器：玻璃态高级感 ---------- */
+        .container {
+            width: 100%;
+            max-width: 780px;
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 40px;
+            padding: 36px 40px 44px;
+            box-shadow: 
+                0 20px 48px -12px rgba(18, 28, 58, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .container:hover {
+            box-shadow: 
+                0 28px 60px -14px rgba(18, 28, 58, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        /* ---------- 头部 ---------- */
+        .header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin-bottom: 6px;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #141b33;
+            background: linear-gradient(135deg, #1d2b5a, #3b4f8c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .badge-limit {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5b83;
+            background: rgba(60, 80, 140, 0.08);
+            padding: 6px 16px 6px 18px;
+            border-radius: 40px;
+            border: 1px solid rgba(60, 80, 140, 0.10);
+            letter-spacing: 0.2px;
+            backdrop-filter: blur(4px);
+        }
+
+        .badge-limit span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4f7cff;
+            box-shadow: 0 0 0 2px rgba(79, 124, 255, 0.2);
+        }
+
+        .sub {
+            font-size: 15px;
+            font-weight: 400;
+            color: #5a6d92;
+            margin-top: -2px;
+            margin-bottom: 28px;
+            padding-left: 2px;
+            letter-spacing: 0.2px;
+            opacity: 0.9;
+            border-left: 3px solid rgba(79, 124, 255, 0.3);
+            padding-left: 14px;
+        }
+
+        /* ---------- 输入区 ---------- */
+        .input-area {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .input-wrap {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .input-wrap input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 18px;
+            font-weight: 450;
+            color: #141b33;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1.5px solid rgba(60, 80, 140, 0.12);
+            border-radius: 20px;
+            outline: none;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            letter-spacing: 0.5px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .input-wrap input::placeholder {
+            color: #99aac9;
+            font-weight: 400;
+            font-size: 16px;
+            letter-spacing: 0.2px;
+        }
+
+        .input-wrap input:focus {
+            border-color: #4f7cff;
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 6px 16px -6px rgba(79, 124, 255, 0.18), inset 0 2px 4px rgba(0,0,0,0.01);
+        }
+
+        .char-count {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: 450;
+            color: #99aac9;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 0 8px;
+            border-radius: 30px;
+            backdrop-filter: blur(2px);
+            transition: color 0.2s;
+            pointer-events: none;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .char-count.warn {
+            color: #e54c6f;
+            font-weight: 500;
+        }
+
+        .btn-generate {
+            padding: 14px 34px;
+            font-size: 17px;
+            font-weight: 550;
+            border: none;
+            border-radius: 40px;
+            background: linear-gradient(135deg, #4f7cff, #6c5ce7);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            font-family: inherit;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px -8px rgba(79, 124, 255, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 0 14px 28px -10px rgba(79, 124, 255, 0.45);
+            background: linear-gradient(135deg, #5a84ff, #7a6af0);
+        }
+
+        .btn-generate:active {
+            transform: scale(0.97) translateY(1px);
+            box-shadow: 0 4px 12px -6px rgba(79, 124, 255, 0.4);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: 0 4px 12px -6px rgba(79, 124, 255, 0.15);
+        }
+
+        /* ---------- 提示区域 ---------- */
+        .hint {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            font-size: 14px;
+            color: #4f6190;
+            min-height: 28px;
+            margin-bottom: 22px;
+            padding: 0 4px;
+        }
+
+        .hint .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(79, 124, 255, 0.07);
+            padding: 4px 16px 4px 14px;
+            border-radius: 40px;
+            font-weight: 450;
+            color: #3e5480;
+            border: 1px solid rgba(79, 124, 255, 0.06);
+            font-size: 13.5px;
+        }
+
+        .hint .tag svg {
+            width: 14px;
+            height: 14px;
+            fill: none;
+            stroke: #4f7cff;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .hint .message {
+            font-weight: 400;
+            opacity: 0.9;
+            transition: all 0.2s;
+        }
+
+        .hint .message.error {
+            color: #e54c6f;
+            font-weight: 500;
+        }
+
+        .hint .message.success {
+            color: #2b8c5e;
+            font-weight: 500;
+        }
+
+        /* ---------- 输出区 ---------- */
+        .output-area {
+            margin-top: 6px;
+            border-top: 1.5px solid rgba(60, 80, 140, 0.08);
+            padding-top: 22px;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 18px;
+            margin-bottom: 16px;
+        }
+
+        .output-header .info {
+            font-size: 15px;
+            font-weight: 450;
+            color: #2d3f69;
+            letter-spacing: 0.2px;
+        }
+
+        .output-header .info strong {
+            font-weight: 650;
+            color: #1d2b5a;
+            background: rgba(79, 124, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 40px;
+            font-size: 16px;
+        }
+
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 22px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1.5px solid rgba(60, 80, 140, 0.12);
+            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.5);
+            color: #2d3f69;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: rgba(79, 124, 255, 0.3);
+            box-shadow: 0 6px 16px -8px rgba(79, 124, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-copy:active {
+            transform: scale(0.96);
+        }
+
+        .btn-copy.copied {
+            background: rgba(43, 140, 94, 0.08);
+            border-color: rgba(43, 140, 94, 0.2);
+            color: #1a6e48;
+        }
+
+        .btn-copy svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ---------- 输出滚动框 ---------- */
+        .output-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(4px);
+            border: 1.5px solid rgba(255, 255, 255, 0.6);
+            padding: 20px 24px;
+            font-size: 16px;
+            line-height: 2.1;
+            color: #141b33;
+            font-family: "SF Mono", "Menlo", "Consolas", monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            transition: border-color 0.2s, background 0.2s;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);
+            min-height: 80px;
+        }
+
+        .output-scroll:empty {
+            padding: 32px 24px;
+            color: #99aac9;
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 15px;
+            font-weight: 400;
+            text-align: center;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .output-scroll:empty::before {
+            content: "✨ 排列结果将优雅地呈现于此";
+            display: block;
+            letter-spacing: 0.3px;
+        }
+
+        .output-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        .output-scroll::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 10px;
+        }
+
+        .output-scroll::-webkit-scrollbar-thumb {
+            background: #c8d2e9;
+            border-radius: 10px;
+        }
+
+        .output-scroll::-webkit-scrollbar-thumb:hover {
+            background: #aebce0;
+        }
+
+        /* ---------- 底部 ---------- */
+        .footer-note {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #99aac9;
+            text-align: right;
+            letter-spacing: 0.3px;
+            font-weight: 400;
+            opacity: 0.7;
+        }
+
+        /* ---------- 响应式 ---------- */
+        @media (max-width: 620px) {
+            .container {
+                padding: 28px 18px 32px;
+                border-radius: 28px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .badge-limit {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+
+            .input-area {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .btn-generate {
+                width: 100%;
+                justify-content: center;
+                padding: 14px 20px;
+            }
+
+            .output-scroll {
+                max-height: 280px;
+                font-size: 15px;
+                padding: 16px 18px;
+                line-height: 2;
+            }
+
+            .output-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .btn-copy {
+                align-self: flex-start;
+            }
+
+            .char-count {
+                right: 14px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 20px 12px 24px;
+                border-radius: 20px;
+            }
+
+            .input-wrap input {
+                padding: 12px 16px;
+                font-size: 16px;
+            }
+
+            .output-scroll {
+                max-height: 200px;
+                font-size: 13px;
+                padding: 12px 14px;
+            }
+
+            .hint {
+                font-size: 13px;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 头部 -->
+    <div class="header">
+        <h1>排列组合</h1>
+        <div class="badge-limit">
+            <span></span> 1～7 个字
+        </div>
+    </div>
+    <div class="sub">输入任意文字，首位始终保留原始顺序</div>
+
+    <!-- 输入区 -->
+    <div class="input-area">
+        <div class="input-wrap">
+            <input
+                id="textInput"
+                type="text"
+                placeholder="例如：你好吗"
+                maxlength="7"
+                autofocus
+                spellcheck="false"
+                value="你好吗"
+            />
+            <span class="char-count" id="charCount">3/7</span>
+        </div>
+        <button class="btn-generate" id="generateBtn">生成排列</button>
+    </div>
+
+    <!-- 提示区 -->
+    <div class="hint" id="hintArea">
+        <span class="tag">
+            <svg viewBox="0 0 24 24"><path d="M12 2v4M12 22v-4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M22 12h-4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            字符限制
+        </span>
+        <span class="message" id="hintMessage">支持 1~7 个字符，重复字符自动去重</span>
+    </div>
+
+    <!-- 输出区 -->
+    <div class="output-area">
+        <div class="output-header">
+            <div class="info" id="resultInfo">排列数量 · <strong>0</strong> 种</div>
+            <button class="btn-copy" id="copyBtn">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                复制结果
+            </button>
+        </div>
+        <div class="output-scroll" id="outputBox"></div>
+    </div>
+
+    <div class="footer-note">第一行保持原始输入 · 共展示所有不重复排列</div>
+</div>
+
+<script>
+    (function() {
+        // DOM 引用
+        const inputEl = document.getElementById('textInput');
+        const charCountEl = document.getElementById('charCount');
+        const generateBtn = document.getElementById('generateBtn');
+        const outputBox = document.getElementById('outputBox');
+        const resultInfo = document.getElementById('resultInfo');
+        const copyBtn = document.getElementById('copyBtn');
+        const hintMessage = document.getElementById('hintMessage');
+
+        const MAX_LEN = 7;
+
+        // ---------- 全排列 (去重) ----------
+        function getUniquePermutations(str) {
+            const chars = str.split('');
+            const n = chars.length;
+            if (n === 0) return [];
+            if (n === 1) return [str];
+
+            const resultSet = new Set();
+            const used = new Array(n).fill(false);
+            const path = [];
+
+            // 排序以方便去重
+            const sorted = chars.slice().sort();
+
+            function backtrack() {
+                if (path.length === n) {
+                    resultSet.add(path.join(''));
+                    return;
+                }
+                for (let i = 0; i < n; i++) {
+                    if (used[i]) continue;
+                    if (i > 0 && sorted[i] === sorted[i - 1] && !used[i - 1]) continue;
+                    used[i] = true;
+                    path.push(sorted[i]);
+                    backtrack();
+                    path.pop();
+                    used[i] = false;
+                }
+            }
+
+            backtrack();
+            return Array.from(resultSet);
+        }
+
+        // ---------- 更新字数显示 ----------
+        function updateCharCount() {
+            const val = inputEl.value;
+            const len = val.length;
+            charCountEl.textContent = len + '/' + MAX_LEN;
+            if (len > MAX_LEN) {
+                charCountEl.classList.add('warn');
+            } else {
+                charCountEl.classList.remove('warn');
+            }
+        }
+
+        // ---------- 核心生成逻辑 ----------
+        function generate() {
+            const raw = inputEl.value;
+            const text = raw.trim();
+
+            // 清空旧状态样式
+            hintMessage.className = 'message';
+
+            // 空输入
+            if (text.length === 0) {
+                outputBox.textContent = '';
+                resultInfo.innerHTML = '排列数量 · <strong>0</strong> 种';
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+                hintMessage.textContent = '⚠️ 请先输入文字';
+                hintMessage.classList.add('error');
+                return;
+            }
+
+            // 检查长度
+            if (text.length > MAX_LEN) {
+                outputBox.textContent = '';
+                resultInfo.innerHTML = '排列数量 · <strong>0</strong> 种';
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+                hintMessage.textContent = `⚠️ 最多支持 ${MAX_LEN} 个字，当前 ${text.length} 个`;
+                hintMessage.classList.add('error');
+                return;
+            }
+
+            // 生成排列
+            let perms = getUniquePermutations(text);
+            const total = perms.length;
+
+            // *** 核心需求：将原始输入移到第一位 ***
+            if (total > 0) {
+                const idx = perms.indexOf(text);
+                if (idx > 0) {
+                    // 将原始元素移到最前
+                    const original = perms[idx];
+                    perms = [original, ...perms.filter((p, i) => i !== idx)];
+                } else if (idx === -1) {
+                    // 理论上不会发生，但若发生（如去重后原始字符串变了？不会），手动插入
+                    // 但实际上对于重复字符，例如 "aba"，perms 包含 "aba"，indexOf 有效。
+                    // 安全兜底。
+                }
+            }
+
+            // 更新结果信息
+            resultInfo.innerHTML = `排列数量 · <strong>${total}</strong> 种`;
+
+            // 显示
+            if (total === 0) {
+                outputBox.textContent = '';
+            } else {
+                outputBox.textContent = perms.join('\n');
+            }
+
+            // 重置复制按钮
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+
+            // 更新提示
+            hintMessage.className = 'message success';
+            hintMessage.textContent = `✅ 已生成 ${total} 种排列，首位保持原始「${text}」`;
+        }
+
+        // ---------- 复制功能 ----------
+        function copyResult() {
+            const text = outputBox.textContent;
+            if (!text || text.trim() === '') {
+                copyBtn.innerHTML = `📭 无内容`;
+                setTimeout(() => {
+                    copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+                }, 1400);
+                return;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    setCopiedState();
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function setCopiedState() {
+            copyBtn.classList.add('copied');
+            copyBtn.innerHTML = `✅ 已复制`;
+            setTimeout(() => {
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+            }, 2000);
+        }
+
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                const ok = document.execCommand('copy');
+                if (ok) {
+                    setCopiedState();
+                } else {
+                    copyBtn.innerHTML = `❌ 复制失败`;
+                    setTimeout(() => {
+                        copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+                    }, 1500);
+                }
+            } catch (e) {
+                copyBtn.innerHTML = `❌ 复制失败`;
+                setTimeout(() => {
+                    copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 复制结果`;
+                }, 1500);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // ---------- 事件绑定 ----------
+        inputEl.addEventListener('input', function() {
+            updateCharCount();
+            // 自动清除之前的错误提示（但保留生成结果）
+            if (this.value.length <= MAX_LEN) {
+                hintMessage.className = 'message';
+                hintMessage.textContent = '支持 1~7 个字符，重复字符自动去重';
+            }
+        });
+
+        generateBtn.addEventListener('click', generate);
+
+        inputEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                generate();
+            }
+        });
+
+        copyBtn.addEventListener('click', copyResult);
+
+        // ---------- 初始化 ----------
+        (function init() {
+            // 设置默认值 "你好吗"
+            inputEl.value = '你好吗';
+            updateCharCount();
+            generate();
+            inputEl.focus();
+            inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+        })();
+
+    })();
+</script>
+
+</body>
+</html>
