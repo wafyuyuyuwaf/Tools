@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字云 · 极简自定义</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.0.2/wordcloud2.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Microsoft YaHei", -apple-system, sans-serif;
+            background: #fafafa;
+            color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+        .container {
+            width: 100%;
+            max-width: 880px;
+        }
+        h2 {
+            font-weight: 400;
+            font-size: 22px;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+            color: #222;
+        }
+        .input-section {
+            margin-bottom: 18px;
+        }
+        textarea {
+            width: 100%;
+            height: 110px;
+            padding: 14px;
+            font-size: 16px;
+            line-height: 1.6;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            background: #ffffff;
+            resize: vertical;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            border-color: #888;
+        }
+        .separator-hint {
+            font-size: 13px;
+            color: #aaa;
+            margin-top: 4px;
+            letter-spacing: 0.3px;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 14px 24px;
+            margin-top: 12px;
+            padding: 8px 0;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px 10px;
+            flex-wrap: wrap;
+        }
+        .control-group label {
+            font-size: 14px;
+            color: #555;
+            letter-spacing: 0.3px;
+        }
+        .control-group input[type="number"] {
+            width: 62px;
+            padding: 5px 6px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+            background: #fff;
+            outline: none;
+            font-family: inherit;
+        }
+        .control-group input[type="number"]:focus {
+            border-color: #888;
+        }
+        .control-group input[type="color"] {
+            width: 36px;
+            height: 36px;
+            padding: 2px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+        }
+        .range-display {
+            font-size: 13px;
+            color: #999;
+            margin-left: 2px;
+        }
+        .hint-text {
+            font-size: 12px;
+            color: #aaa;
+            margin-left: 2px;
+            letter-spacing: 0.2px;
+        }
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 7px 22px;
+            background: #1a1a1a;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+            letter-spacing: 0.3px;
+        }
+        button:hover {
+            background: #333;
+        }
+        button:active {
+            background: #000;
+        }
+        button.secondary {
+            background: #e0e0e0;
+            color: #1a1a1a;
+        }
+        button.secondary:hover {
+            background: #cccccc;
+        }
+        button.rotate-btn {
+            padding: 5px 16px;
+            font-size: 13px;
+            background: #f0f0f0;
+            color: #1a1a1a;
+            border: 1px solid #d0d0d0;
+        }
+        button.rotate-btn.active {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #1a1a1a;
+        }
+        button.rotate-btn:hover {
+            background: #ddd;
+        }
+        button.rotate-btn.active:hover {
+            background: #333;
+        }
+        #cloud-container {
+            width: 100%;
+            background: #ffffff;
+            border: 1px solid #eeeeee;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 390px;
+            padding: 12px;
+            margin-top: 6px;
+            overflow: auto;
+        }
+        #cloud-container canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            background: #ffffff;
+        }
+        .footer-note {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #bbb;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .rotate-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .rotate-controls span {
+            font-size: 14px;
+            color: #555;
+        }
+        .rotate-controls input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>文字云</h2>
+        <div class="input-section">
+            <textarea id="text-input" placeholder="输入词汇，用换行或空格分隔&#10;例如：设计 极简 文字 云 生成器 文字 极简">设计 极简 文字 云 生成器 文字 极简</textarea>
+            <div class="separator-hint">✓ 每个词用 换行 或 空格 分开</div>
+            <div class="controls">
+                <div class="control-group">
+                    <label>大小</label>
+                    <input type="number" id="minSize" value="14" min="6" max="120">
+                    <span style="color:#aaa;">—</span>
+                    <input type="number" id="maxSize" value="72" min="6" max="120">
+                    <span class="range-display" id="sizeRangeDisplay">(14 ~ 72)</span>
+                </div>
+                <div class="control-group">
+                    <label>颜色</label>
+                    <input type="color" id="colorStart" value="#1a1a1a">
+                    <span style="color:#aaa;">→</span>
+                    <input type="color" id="colorEnd" value="#2a3d5e">
+                </div>
+                <div class="control-group">
+                    <label>画布</label>
+                    <input type="number" id="canvasWidth" value="600" min="200" max="1600" style="width:70px;">
+                    <span style="color:#aaa;">×</span>
+                    <input type="number" id="canvasHeight" value="400" min="200" max="1600" style="width:70px;">
+                    <span class="hint-text">(越大容纳越多)</span>
+                </div>
+            </div>
+            <div class="rotate-controls">
+                <span>旋转</span>
+                <input type="number" id="rotateRange" value="30" min="0" max="180" style="width:60px; padding:4px; border:1px solid #d0d0d0; border-radius:4px; text-align:center;">
+                <span style="color:#999;">°</span>
+                <label style="font-size:14px; color:#555; display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" id="discreteRotate"> 仅 ±90° / 0°
+                </label>
+                <button class="rotate-btn" id="noRotateBtn">不旋转</button>
+                <button class="rotate-btn" id="randomRotateBtn">随机旋转</button>
+            </div>
+            <div class="action-bar">
+                <div style="flex:1; display:flex; gap:10px; justify-content:flex-end;">
+                    <button id="generate-btn">生成</button>
+                    <button id="download-btn" class="secondary">保存图片</button>
+                </div>
+            </div>
+        </div>
+        <div id="cloud-container">
+            <canvas id="wordcloud-canvas" width="600" height="400"></canvas>
+        </div>
+        <div class="footer-note">词频决定字号 · 颜色在范围内随机 · 画布越大词汇容纳越多</div>
+    </div>
+    <script>
+        (function() {
+            const canvas = document.getElementById('wordcloud-canvas');
+            const textInput = document.getElementById('text-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const downloadBtn = document.getElementById('download-btn');
+
+            const minSizeInput = document.getElementById('minSize');
+            const maxSizeInput = document.getElementById('maxSize');
+            const colorStartInput = document.getElementById('colorStart');
+            const colorEndInput = document.getElementById('colorEnd');
+            const rotateRangeInput = document.getElementById('rotateRange');
+            const discreteRotateCheck = document.getElementById('discreteRotate');
+            const noRotateBtn = document.getElementById('noRotateBtn');
+            const randomRotateBtn = document.getElementById('randomRotateBtn');
+            const canvasWidthInput = document.getElementById('canvasWidth');
+            const canvasHeightInput = document.getElementById('canvasHeight');
+
+            let rotateMode = 'random';
+
+            // 工具：颜色插值
+            function interpolateColor(hex1, hex2, steps) {
+                const c1 = hexToRgb(hex1);
+                const c2 = hexToRgb(hex2);
+                const colors = [];
+                for (let i = 0; i < steps; i++) {
+                    const t = i / (steps - 1);
+                    const r = Math.round(c1.r + (c2.r - c1.r) * t);
+                    const g = Math.round(c1.g + (c2.g - c1.g) * t);
+                    const b = Math.round(c1.b + (c2.b - c1.b) * t);
+                    colors.push(`rgb(${r},${g},${b})`);
+                }
+                return colors;
+            }
+
+            function hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 0,
+                        g: 0, b: 0 };
+            }
+
+            // 核心生成函数
+            function generateCloud() {
+                const raw = textInput.value;
+                const words = raw.split(/\s+/).filter(w => w.length > 0);
+                if (words.length === 0) {
+                    alert('请至少输入一个词汇');
+                    return;
+                }
+
+                // 统计词频
+                const freqMap = {};
+                words.forEach(w => { freqMap[w] = (freqMap[w] || 0) + 1; });
+                const data = Object.entries(freqMap);
+
+                // 读取自定义参数
+                const minSize = parseInt(minSizeInput.value) || 14;
+                const maxSize = parseInt(maxSizeInput.value) || 72;
+                const colorStart = colorStartInput.value || '#1a1a1a';
+                const colorEnd = colorEndInput.value || '#2a3d5e';
+                const rotateRange = parseFloat(rotateRangeInput.value) || 0;
+                const discrete = discreteRotateCheck.checked;
+
+                let canvasWidth = parseInt(canvasWidthInput.value) || 600;
+                let canvasHeight = parseInt(canvasHeightInput.value) || 400;
+                canvasWidth = Math.max(200, Math.min(1600, canvasWidth));
+                canvasHeight = Math.max(200, Math.min(1600, canvasHeight));
+                canvasWidthInput.value = canvasWidth;
+                canvasHeightInput.value = canvasHeight;
+
+                const finalMin = Math.min(minSize, maxSize);
+                const finalMax = Math.max(minSize, maxSize);
+                document.getElementById('sizeRangeDisplay').textContent = `(${finalMin} ~ ${finalMax})`;
+
+                const palette = interpolateColor(colorStart, colorEnd, 6);
+                const maxFreq = data.reduce((max, item) => Math.max(max, item[1]), 0);
+
+                // 旋转函数
+                let rotateFn = null;
+                if (rotateMode === 'fixed') {
+                    rotateFn = function() { return 0; };
+                } else {
+                    if (discrete) {
+                        const angles = [-Math.PI / 2, 0, Math.PI / 2];
+                        rotateFn = function() { return angles[Math.floor(Math.random() * angles.length)]; };
+                    } else {
+                        const rangeRad = rotateRange * Math.PI / 180;
+                        rotateFn = function() { return (Math.random() * 2 - 1) * rangeRad; };
+                    }
+                }
+
+                // 设置画布
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const gridSize = Math.max(8, Math.round(canvasWidth / 80));
+
+                try {
+                    WordCloud(canvas, {
+                        list: data,
+                        gridSize: gridSize,
+                        weightFactor: function(w) {
+                            if (maxFreq === 0) return finalMin;
+                            if (maxFreq === 1 && data.every(item => item[1] === 1)) {
+                                return finalMin + Math.random() * (finalMax - finalMin);
+                            }
+                            const ratio = w / maxFreq;
+                            return finalMin + ratio * (finalMax - finalMin);
+                        },
+                        fontFamily: 'Microsoft YaHei, PingFang SC, sans-serif',
+                        color: function(word, weight) { return palette[Math.floor(Math.random() * palette.length)]; },
+                        rotate: rotateFn,
+                        rotateRatio: 1,  // 所有词都旋转
+                        clearCanvas: true,
+                        backgroundColor: '#ffffff',
+                        shrinkToFit: true,
+                        weightMode: 'size'
+                    });
+                } catch (e) {
+                    console.error(e);
+                    alert('生成失败，请检查输入或刷新后重试');
+                }
+            }
+
+            // 下载图片
+            function downloadImage() {
+                const dataUrl = canvas.toDataURL('image/png');
+                if (!dataUrl || dataUrl === 'data:,') {
+                    alert('请先生成文字云');
+                    return;
+                }
+                const link = document.createElement('a');
+                link.download = '文字云.png';
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // 设置旋转模式
+            function setRotateMode(mode) {
+                rotateMode = mode;
+                generateCloud();
+            }
+
+            // 绑定事件
+            generateBtn.addEventListener('click', generateCloud);
+            downloadBtn.addEventListener('click', downloadImage);
+            noRotateBtn.addEventListener('click', function() { setRotateMode('fixed'); });
+            randomRotateBtn.addEventListener('click', function() { setRotateMode('random'); });
+
+            textInput.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    generateCloud();
+                }
+            });
+
+            window.addEventListener('load', function() { setTimeout(generateCloud, 60); });
+        })();
+    </script>
+</body>
+</html>
