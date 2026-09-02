@@ -330,7 +330,7 @@
         el.addEventListener('input', saveConfig);
     });
 
-    // ---------- 解析器 ----------
+    // ---------- 解析器（修复版） ----------
     function parseScore(text, defaultInstrument, defaultVelocity, unitBeat) {
         const lines = text.split(/\n/);
         const tracks = [];
@@ -338,57 +338,97 @@
         tracks.push({ instrument: currentInstrument, notes: [] });
         const errors = [];
 
+        // 辅助：根据用户输入查找乐器编号（支持部分匹配）
+        function findInstrument(input) {
+            const trimmed = input.trim();
+            // 尝试直接解析数字
+            const num = parseInt(trimmed);
+            if (!isNaN(num) && num >= 0 && num <= 127) return num;
+            // 尝试完全匹配
+            const lower = trimmed.toLowerCase();
+            let idx = gmInstruments.findIndex(name => name.toLowerCase() === lower);
+            if (idx !== -1) return idx;
+            // 尝试前缀匹配（用户输入作为开头）
+            idx = gmInstruments.findIndex(name => name.toLowerCase().startsWith(lower));
+            if (idx !== -1) return idx;
+            // 尝试包含匹配（任意位置）
+            idx = gmInstruments.findIndex(name => name.toLowerCase().includes(lower));
+            if (idx !== -1) return idx;
+            return null; // 未找到
+        }
+
         for (let lineNum = 0; lineNum < lines.length; lineNum++) {
             const raw = lines[lineNum];
             const line = raw.trim();
-            if (!line || line.startsWith('#')) {
-                if (line.startsWith('#track')) {
-                    const parts = line.split(/\s+/);
-                    if (parts.length >= 2) {
-                        let instStr = parts.slice(1).join(' ');
-                        let instNum = parseInt(instStr);
-                        if (isNaN(instNum)) {
-                            const lower = instStr.toLowerCase();
-                            const found = gmInstruments.findIndex((name) => name.toLowerCase() === lower);
-                            if (found !== -1) instNum = found;
-                            else {
-                                errors.push(`第${lineNum+1}行: 未知乐器名称 "${instStr}"，使用默认`);
-                                instNum = defaultInstrument;
-                            }
-                        }
-                        currentInstrument = instNum;
+            if (!line) continue;
+
+            // 处理轨道切换
+            if (line.startsWith('#track')) {
+                const rest = line.substring(7).trim(); // 去掉 '#track'
+                if (rest) {
+                    const found = findInstrument(rest);
+                    if (found !== null) {
+                        currentInstrument = found;
                         tracks.push({ instrument: currentInstrument, notes: [] });
                     } else {
-                        errors.push(`第${lineNum+1}行: #track 后缺少乐器参数`);
+                        errors.push(`第${lineNum+1}行: 未知乐器名称 "${rest}"，使用默认`);
+                        // 仍创建新轨道，但用默认乐器
+                        tracks.push({ instrument: defaultInstrument, notes: [] });
+                        currentInstrument = defaultInstrument;
                     }
+                } else {
+                    errors.push(`第${lineNum+1}行: #track 后缺少乐器参数`);
                 }
                 continue;
             }
 
+            // 跳过注释行（以#开头但不是#track）
+            if (line.startsWith('#')) continue;
+
+            // 解析音符行
             const parts = line.split(/\s+/);
             if (parts.length < 2) {
                 errors.push(`第${lineNum+1}行: 格式错误，至少需要 "音高 时长"`);
                 continue;
             }
 
-            let durationStr = parts[parts.length - 1];
-            let duration = parseFloat(durationStr);
-            if (isNaN(duration) || duration <= 0) {
-                errors.push(`第${lineNum+1}行: 时长必须是正数`);
-                continue;
-            }
-
+            // 提取时长和力度（新逻辑）
+            let duration = NaN;
             let velocity = defaultVelocity;
-            let pitchTokens = parts.slice(0, -1);
-            if (pitchTokens.length >= 2) {
-                const lastPitch = pitchTokens[pitchTokens.length - 1];
-                const lastNum = parseFloat(lastPitch);
-                if (!isNaN(lastNum) && lastNum >= 1 && lastNum <= 127) {
-                    velocity = Math.round(lastNum);
-                    pitchTokens = pitchTokens.slice(0, -1);
-                }
+            let pitchTokens = [];
+
+            const lastToken = parts[parts.length - 1];
+            const secondLastToken = parts.length >= 2 ? parts[parts.length - 2] : null;
+
+            // 检查最后一个是否为力度（整数1~127）
+            const lastNum = parseInt(lastToken);
+            const isLastInt = !isNaN(lastNum) && lastNum >= 1 && lastNum <= 127;
+
+            // 检查倒数第二个是否为正数（时长）
+            let secondLastNum = NaN;
+            let isSecondLastPositive = false;
+            if (secondLastToken !== null) {
+                secondLastNum = parseFloat(secondLastToken);
+                isSecondLastPositive = !isNaN(secondLastNum) && secondLastNum > 0;
             }
 
+            if (parts.length >= 3 && isLastInt && isSecondLastPositive) {
+                // 情况：最后是力度，倒数第二是时长
+                duration = secondLastNum;
+                velocity = lastNum;
+                pitchTokens = parts.slice(0, -2);
+            } else {
+                // 情况：最后一个是时长，没有力度（或力度不合法）
+                duration = parseFloat(lastToken);
+                if (isNaN(duration) || duration <= 0) {
+                    errors.push(`第${lineNum+1}行: 时长必须是正数`);
+                    continue;
+                }
+                pitchTokens = parts.slice(0, -1);
+                // 如果剩余token中最后一个可能是力度？但根据规则，力度只可能出现在最后，所以不处理
+            }
+
+            // 检查是否有休止
             const hasRest = pitchTokens.some(p => p.toUpperCase() === 'R');
             if (hasRest) {
                 if (pitchTokens.length !== 1 || pitchTokens[0].toUpperCase() !== 'R') {
@@ -410,10 +450,16 @@
                 });
             }
         }
+
+        // 如果没有任何轨道包含音符，抛错
+        if (tracks.every(t => t.notes.length === 0)) {
+            errors.push('没有解析到任何音符');
+        }
+
         return { tracks, errors };
     }
 
-    // ---------- MIDI 生成 (修复：使用 TempoEvent) ----------
+    // ---------- MIDI 生成 ----------
     function generateMidi(tracks, bpm) {
         const PPQ = 128;
         const trackWriters = [];
@@ -425,7 +471,6 @@
 
             const track = new MidiWriter.Track();
             
-            // 仅在第一个有效轨道设置速度，使用标准 TempoEvent
             if (!tempoSet) {
                 track.addEvent(new MidiWriter.TempoEvent({ bpm: bpm }));
                 tempoSet = true;
@@ -575,7 +620,7 @@ D4 1
 D4 1
 C4 2
 
-#track Lead 2 (sawtooth)
+#track Lead 2
 G4 1
 G4 1
 F4 1
