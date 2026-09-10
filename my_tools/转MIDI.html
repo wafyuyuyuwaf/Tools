@@ -155,6 +155,11 @@
             background: #f0fdf4;
             color: #15803d;
         }
+        .status.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+            color: #92400e;
+        }
         .note-table-wrap {
             margin-top: 18px;
             max-height: 200px;
@@ -201,8 +206,8 @@
         <div class="param-group"><label>默认力度</label><input type="number" id="defaultVelocity" value="80" step="1" min="1" max="127"><span class="hint">1~127</span></div>
         <div class="param-group"><label>默认乐器</label><select id="instrumentSelect"></select><input type="number" id="instrumentNum" value="1" step="1" min="0" max="127" style="width:70px;"></div>
     </div>
-    <div class="link-row"><a href="https://m.miyoushe.com/ys?channel=ys_obc/#/article/77849737" target="_blank">查看乐器编号</a></div>
-    <div class="link-row"><a href="https://m.miyoushe.com/ys?channel=ys_obc/#/article/77849924" target="_blank">查看MIDI文本编写规则</a></div>
+    <div class="link-row"><a href="https://wafyuyuyuwaf.github.io/Tools/my_tools/乐器编号.jpg" target="_blank">查看乐器编号</a></div>
+    <div class="link-row"><a href="https://wafyuyuyuwaf.github.io/Tools/my_tools/编写规则.jpg" target="_blank">查看MIDI文本编写规则</a></div>
     <textarea id="scoreInput" spellcheck="false" placeholder="C4 1&#10;R 0.5&#10;E4 0.5 90&#10;#track 5&#10;G4 1"></textarea>
     <div class="toolbar">
         <div class="file-wrap"><button class="btn btn-outline">上传TXT</button><input type="file" id="fileInput" accept=".txt"></div>
@@ -291,9 +296,10 @@
 
     select.addEventListener('change', () => {
         instrumentNumInput.value = select.value;
+        saveConfig();
     });
     instrumentNumInput.addEventListener('input', () => {
-        const val = parseInt(instrumentNumInput.value);
+        const val = parseInt(instrumentNumInput.value, 10);
         if (!isNaN(val) && val >= 0 && val <= 127) {
             select.value = val;
         } else {
@@ -330,31 +336,59 @@
         el.addEventListener('input', saveConfig);
     });
 
-    // ---------- 解析器（修复版） ----------
+    // ---------- 工具函数 ----------
+    function isStrictInt(str, min, max) {
+        if (!/^\d+$/.test(str)) return false;
+        const n = parseInt(str, 10);
+        return n >= min && n <= max;
+    }
+
+    const PITCH_RE = /^([A-Ga-g])([#b]?)(-?\d+)$/;
+    function isValidPitch(p) {
+        const m = p.match(PITCH_RE);
+        if (!m) return false;
+        const octave = parseInt(m[3], 10);
+        return octave >= -1 && octave <= 9;
+    }
+
+    function findInstrument(input) {
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+
+        if (/^\d+$/.test(trimmed)) {
+            const num = parseInt(trimmed, 10);
+            if (num >= 0 && num <= 127) return num;
+            return null;
+        }
+        const lower = trimmed.toLowerCase();
+        let idx = gmInstruments.findIndex(name => name.toLowerCase() === lower);
+        if (idx !== -1) return idx;
+        idx = gmInstruments.findIndex(name => name.toLowerCase().startsWith(lower));
+        if (idx !== -1) return idx;
+        idx = gmInstruments.findIndex(name => name.toLowerCase().includes(lower));
+        if (idx !== -1) return idx;
+        return null;
+    }
+
+    // ---------- 解析器 ----------
     function parseScore(text, defaultInstrument, defaultVelocity, unitBeat) {
-        const lines = text.split(/\n/);
+        const lines = text.split(/\r?\n/);
         const tracks = [];
-        let currentInstrument = defaultInstrument;
-        tracks.push({ instrument: currentInstrument, notes: [] });
         const errors = [];
 
-        // 辅助：根据用户输入查找乐器编号（支持部分匹配）
-        function findInstrument(input) {
-            const trimmed = input.trim();
-            // 尝试直接解析数字
-            const num = parseInt(trimmed);
-            if (!isNaN(num) && num >= 0 && num <= 127) return num;
-            // 尝试完全匹配
-            const lower = trimmed.toLowerCase();
-            let idx = gmInstruments.findIndex(name => name.toLowerCase() === lower);
-            if (idx !== -1) return idx;
-            // 尝试前缀匹配（用户输入作为开头）
-            idx = gmInstruments.findIndex(name => name.toLowerCase().startsWith(lower));
-            if (idx !== -1) return idx;
-            // 尝试包含匹配（任意位置）
-            idx = gmInstruments.findIndex(name => name.toLowerCase().includes(lower));
-            if (idx !== -1) return idx;
-            return null; // 未找到
+        let pendingInstrument = defaultInstrument;
+        let currentTrack = null;
+
+        function switchTrack(instrument) {
+            currentTrack = null;
+            pendingInstrument = instrument;
+        }
+        function getCurrentTrack() {
+            if (!currentTrack) {
+                currentTrack = { instrument: pendingInstrument, notes: [] };
+                tracks.push(currentTrack);
+            }
+            return currentTrack;
         }
 
         for (let lineNum = 0; lineNum < lines.length; lineNum++) {
@@ -362,37 +396,33 @@
             const line = raw.trim();
             if (!line) continue;
 
-            // 处理轨道切换
-            if (line.startsWith('#track')) {
-                const rest = line.substring(7).trim(); // 去掉 '#track'
+            // ---- 轨道切换 ----
+            if (/^#track\b/i.test(line)) {
+                const rest = line.replace(/^#track\b/i, '').trim();
                 if (rest) {
                     const found = findInstrument(rest);
                     if (found !== null) {
-                        currentInstrument = found;
-                        tracks.push({ instrument: currentInstrument, notes: [] });
+                        switchTrack(found);
                     } else {
-                        errors.push(`第${lineNum+1}行: 未知乐器名称 "${rest}"，使用默认`);
-                        // 仍创建新轨道，但用默认乐器
-                        tracks.push({ instrument: defaultInstrument, notes: [] });
-                        currentInstrument = defaultInstrument;
+                        errors.push(`第${lineNum + 1}行: 未知乐器 "${rest}"，回退到默认乐器`);
+                        switchTrack(defaultInstrument);
                     }
                 } else {
-                    errors.push(`第${lineNum+1}行: #track 后缺少乐器参数`);
+                    errors.push(`第${lineNum + 1}行: #track 后缺少乐器参数（忽略此行）`);
                 }
                 continue;
             }
 
-            // 跳过注释行（以#开头但不是#track）
+            // ---- 跳过注释 ----
             if (line.startsWith('#')) continue;
 
-            // 解析音符行
+            // ---- 音符行 ----
             const parts = line.split(/\s+/);
             if (parts.length < 2) {
-                errors.push(`第${lineNum+1}行: 格式错误，至少需要 "音高 时长"`);
+                errors.push(`第${lineNum + 1}行: 格式错误，至少需要 "音高 时长"`);
                 continue;
             }
 
-            // 提取时长和力度（新逻辑）
             let duration = NaN;
             let velocity = defaultVelocity;
             let pitchTokens = [];
@@ -400,11 +430,8 @@
             const lastToken = parts[parts.length - 1];
             const secondLastToken = parts.length >= 2 ? parts[parts.length - 2] : null;
 
-            // 检查最后一个是否为力度（整数1~127）
-            const lastNum = parseInt(lastToken);
-            const isLastInt = !isNaN(lastNum) && lastNum >= 1 && lastNum <= 127;
+            const isLastVel = isStrictInt(lastToken, 1, 127);
 
-            // 检查倒数第二个是否为正数（时长）
             let secondLastNum = NaN;
             let isSecondLastPositive = false;
             if (secondLastToken !== null) {
@@ -412,46 +439,54 @@
                 isSecondLastPositive = !isNaN(secondLastNum) && secondLastNum > 0;
             }
 
-            if (parts.length >= 3 && isLastInt && isSecondLastPositive) {
-                // 情况：最后是力度，倒数第二是时长
+            if (parts.length >= 3 && isLastVel && isSecondLastPositive) {
                 duration = secondLastNum;
-                velocity = lastNum;
+                velocity = parseInt(lastToken, 10);
                 pitchTokens = parts.slice(0, -2);
             } else {
-                // 情况：最后一个是时长，没有力度（或力度不合法）
                 duration = parseFloat(lastToken);
                 if (isNaN(duration) || duration <= 0) {
-                    errors.push(`第${lineNum+1}行: 时长必须是正数`);
+                    errors.push(`第${lineNum + 1}行: 时长必须是正数`);
                     continue;
                 }
                 pitchTokens = parts.slice(0, -1);
-                // 如果剩余token中最后一个可能是力度？但根据规则，力度只可能出现在最后，所以不处理
             }
 
-            // 检查是否有休止
+            if (duration > 64) {
+                errors.push(`第${lineNum + 1}行: 时长 ${duration} 拍过大，请确认没有把力度写到时长位置`);
+            }
+
             const hasRest = pitchTokens.some(p => p.toUpperCase() === 'R');
             if (hasRest) {
-                if (pitchTokens.length !== 1 || pitchTokens[0].toUpperCase() !== 'R') {
-                    errors.push(`第${lineNum+1}行: 休止 R 必须单独出现，不能与音符混用`);
+                if (pitchTokens.length !== 1) {
+                    errors.push(`第${lineNum + 1}行: 休止 R 必须单独出现，不能与音符混用`);
                     continue;
                 }
-                const dur = duration * unitBeat;
-                tracks[tracks.length-1].notes.push({ pitch: 'R', duration: dur, velocity: 0 });
-            } else {
-                if (pitchTokens.length === 0) {
-                    errors.push(`第${lineNum+1}行: 没有指定音高`);
-                    continue;
-                }
-                const dur = duration * unitBeat;
-                tracks[tracks.length-1].notes.push({
-                    pitch: pitchTokens,
-                    duration: dur,
-                    velocity: velocity,
+                getCurrentTrack().notes.push({
+                    pitch: 'R',
+                    duration: duration * unitBeat,
+                    velocity: 0,
                 });
+                continue;
             }
+
+            if (pitchTokens.length === 0) {
+                errors.push(`第${lineNum + 1}行: 没有指定音高`);
+                continue;
+            }
+            const badPitches = pitchTokens.filter(p => !isValidPitch(p));
+            if (badPitches.length > 0) {
+                errors.push(`第${lineNum + 1}行: 无法识别的音高 ${badPitches.join(', ')}`);
+                continue;
+            }
+
+            getCurrentTrack().notes.push({
+                pitch: pitchTokens,
+                duration: duration * unitBeat,
+                velocity: velocity,
+            });
         }
 
-        // 如果没有任何轨道包含音符，抛错
         if (tracks.every(t => t.notes.length === 0)) {
             errors.push('没有解析到任何音符');
         }
@@ -460,23 +495,31 @@
     }
 
     // ---------- MIDI 生成 ----------
+    const CHANNEL_SEQ = [0,1,2,3,4,5,6,7,8,10,11,12,13,14,15];
+
     function generateMidi(tracks, bpm) {
         const PPQ = 128;
         const trackWriters = [];
         let tempoSet = false;
+        let channelIdx = 0;
 
         for (let i = 0; i < tracks.length; i++) {
             const tr = tracks[i];
             if (tr.notes.length === 0) continue;
 
             const track = new MidiWriter.Track();
-            
+            const channel = CHANNEL_SEQ[channelIdx % CHANNEL_SEQ.length];
+            channelIdx++;
+
             if (!tempoSet) {
                 track.addEvent(new MidiWriter.TempoEvent({ bpm: bpm }));
                 tempoSet = true;
             }
-            
-            track.addEvent(new MidiWriter.ProgramChangeEvent({ instrument: tr.instrument }));
+
+            track.addEvent(new MidiWriter.ProgramChangeEvent({
+                instrument: tr.instrument,
+                channel: channel,
+            }));
 
             let tick = 0;
             for (const note of tr.notes) {
@@ -487,7 +530,8 @@
                         pitch: pitches,
                         durationTicks: durTicks,
                         startTick: tick,
-                        velocity: note.velocity || 80,
+                        velocity: note.velocity ?? 80,
+                        channel: channel,
                     }));
                 }
                 tick += durTicks;
@@ -518,12 +562,25 @@
             for (const note of track.notes) {
                 const tr = document.createElement('tr');
                 const pitchStr = Array.isArray(note.pitch) ? note.pitch.join(' ') : note.pitch;
-                const durStr = (note.duration / unitBeat).toFixed(2);
-                tr.innerHTML = `<td>${idx++}</td><td>${ti+1}</td><td>${pitchStr}</td><td>${durStr}</td><td>${note.velocity || '-'}</td>`;
+                const durStr = String(+(note.duration / unitBeat).toFixed(4));
+                tr.innerHTML = `<td>${idx++}</td><td>${ti + 1}</td><td>${pitchStr}</td><td>${durStr}</td><td>${note.velocity || '-'}</td>`;
                 tbody.appendChild(tr);
             }
         }
         noteListWrap.style.display = 'block';
+    }
+
+    function readDefaultParams() {
+        let di = parseInt(instrumentNumInput.value, 10);
+        if (isNaN(di) || di < 0 || di > 127) di = 1;
+
+        let dv = parseInt(defaultVelocityInput.value, 10);
+        if (isNaN(dv) || dv < 1 || dv > 127) dv = 80;
+
+        let ub = parseFloat(unitBeatInput.value);
+        if (isNaN(ub) || ub <= 0) ub = 1;
+
+        return { defaultInstrument: di, defaultVelocity: dv, unitBeat: ub };
     }
 
     function generateAndDisplay() {
@@ -533,8 +590,8 @@
             return;
         }
 
-        const unitBeat = parseFloat(unitBeatInput.value);
-        if (isNaN(unitBeat) || unitBeat <= 0) {
+        const ubCheck = parseFloat(unitBeatInput.value);
+        if (isNaN(ubCheck) || ubCheck <= 0) {
             setStatus('错误: 单位拍必须为正数', 'error');
             return;
         }
@@ -545,27 +602,25 @@
             return;
         }
 
-        const defaultInstrument = parseInt(instrumentNumInput.value);
-        if (isNaN(defaultInstrument) || defaultInstrument < 0 || defaultInstrument > 127) {
+        const diCheck = parseInt(instrumentNumInput.value, 10);
+        if (isNaN(diCheck) || diCheck < 0 || diCheck > 127) {
             setStatus('错误: 乐器编号必须在 0~127 之间', 'error');
             return;
         }
 
-        const defaultVelocity = parseInt(defaultVelocityInput.value);
-        if (isNaN(defaultVelocity) || defaultVelocity < 1 || defaultVelocity > 127) {
+        const dvCheck = parseInt(defaultVelocityInput.value, 10);
+        if (isNaN(dvCheck) || dvCheck < 1 || dvCheck > 127) {
             setStatus('错误: 力度必须在 1~127 之间', 'error');
             return;
         }
+
+        const { defaultInstrument, defaultVelocity, unitBeat } = readDefaultParams();
 
         try {
             const { tracks, errors } = parseScore(text, defaultInstrument, defaultVelocity, unitBeat);
             if (tracks.length === 0 || tracks.every(t => t.notes.length === 0)) {
                 setStatus('错误: 没有解析到任何音符', 'error');
                 return;
-            }
-
-            if (errors.length > 0) {
-                setStatus('警告: ' + errors.join('; '), 'error');
             }
 
             const { dataUri } = generateMidi(tracks, bpm);
@@ -577,12 +632,16 @@
             link.click();
             document.body.removeChild(link);
 
-            const totalNotes = tracks.reduce((sum, t) => sum + t.notes.filter(n => n.pitch !== 'R').length, 0);
-            const totalRests = tracks.reduce((sum, t) => sum + t.notes.filter(n => n.pitch === 'R').length, 0);
-            setStatus(`成功生成 ${totalNotes} 个音符, ${totalRests} 个休止, ${tracks.length} 个轨道 (BPM=${bpm})`, 'success');
+            const totalNotes = tracks.reduce((s, t) => s + t.notes.filter(n => n.pitch !== 'R').length, 0);
+            const totalRests = tracks.reduce((s, t) => s + t.notes.filter(n => n.pitch === 'R').length, 0);
+
+            if (errors.length > 0) {
+                setStatus(`已生成 ${totalNotes} 音符/${totalRests} 休止/${tracks.length} 轨道（BPM=${bpm}），但有 ${errors.length} 条警告: ${errors.join('; ')}`, 'warning');
+            } else {
+                setStatus(`成功生成 ${totalNotes} 个音符, ${totalRests} 个休止, ${tracks.length} 个轨道 (BPM=${bpm})`, 'success');
+            }
 
             renderNoteTable(tracks);
-
         } catch (err) {
             setStatus('错误: ' + err.message, 'error');
         }
@@ -621,6 +680,7 @@ D4 1
 C4 2
 
 #track Lead 2
+R 14
 G4 1
 G4 1
 F4 1
@@ -645,13 +705,12 @@ D4 2`;
                 setStatus('没有乐谱可显示', 'error');
                 return;
             }
-            const unitBeat = parseFloat(unitBeatInput.value) || 1;
-            const defaultInstrument = parseInt(instrumentNumInput.value) || 1;
-            const defaultVelocity = parseInt(defaultVelocityInput.value) || 80;
+            const { defaultInstrument, defaultVelocity, unitBeat } = readDefaultParams();
             const { tracks, errors } = parseScore(text, defaultInstrument, defaultVelocity, unitBeat);
             if (tracks.length > 0 && tracks.some(t => t.notes.length > 0)) {
                 renderNoteTable(tracks);
-                if (errors.length) setStatus('警告: ' + errors.join('; '), 'error');
+                if (errors.length) setStatus('警告: ' + errors.join('; '), 'warning');
+                else setStatus('已显示音符列表', '');
             } else {
                 setStatus('没有可显示的音符', 'error');
             }
